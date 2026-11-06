@@ -1,0 +1,2448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Well Path Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* TAH design system: surface / surface-raised / ink / ink-muted / hairline / border-strong / accent / success / danger */
+:root{
+  --bg:#f2eee8; --panel:#fbf9f5; --ink:#121310; --muted:#5a574e; --line:#d9d3c8; --grid:#e6e0d6; --edge:#8d887b;
+  --accent:#ed7437; --accent-ink:#121310; --accent-text:#a8420f; --warn:#b3263d; --good:#38763a; --off:#8a8579; --sel:#ece6da;
+  --tab:#e6e0d6; --knob:#fffeff; --blue:#6a9ada; --amber:#eaa945;
+  --r-md:12px; --r-pill:999px;
+  --sans:"Outfit","Avenir Next",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
+    --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
+  --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a;
+}
+*{box-sizing:border-box}
+.printonly{display:none}
+.addrow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.addrow label.f{width:110px}
+[hidden]{display:none!important}
+input[type=checkbox]{-webkit-appearance:none;appearance:none;position:relative;width:38px!important;height:22px!important;border-radius:var(--r-pill);background:var(--off);border:0!important;padding:0!important;margin:0;flex:none;cursor:pointer}
+input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--knob)}
+input[type=checkbox]:checked{background:var(--good)}
+input[type=checkbox]:checked::after{left:19px}
+input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
+input[type=checkbox]:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+header{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.2px}
+header .sub{color:var(--muted)}
+.grow{flex:1}
+button,.btn{font:inherit;font-weight:500;border:1.5px solid var(--edge);background:transparent;color:var(--ink);padding:5px 14px;border-radius:var(--r-pill);cursor:pointer}
+button:hover{background:var(--sel)}
+button:focus-visible,.tab:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.primary:hover{background:var(--accent);filter:brightness(1.08)}
+button.small{padding:2px 10px;font-size:12px}
+button.ghost{border-color:transparent;background:transparent;color:var(--accent-text)}
+.app{display:grid;grid-template-columns:350px minmax(0,1fr);height:calc(100vh - 50px)}
+aside{overflow:auto;padding:12px;border-right:1px solid var(--line)}
+main{overflow:auto;padding:12px 16px 40px}
+.card{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:10px;background:var(--panel)}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:8px}
+.card h3 .grow{flex:1}
+#secWrap .secRow label.chk{flex-wrap:wrap}
+#secWrap .secRow input[type=number]{width:76px}
+.geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:10px;margin-bottom:10px;align-items:start}
+.geo .card{margin:0}
+@media (max-width:1100px){.geo{grid-template-columns:1fr}}
+#secWrap{font-size:12px;display:flex;flex-direction:column;gap:7px}
+#secWrap .secRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#secWrap label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#secWrap input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
+#secWrap input[type=number]{width:92px;padding:3px 6px;flex:none}
+#secWrap .mut,#secWrap #secStat{color:var(--muted)}
+#secWrap #secStat:empty{display:none}
+#notesCard #secInfo{line-height:1.5;font-size:13px}
+#notesCard:has(#secInfo:empty):has(#planNotes:empty){display:none}
+#planNotes ul{margin:0 0 6px;padding-left:18px;line-height:1.5;font-size:13px}
+.chkcol{display:flex;flex-direction:column;gap:7px;font-size:12px}
+.chkcol label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+.chkcol input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
+#refCard .refrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
+#refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#refCard input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none}
+#stoInfo{margin-top:8px;font-size:12px;line-height:1.5}
+#stoInfo table{width:100%;border-collapse:collapse;margin-top:6px}
+#stoInfo th,#stoInfo td{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left;font-weight:400}
+#stoInfo th{color:var(--muted);font-size:11px}
+#stoInfo tr.none td{color:var(--muted)}
+.g2,.g3{display:grid;gap:6px 8px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
+.full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;font-size:12px;font-weight:500;color:var(--muted);gap:2px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--edge);border-radius:8px;padding:4px 6px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--ink);outline-offset:1px}
+input:disabled{opacity:.65;font-style:italic}
+input[type=number]{font-variant-numeric:tabular-nums}
+textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.derived{font-size:12px;margin-top:8px;padding:6px 8px;background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
+.msg{border-radius:var(--r-md);padding:8px 12px;margin-bottom:10px;font-size:12.5px}
+.msg.err{background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:1px solid var(--warn)}
+.msg.note{background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.msg ul{margin:0;padding-left:18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px}
+.stat .k{font-size:12px;font-weight:500;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
+.stat.bad .v{color:var(--warn)}
+.tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.tab{border:1.5px solid var(--edge);background:transparent;padding:5px 16px;border-radius:var(--r-pill);color:var(--ink)}
+.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.pane{display:none}.pane.on{display:block}
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
+.plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
+.plot h4 span{font-weight:400;color:var(--muted);font-size:11px}
+.plot canvas{width:100%;height:340px;display:block;touch-action:none;cursor:grab}
+.plot canvas:active{cursor:grabbing}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel);max-height:calc(100vh - 230px)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
+th,td{padding:3px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;font-size:12px;z-index:1;border-bottom:1px solid var(--line)}
+td.l,th.l{text-align:left}
+tr.bound td{font-weight:600;background:var(--sel)}
+td.bad{color:var(--warn);font-weight:700}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.toolbar label{display:flex;gap:6px;align-items:center;color:var(--muted)}
+.toolbar select{width:auto}
+.sectbl input,.sectbl select{padding:2px 4px;font-size:12px;text-align:right}
+.sectbl td.l input,.sectbl td.l select{text-align:left}
+.sectbl input.w{width:78px}
+.row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.row input:first-child{flex:1}
+.row input.num{width:78px;flex:none}
+.row input.num2{width:58px;flex:none}
+.offcard{border:1px solid var(--line);border-radius:var(--r-md);padding:8px 10px;margin-bottom:10px;background:var(--panel)}
+.offcard .top{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.offcard .top input{flex:1}
+.pill{display:inline-block;padding:1px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--tab);color:var(--muted)}
+.pill.ok{background:color-mix(in srgb,var(--good) 18%,var(--panel));color:var(--good)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,var(--panel));color:var(--warn)}
+.cw{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.cw .ll.off{display:none}
+.cw input.bad{outline:2px solid var(--warn)}
+.tgt{border:1px solid var(--line);border-radius:var(--r-md);padding:8px;margin-bottom:8px;background:var(--bg)}
+.tgt .top{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.tgt .top input{flex:1}
+.tgt .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;background:var(--warn);color:var(--bg);font-size:11px;font-weight:700}
+.tgt .role{font-size:11px;color:var(--muted);margin:-2px 0 6px 26px}
+.tgt.unused{opacity:.55}
+.tmiss{font-size:11.5px;margin-top:6px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:1100px){.plots{grid-template-columns:1fr}}
+@media (max-width:860px){.app{grid-template-columns:1fr;height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}}
+@media print{
+  .printonly{display:block!important;font-size:16px;font-weight:700;margin:0 0 8px}
+  header .btns,aside,.tabs,.toolbar button,.hint,.noprint{display:none!important}
+  .app{display:block;height:auto}.pane{display:block!important;margin-bottom:16px}
+  .tblwrap{max-height:none;overflow:visible}body{background:#fff;color:#000}
+  .plot canvas{height:300px}
+}
+#wallPrint{display:none}
+@media print{body.wallmode header,body.wallmode .app{display:none!important}body.wallmode #wallPrint{display:block!important}body.wallmode #wallPrint svg{display:block;page-break-after:always}body.wallmode #wallPrint svg:last-child{page-break-after:auto}body.wallmode{background:#fff}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Well Path Planner</h1><span class="sub" id="wellTitle"></span>
+  <span style="display:flex;gap:6px;align-items:center;margin-left:8px"><span style="color:var(--muted)">Well</span>
+    <select id="wellSel" style="width:auto;max-width:260px"></select>
+    <button id="bWellDel" class="small" title="Delete the selected well">Delete well</button></span>
+  <span class="grow"></span>
+  <span class="btns" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button id="bNew">New</button>
+    <button id="bOpen">Open…</button>
+    <button id="bSave">Save</button>
+    <button id="bCsv" class="primary">Export survey CSV</button>
+    <button id="bPrint">Print</button>
+  </span>
+  <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+</header>
+
+<div class="app">
+<aside>
+  <div class="card">
+    <h3>Well</h3>
+    <div class="g2">
+      <label class="f full">Name<input data-k="name" data-t="text"></label>
+      <label class="f full">API #<input data-k="api" data-t="text" placeholder="49-005-00000" autocomplete="off"></label>
+      <label class="f full">Project coordinate system
+        <select data-k="crs">
+          <option value="WY-E">NAD83 / Wyoming East (4901), US ft</option>
+          <option value="WY-EC">NAD83 / Wyoming East Central (4902), US ft</option>
+          <option value="WY-WC">NAD83 / Wyoming West Central (4903), US ft</option>
+          <option value="WY-W">NAD83 / Wyoming West (4904), US ft</option>
+          <option value="local">Local grid, ft (no lat/long)</option>
+        </select></label>
+      <label class="f full">Surface location (SHL)<select id="slotSel"></select></label>
+      <div class="full" id="surfCoord"></div>
+      <label class="f">Ground elevation (ft ASL)<input type="number" step="any" data-k="gl"></label>
+      <label class="f">KB above ground (ft)<input type="number" step="any" min="0" data-k="kbOff" title="Rig height: kelly bushing above ground level"></label>
+      <label class="f">KB elevation (ft ASL)<input type="number" id="kbOut" disabled title="Ground elevation + KB above ground. All TVD values are measured from this."></label>
+      <label class="f">VS azimuth (° blank = auto)<input type="number" step="any" data-k="vsAzi" data-t="opt"></label>
+    </div>
+    <div class="derived" id="crsInfo" style="font-size:11.5px"></div>
+  </div>
+
+  <div class="card">
+    <h3 id="padHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="padArrow" style="display:inline-block;width:10px">▸</span>Pad template <span class="grow"></span><span id="padCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+    <div id="padBody" hidden style="margin-top:8px">
+    <div class="hint" style="margin:0 0 6px">Enter one known surface point, say which slot it is, then set the spacing and rotation.</div>
+    <div id="padRef"></div>
+    <button class="small" id="bPadUse" style="margin:6px 0">Use this well’s surface as the known point</button>
+    <div class="g3">
+      <label class="f">Known point = column<input type="number" step="1" min="1" data-pk="pad.refCol"></label>
+      <label class="f">…row<input type="number" step="1" min="1" data-pk="pad.refRow"></label>
+      <span></span>
+      <label class="f">Columns (X)<input type="number" step="1" min="1" max="12" data-pk="pad.cols"></label>
+      <label class="f">Rows (Y)<input type="number" step="1" min="1" max="12" data-pk="pad.rows"></label>
+      <span></span>
+      <label class="f">X spacing (ft)<input type="number" step="any" min="0" data-pk="pad.dx"></label>
+      <label class="f">Y spacing (ft)<input type="number" step="any" min="0" data-pk="pad.dy"></label>
+      <label class="f">Rotation (° CCW)<input type="number" step="any" data-pk="pad.rot"></label>
+    </div>
+    <div class="derived" id="padInfo"></div>
+    <canvas id="cvPad" style="width:100%;height:230px;display:block;margin-top:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer"></canvas>
+    <div class="hint">Click an empty slot to plan a new well there. It copies this well’s design and moves its targets by the same offset as the surface. Click a filled slot to open that well.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 id="lsHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="lsArrow" style="display:inline-block;width:10px">▸</span>Lateral spacing</h3>
+    <div id="lsBody" hidden style="margin-top:8px">
+    <div class="hint" style="margin:0 0 6px">Sets the distance between laterals. The reference well keeps its targets. Every other horizontal well gets a copy of them, moved sideways by a multiple of the spacing, in the same order as the surface locations.</div>
+    <div class="g3">
+      <label class="f">Reference well<select id="lsRef"></select></label>
+      <label class="f">Spacing (ft)<input type="number" step="any" min="0" id="lsSp" value="660"></label>
+      <label class="f">TVD stagger (ft)<input type="number" step="any" id="lsSt" value="0"></label>
+    </div>
+    <label class="f" style="margin-top:6px">Direction<select id="lsDir"><option value="1">Right of the reference, looking toward the toe</option><option value="-1">Left of the reference, looking toward the toe</option></select></label>
+    <div class="derived" id="lsInfo"></div>
+    <button class="small" id="bLsApply" style="margin:6px 0">Apply to pad wells</button>
+    <div class="hint">Stagger moves every other lateral (1st, 3rd… from the reference) deeper by that many feet; use a negative number for shallower. This overwrites the target positions of the other wells.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Targets <span class="grow"></span><button class="small" id="bAddTgt">+ Add target</button></h3>
+    <div id="tgtList"></div>
+    <div data-show="hbh" style="margin-top:4px">
+      <div class="g3">
+        <label class="f">Az (°)<input type="number" step="any" data-k="lat.az"></label>
+        <label class="f">Length (ft)<input type="number" step="any" data-k="lat.len"></label>
+        <label class="f">Dip (° down)<input type="number" step="any" data-k="lat.dip"></label>
+      </div>
+      <button class="small" id="bExtend" style="margin-top:6px">Add target from last by az / length / dip</button>
+    </div>
+    <div class="hint" id="tgtHint"></div>
+    <div class="derived" id="derived"></div>
+  </div>
+
+  <div class="card">
+    <h3>Design <span class="grow"></span><span id="modeBadge" class="pill"></span></h3>
+    <div class="g2">
+      <label class="f full">Well type
+        <select data-k="d.type">
+          <option value="hbh">Horizontal: build – hold – landing – lateral</option>
+          <option value="slant">Slant: build and hold to heel</option>
+          <option value="scurve">S-curve: build – hold – drop</option>
+          <option value="vertical">Vertical</option>
+        </select></label>
+      <div class="full g2" data-show="hbh,slant,scurve">
+        <label class="f full">Solve for
+          <select data-k="d.solveFor">
+            <option value="tangent">Tangent inclination (given KOP)</option>
+            <option value="kop">KOP depth (given tangent inclination)</option>
+          </select></label>
+        <label class="f">Vertical section to KOP (ft)<input type="number" step="any" min="0" data-k="d.kop" id="inKop" title="Vertical hole from surface (conductor and surface casing) down to the kickoff point. MD equals TVD here."></label>
+        <label class="f">Tangent inc (°)<input type="number" step="any" min="0" max="89.9" data-k="d.tanInc" id="inTan"></label>
+        <label class="f">Build rate (°/100 ft)<input type="number" step="any" min="0.1" data-k="d.bur1"></label>
+        <label class="f" data-show="hbh,scurve"><span id="lblBur2">Landing rate (°/100 ft)</span><input type="number" step="any" min="0.1" data-k="d.bur2"></label>
+        <label class="f" data-show="scurve">Drop to inc (°)<input type="number" step="any" min="0" max="89" data-k="d.dropInc"></label>
+        <label class="f" data-show="hbh">Lateral steering DLS (°/100 ft)<input type="number" step="any" min="0.1" data-k="d.latDls"></label>
+      </div>
+      <label class="f" data-show="slant,scurve,vertical">Hold past target (ft)<input type="number" step="any" min="0" data-k="d.ext"></label>
+      <label class="f">Max DLS alarm (°/100)<input type="number" step="any" min="0" data-k="maxDls"></label>
+    </div>
+    <div class="hint" id="designHint"></div>
+  </div>
+
+  <div class="card">
+    <h3>Formation tops <span class="grow"></span><button class="small" id="bAddTop">+ Add</button></h3>
+    <div id="topsList"></div>
+    <div class="hint">TVD from KB. Drawn as lines on the section view.</div>
+  </div>
+</aside>
+
+<main>
+  <div id="printId" class="printonly"></div>
+  <div id="banner"></div>
+  <div class="stats" id="stats"></div>
+  <div class="tabs">
+    <button class="tab on" data-tab="plots">Plots</button>
+    <button class="tab" data-tab="survey">Survey</button>
+    <button class="tab" data-tab="sections">Sections</button>
+    <button class="tab" data-tab="offsets">Offsets &amp; clearance</button>
+    <button class="tab" data-tab="actual">Plan vs actual</button>
+    <button class="tab" data-tab="wall">Wall plot</button>
+  </div>
+
+  <div class="pane on" id="pane-plots">
+  <div class="geo">
+    <div id="secWrap" class="card">
+      <h3>Sections</h3>
+      <label class="chk"><input type="checkbox" id="secOn"><span>Show sections within 1 mile of the lateral</span></label>
+      <label class="chk"><input type="checkbox" id="secOnly"><span>Only sections the wellbore passes through</span></label>
+      <div class="secRow"><label class="chk">Setback <input type="number" id="secSb" min="0" step="10" list="sbList"> ft <span class="mut">from section lines (dashed)</span></label></div>
+      <datalist id="sbList"><option value="330"><option value="100"></datalist>
+      <div id="secStat" class="mut"></div>
+    </div>
+    <div class="card" id="stoCard">
+    <h3>Drilled wells from state records</h3>
+    <div class="chkcol">
+      <label class="chk"><input type="checkbox" id="stoOn"><span>Include wells drilled in the sections the wellbore passes through</span></label>
+      <label class="chk"><input type="checkbox" id="stoTrue"><span>Filed survey azimuths are true north (convert to grid)</span></label>
+    </div>
+    <div class="hint" style="margin:6px 0 0">Tracks are drawn on the plots. The well list and clearance are on the Offsets &amp; clearance tab.</div>
+  </div>
+  </div>
+    <div class="plots">
+      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvPlan"></canvas></div>
+      <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
+      <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
+      <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
+    </div>
+    <div class="card" id="notesCard" style="margin-top:10px">
+      <h3>Notes</h3>
+      <div id="planNotes"></div>
+      <div id="secInfo"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-survey">
+    <div class="toolbar">
+      <label>Rows
+        <select id="repInt">
+          <option value="10">every 10 ft</option>
+          <option value="50">every 50 ft</option>
+          <option value="100" selected>every 100 ft</option>
+          <option value="500">every 500 ft</option>
+          <option value="1000">every 1,000 ft</option>
+          <option value="0">section ends only</option>
+        </select></label>
+      <span class="hint" style="margin:0">Section ends and TD are always shown (bold). DLS above the alarm is red.</span>
+    </div>
+    <div class="tblwrap"><table id="surveyTbl"></table></div>
+  </div>
+
+  <div class="pane" id="pane-sections">
+    <div class="toolbar" id="secBar"></div>
+    <div class="tblwrap" style="max-height:none"><table class="sectbl" id="secTbl"></table></div>
+    <div class="hint">Target-driven mode solves these sections from your targets. Switch to manual to edit holds and curves directly (like building a plan by section in COMPASS); the curve “target inc/azi” is where the section ends, built at the DLS you enter.</div>
+  </div>
+
+  <div class="pane" id="pane-actual">
+    <div class="card" id="actCard">
+      <h3>Actual survey</h3>
+      <div class="toolbar">
+        <button id="bActFile">Import survey file…</button><input type="file" id="actFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
+        <button id="bActPaste">Paste survey…</button>
+        <button id="bActClear" class="ghost">Remove actual survey</button>
+      </div>
+      <div class="hint" style="margin:0 0 4px">Importing or pasting a survey here replaces the whole actual survey, so use it to refresh after the crew has drilled a lot. For a few new points use Add stations below.</div>
+      <div id="actPasteBox" hidden>
+        <textarea id="actPaste" rows="6" placeholder="MD, Inc, Azi  (one station per line; a header line naming the columns is fine)"></textarea>
+        <div class="toolbar" style="margin-top:6px"><button id="bActUse" class="small">Use pasted survey</button><button id="bActPasteCancel" class="small">Cancel</button></div>
+      </div>
+      <div id="actAdd" style="margin-top:10px">
+        <h3 style="margin-bottom:6px">Add stations</h3>
+        <div class="addrow">
+          <label class="f">MD (ft)<input type="number" step="any" id="actMd" min="0"></label>
+          <label class="f">Inc (°)<input type="number" step="any" id="actInc" min="0" max="180"></label>
+          <label class="f">Azi (°)<input type="number" step="any" id="actAzi"></label>
+          <button id="bActAdd" class="primary">Add station</button>
+          <button id="bActUndo">Remove last station</button>
+        </div>
+        <label class="f" style="margin-top:8px">Or paste new stations, one per line as MD, Inc, Azi<textarea id="actAddPaste" rows="3" placeholder="12080, 90.2, 181.4&#10;12170, 90.5, 181.9"></textarea></label>
+        <div class="toolbar" style="margin-top:6px"><button id="bActAddPaste" class="small">Add pasted stations</button></div>
+        <div id="actAddMsg" class="hint" style="margin-top:4px"></div>
+        <div class="hint" style="margin-top:2px">A station at an MD that is already in the survey replaces it, so pasting a few rows that overlap is safe.</div>
+      </div>
+      <div id="actOpts" class="g2" style="margin-top:8px">
+        <label class="f">Tie-in of the first station<select id="actTie"><option value="auto">Automatic (surface if it starts at 0, else the plan)</option><option value="plan">On the plan at the first MD</option><option value="surface">Surface, vertical to the first MD</option></select></label>
+        <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span>Azimuths are true north (convert to grid)</span></label></div>
+      </div>
+      <div id="actMsg" class="derived"></div>
+    </div>
+    <div id="actBody">
+      <div class="stats" id="actStats"></div>
+      <div class="plots">
+        <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
+        <div class="plot"><h4>Section view <span id="apSecLbl"></span></h4><canvas id="cvApSec"></canvas></div>
+        <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
+        <div class="plot"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
+      </div>
+      <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
+      <div class="tblwrap" style="max-height:none"><table id="actTbl"></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-wall">
+    <div class="card">
+      <h3>Wall plot</h3>
+      <div class="g3">
+        <label class="f">Plan name<input data-w="plan" placeholder="Design #1"></label>
+        <label class="f">Footage reference<select data-w="foot"><option value="fnlfel">FNL / FEL</option><option value="fnlfwl">FNL / FWL</option><option value="fslfel">FSL / FEL</option><option value="fslfwl">FSL / FWL</option><option value="auto">Nearest lines</option></select></label>
+        <label class="f">Footage text (blank = from section lines)<input data-w="footText" placeholder="547.0 FNL   2668.0 FEL"></label>
+        <label class="f">Plan view scale (usft/in, blank = auto)<input type="number" step="any" min="1" data-w="scale"></label>
+        <label class="f">Section view TVD from (ft, blank = auto)<input type="number" step="any" data-w="tvdMin"></label>
+        <label class="f">Section view TVD to (ft, blank = auto)<input type="number" step="any" data-w="tvdMax"></label>
+        <label class="f">Sections in the plan view<select data-w="secs"><option value="crossed">Crossed by the wellbore</option><option value="near">Within 1 mile</option><option value="none">None</option></select></label>
+      </div>
+      <div class="chkcol" style="margin-top:8px">
+        <label class="chk"><input type="checkbox" data-w="setback"><span>Draw setback lines (uses the setback on the Plots tab)</span></label>
+        <label class="chk"><input type="checkbox" data-w="wellId"><span>Add the well number to target names (Landing - 21-12-13 PH)</span></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <button id="bWallPrint" class="primary">Print / save as PDF</button>
+        <button id="bWallSvg">Download SVG</button>
+        <button id="bWallLogo">Choose logo…</button><input type="file" id="wallLogoFile" accept="image/png,image/jpeg,image/svg+xml" hidden>
+        <button id="bWallLogoReset" class="ghost">Default logo</button><button id="bWallNoLogo" class="ghost">No logo</button>
+      </div>
+      <div id="wallNote" class="hint"></div>
+      <div class="hint">Page is Letter landscape. In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</div>
+    </div>
+    <div class="card">
+      <h3>Drill plan (survey report PDF)</h3>
+      <div class="g3">
+        <label class="f">Company<input data-w="company" placeholder="Company name"></label>
+        <label class="f">Project<input data-w="project" placeholder="Project name"></label>
+        <label class="f">Site (blank = well name)<input data-w="site"></label>
+        <label class="f">Wellbore<input data-w="wellbore" placeholder="Wellbore #1"></label>
+        <label class="f">Survey interval (ft MD)<input type="number" step="any" min="10" data-w="dpStep" placeholder="100"></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px"><button id="bDrillPrint" class="primary">Print / save as PDF</button></div>
+      <div class="hint">Portrait Letter pages in the Planning Report format: cover, well information, plan sections, planned survey every interval (plus section ends, tops and targets), design targets, formations and annotations. The plan name and the dip/direction of tops come from the Wall plot settings and the Formation tops list.</div>
+      <details id="dpDet" style="margin-top:8px"><summary>Preview pages</summary><div id="drillPrev" style="display:flex;flex-wrap:wrap;margin-top:8px"></div></details>
+    </div>
+    <div id="wallPrev"></div>
+  </div>
+
+  <div class="pane" id="pane-offsets">
+    <div class="toolbar">
+      <button id="bAddOff">+ Add outside offset well</button>
+      <label>Alert when closer than <input id="minSep" type="number" step="any" min="0" style="width:80px"> ft</label>
+      <span class="hint" style="margin:0">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</span>
+    </div>
+    <div class="card" id="refCard" style="margin-bottom:10px">
+      <h3>Wells from this tool as offsets</h3>
+      <div class="hint" style="margin:0 0 6px">Wells in this project are always compared with each other. Add wells from another saved plan (for example, ones not on the state’s layer yet) as reference copies: they are drawn on the plots and checked for clearance like any other offset. A reference is a frozen copy, so adding the same well again replaces it.</div>
+      <div id="refList"></div>
+      <div class="toolbar" style="margin-top:6px"><button class="small" id="bRefAdd">+ Add wells from a saved plan…</button><input type="file" id="refFile" accept=".json,application/json" hidden></div>
+      <div id="refPick"></div>
+    </div>
+    <div class="card" id="stoListCard" style="margin-bottom:10px">
+      <h3>Drilled wells from state records</h3>
+      <div id="stoInfo" class="derived" style="margin-top:0"></div>
+      <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; at the top of the Plots tab to list them here.</div>
+    </div>
+    <div class="card" id="errCard" style="margin-bottom:10px">
+      <h3>Survey uncertainty (screening)</h3>
+      <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
+      <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
+      <div class="chkcol"><label class="chk"><input type="checkbox" id="errEll"><span>Draw error ellipses every 1,000 ft at 2.79 standard deviations (plan view: this well; 3D view: this well and the offsets)</span></label></div>
+      <div class="derived" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
+    </div>
+    <div id="offList"></div>
+    <div class="plot" style="margin-bottom:10px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>
+    <div class="tblwrap" style="max-height:none"><table id="sepTbl"></table></div>
+  </div>
+</main>
+</div>
+
+<div id="wallPrint"></div>
+<script src="core.js"></script>
+<script src="assets/wall_logo.js"></script>
+<script>
+'use strict';
+/* ================= state ================= */
+const LS_KEY = 'wellplanner.v1';
+const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs: 'crossed', setback: true, scale: '', tvdMin: '', tvdMax: '', wellId: true, company: '', project: '', site: '', wellbore: '', dpStep: '' });
+const DEFAULT = () => {
+  const s = WP.toGrid(43.70, -105.45, 'WY-E');            // sample surface location, Campbell Co. area
+  return {
+    name: 'Sample 1H', api: '', actual: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
+    surface: { n: +s.n.toFixed(2), e: +s.e.toFixed(2) }, gl: 5080, kbOff: 27, kb: 5107, vsAzi: '',
+    targets: [
+      { name: 'Landing', n: +(s.n + 700).toFixed(2), e: +(s.e + 700).toFixed(2), tvd: 9800, tol: 10 },
+      { name: 'Toe', n: +(s.n + 700 + 10000 * Math.SQRT1_2).toFixed(2), e: +(s.e + 700 + 10000 * Math.SQRT1_2).toFixed(2), tvd: 9800, tol: 25 }
+    ],
+    lat: { az: 45, len: 1000, dip: 0 },
+    d: { type: 'hbh', solveFor: 'tangent', kop: 2250, tanInc: 30, bur1: 1, bur2: 8, latDls: 2, dropInc: 0, ext: 500 },
+    maxDls: 15, minSep: 100,
+    mode: 'auto', manual: [], tops: [], offsets: []
+  };
+};
+/* older saves: single heel/toe, no coordinate system (treated as a local grid) */
+function migrate(s) {
+  if (!s || typeof s !== 'object') return s;
+  if (!s.crs) s.crs = 'local';
+  if (!Array.isArray(s.targets) && s.heel) {
+    s.targets = [{ name: 'Landing', ...s.heel, tol: 10 }];
+    if (s.toe) s.targets.push({ name: 'Toe', ...s.toe, tol: 25 });
+  }
+  delete s.heel; delete s.toe;
+  if (!isFinite(s.kbOff) || s.kbOff < 0) s.kbOff = 27;                                // rig height; older saves only had KB elevation
+  if (!isFinite(s.gl)) s.gl = (isFinite(s.kb) ? s.kb : 5107) - s.kbOff;
+  s.kb = +(s.gl + s.kbOff).toFixed(2);
+  if (s.d && !(s.d.latDls > 0)) s.d.latDls = 2;
+  return s;
+}
+/* a project = one pad template + one or more wells */
+const newPad = ref => ({ ref: { n: ref.n, e: ref.e }, refCol: 1, refRow: 1, cols: 3, rows: 2, dx: 30, dy: 30, rot: 0 });
+function newProject() { const w = DEFAULT(); return { v: 2, pad: newPad(w.surface), wells: [w], active: 0, refs: [] }; }
+function migrateProject(p) {
+  if (!p || typeof p !== 'object') return null;
+  let proj;
+  if (Array.isArray(p.wells) && p.wells.length) {
+    proj = { v: 2, pad: merge(newPad({ n: 0, e: 0 }), p.pad || {}), wells: p.wells.map(w => merge(DEFAULT(), migrate(w))), active: Math.min(Math.max(0, p.active | 0), p.wells.length - 1),
+      refs: Array.isArray(p.refs) ? p.refs.map(w => Object.assign(merge(DEFAULT(), migrate(w)), { refSrc: w.refSrc || '', refAdded: w.refAdded || '' })) : [] };
+  } else {                                            // single-well file from before pads existed
+    const w = merge(DEFAULT(), migrate(p));
+    proj = { v: 2, pad: newPad(w.surface), wells: [w], active: 0, refs: [] };
+  }
+  return proj;
+}
+function merge(base, over) {
+  for (const k in over) {
+    if (over[k] && typeof over[k] === 'object' && !Array.isArray(over[k]) && base[k] && typeof base[k] === 'object') merge(base[k], over[k]);
+    else base[k] = over[k];
+  }
+  return base;
+}
+function load() {
+  try { const t = localStorage.getItem(LS_KEY); if (t) return migrateProject(JSON.parse(t)); } catch (e) {}
+  return null;
+}
+let project = load() || newProject();
+let state = project.wells[project.active];   // the well being edited
+let M = { survey: null };                    // latest model of the active well
+let lastSolved = { theta: null, kop: null };
+let saveTimer = 0;
+function autosave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} }, 300);
+}
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = (x, d = 1) => isFinite(x) ? (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '–';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const getp = (o, p) => p.split('.').reduce((a, k) => a && a[k], o);
+const setp = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const D2R = Math.PI / 180;
+const OFF_COLORS = ['#8a877d', '#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#4f7fc0'];   // TAH grey, blue, green, purple, amber (orange is the planned well)
+let raf = 0;
+const later = fn => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fn); };
+
+/* ================= form binding ================= */
+function writeInputs() {
+  $$('[data-k]').forEach(el => {
+    const v = getp(state, el.dataset.k);
+    el.value = (v === undefined || v === null) ? '' : v;
+  });
+  $$('[data-pk]').forEach(el => { el.value = getp(project, el.dataset.pk); });
+  applyVisibility();
+}
+function applyVisibility() {
+  const t = state.d.type;
+  $$('[data-show]').forEach(el => { el.style.display = el.dataset.show.split(',').includes(t) ? '' : 'none'; });
+  $('#lblBur2').textContent = t === 'scurve' ? 'Drop rate (°/100 ft)' : 'Landing rate (°/100 ft)';
+  $('#inKop').disabled = state.d.solveFor === 'kop';
+  $('#inTan').disabled = state.d.solveFor !== 'kop';
+  $('#designHint').textContent = ({
+    hbh: 'Surface → vertical section (conductor, surface casing) to KOP → build → tangent → landing curve onto target 1 → lateral through the remaining targets.',
+    slant: 'Surface → vertical section to KOP → build → tangent through the target, then held past it.',
+    scurve: 'Surface → vertical section to KOP → build → tangent → drop to the entered inclination at the target.',
+    vertical: 'Straight hole to heel TVD plus the extension.'
+  })[t];
+}
+document.addEventListener('input', e => {
+  const el = e.target.closest('[data-k]');
+  if (!el) return;
+  const k = el.dataset.k, t = el.dataset.t;
+  let v;
+  if (t === 'text') v = el.value;
+  else if (el.tagName === 'SELECT') v = el.value;
+  else if (t === 'opt') v = el.value.trim() === '' ? '' : parseFloat(el.value);
+  else { v = parseFloat(el.value); if (!isFinite(v)) return; }
+  if (k === 'd.solveFor') {
+    if (v === 'kop' && lastSolved.theta != null) state.d.tanInc = +lastSolved.theta.toFixed(2);
+    if (v === 'tangent' && lastSolved.kop != null) state.d.kop = +lastSolved.kop.toFixed(1);
+    setp(state, k, v); writeInputs(); recalc(); return;
+  }
+  setp(state, k, v);
+  if (k === 'd.type') { applyVisibility(); renderTargets(); }
+  if (k === 'crs') { project.wells.forEach(w => { w.crs = v; }); cwFillAll(); }
+  recalc();
+});
+
+/* ================= coordinate entry: lat/long or X,Y ================= */
+const isLL = () => state.crs !== 'local';
+function cwObj(id) {
+  const [k, i] = id.split(':');
+  return k === 'surface' ? state.surface : k === 'pad' ? project.pad.ref : k === 'tgt' ? state.targets[+i] : state.offsets[+i];
+}
+function cwHtml(id) {
+  return `<div class="cw" data-cw="${id}">
+    <label class="f">X / Easting (ft)<input type="number" step="any" data-cf="e"></label>
+    <label class="f">Y / Northing (ft)<input type="number" step="any" data-cf="n"></label>
+    <label class="f ll">Latitude (° N)<input type="number" step="any" data-cf="lat"></label>
+    <label class="f ll">Longitude (° E, − west)<input type="number" step="any" data-cf="lon"></label>
+  </div>`;
+}
+function cwFill(root) {
+  const o = cwObj(root.dataset.cw); if (!o) return;
+  const q = f => root.querySelector(`[data-cf="${f}"]`);
+  q('e').value = (+o.e).toFixed(2); q('n').value = (+o.n).toFixed(2);
+  const lock = root.dataset.cw === 'surface' && !!state.slot;      // surface is set by the pad slot
+  root.querySelectorAll('input').forEach(i => { i.disabled = lock; });
+  root.querySelectorAll('.ll').forEach(l => l.classList.toggle('off', !isLL()));
+  if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(7); q('lon').value = ll.lon.toFixed(7); }
+}
+const cwFillAll = () => $$('[data-cw]').forEach(cwFill);
+document.addEventListener('input', e => {
+  const el = e.target.closest('[data-cf]'); if (!el) return;
+  const root = el.closest('[data-cw]'), o = cwObj(root.dataset.cw), f = el.dataset.cf;
+  const q = k => root.querySelector(`[data-cf="${k}"]`);
+  if (f === 'e' || f === 'n') {
+    const v = parseFloat(el.value); if (!isFinite(v)) return;
+    o[f] = v;
+    if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(7); q('lon').value = ll.lon.toFixed(7); }
+  } else {
+    const la = parseFloat(q('lat').value), lo = parseFloat(q('lon').value);
+    if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) return;
+    const g = WP.toGrid(la, lo, state.crs); o.n = g.n; o.e = g.e;
+    q('e').value = g.e.toFixed(2); q('n').value = g.n.toFixed(2);
+  }
+  recalc();
+});
+
+/* ================= targets ================= */
+const usedTargets = (w = state) => w.d.type === 'hbh' ? w.targets : w.targets.slice(0, 1);
+function roleOf(i) {
+  const n = state.targets.length, t = state.d.type;
+  if (t === 'hbh') return i === 0 ? 'Landing point: end of the landing curve, start of the lateral' : i === n - 1 ? 'Toe (TD)' : 'Mid-lateral target';
+  return i === 0 ? (t === 'vertical' ? 'Target depth' : 'Target') : 'Not used for this well type';
+}
+function renderTargets() {
+  $('#tgtList').innerHTML = state.targets.map((t, i) => {
+    const used = state.d.type === 'hbh' || i === 0;
+    return `<div class="tgt${used ? '' : ' unused'}">
+      <div class="top"><span class="badge">${i + 1}</span><input data-ti="${i}" data-tf="name" value="${esc(t.name)}" placeholder="Name">
+        <button class="small ghost" data-tmv="${i}:-1" title="Move up">↑</button><button class="small ghost" data-tmv="${i}:1" title="Move down">↓</button><button class="small ghost" data-tmv="${i}:0" title="Delete">✕</button></div>
+      <div class="role">${esc(roleOf(i))}</div>
+      ${cwHtml('tgt:' + i)}
+      <div class="g2" style="margin-top:6px">
+        <label class="f">TVD from KB (ft)<input type="number" step="any" data-ti="${i}" data-tf="tvd" value="${t.tvd}"></label>
+        <label class="f">Tolerance radius (ft)<input type="number" step="any" min="0" data-ti="${i}" data-tf="tol" value="${t.tol ?? 10}"></label>
+      </div>
+      <div class="tmiss" id="tmiss${i}"></div></div>`;
+  }).join('') || '<div class="hint" style="margin:0">No targets yet.</div>';
+  $$('#tgtList [data-cw]').forEach(cwFill);
+  const n = state.targets.length, t = state.d.type;
+  $('#tgtHint').textContent = t === 'hbh'
+    ? (n < 2 ? 'A horizontal well needs a landing point and a toe. Add the toe.' : 'Order matters: the path goes surface → target 1 (landing) → … → last target. It passes exactly through each target, steering at the lateral steering DLS between them.')
+    : 'Only target 1 is used for this well type.';
+}
+$('#tgtList').addEventListener('input', e => {
+  const el = e.target.closest('[data-ti]'); if (!el) return;
+  const t = state.targets[+el.dataset.ti], f = el.dataset.tf;
+  if (f === 'name') t.name = el.value; else { const v = parseFloat(el.value); if (!isFinite(v)) return; t[f] = v; }
+  recalc();
+});
+$('#tgtList').addEventListener('click', e => {
+  const b = e.target.closest('[data-tmv]'); if (!b) return;
+  const [i, d] = b.dataset.tmv.split(':').map(Number), a = state.targets;
+  if (d === 0) a.splice(i, 1);
+  else if (i + d >= 0 && i + d < a.length) [a[i], a[i + d]] = [a[i + d], a[i]];
+  renderTargets(); recalc();
+});
+function addTargetFrom(az, len, dip) {
+  const T = state.targets, last = T[T.length - 1] || { n: state.surface.n, e: state.surface.e, tvd: 0 };
+  const hl = len * Math.cos(dip * D2R);
+  T.push({ name: 'Target ' + (T.length + 1), n: last.n + hl * Math.cos(az * D2R), e: last.e + hl * Math.sin(az * D2R), tvd: last.tvd + len * Math.sin(dip * D2R), tol: 25 });
+  renderTargets(); recalc();
+}
+$('#bAddTgt').onclick = () => {
+  const T = state.targets;
+  let az = state.lat.az;
+  if (T.length >= 2) { const a = T[T.length - 2], b = T[T.length - 1]; az = WP.norm360(Math.atan2(b.e - a.e, b.n - a.n) / D2R); }
+  addTargetFrom(az, 1000, 0);
+};
+$('#bExtend').onclick = () => addTargetFrom(state.lat.az, state.lat.len, state.lat.dip);
+
+/* ================= tops ================= */
+function renderTops() {
+  $('#topsList').innerHTML = state.tops.map((t, i) =>
+    `<div class="row"><input data-top="${i}" data-f="name" value="${esc(t.name)}" placeholder="Name"><input class="num" type="number" step="any" data-top="${i}" data-f="tvd" value="${t.tvd}" title="TVD at the surface location (ft)"><input class="num2" type="number" step="any" data-top="${i}" data-f="dip" value="${t.dip ?? ''}" placeholder="Dip°" title="Dip of the surface, degrees (blank = flat)"><input class="num2" type="number" step="any" data-top="${i}" data-f="azi" value="${t.azi ?? ''}" placeholder="Dir°" title="Dip direction, grid azimuth (degrees)"><button class="small ghost" data-deltop="${i}">✕</button></div>`).join('')
+    || '<div class="hint" style="margin:0">None yet.</div>';
+}
+$('#bAddTop').onclick = () => { state.tops.push({ name: 'Top ' + (state.tops.length + 1), tvd: Math.round((state.targets[0] || { tvd: 0 }).tvd) }); renderTops(); recalc(); };
+$('#topsList').addEventListener('input', e => {
+  const el = e.target.closest('[data-top]'); if (!el) return;
+  const t = state.tops[+el.dataset.top];
+  const f = el.dataset.f;
+  if (f === 'name') t.name = el.value;
+  else if (f === 'dip' || f === 'azi') { const v = parseFloat(el.value); if (isFinite(v)) t[f] = v; else delete t[f]; }
+  else { const v = parseFloat(el.value); if (!isFinite(v)) return; t.tvd = v; }
+  recalc();
+});
+$('#topsList').addEventListener('click', e => {
+  const b = e.target.closest('[data-deltop]'); if (!b) return;
+  state.tops.splice(+b.dataset.deltop, 1); renderTops(); recalc();
+});
+
+/* ================= calculation ================= */
+function showBanner(err, notes, warns) {
+  let h = '';
+  if (err) h += `<div class="msg err"><b>Can’t build this plan.</b> ${esc(err)} Plots and tables are cleared until the plan builds.</div>`;
+  if (warns && warns.length) h += `<div class="msg note"><ul>${warns.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+  $('#banner').innerHTML = h;
+  $('#planNotes').innerHTML = notes && notes.length ? `<ul>${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '';
+}
+
+function minDistToPoint(rows, t) {
+  let best = { d: Infinity, md: 0 };
+  const P = r => ({ x: r.northing, y: r.easting, z: r.tvd });
+  const p = { x: t.n, y: t.e, z: t.tvd };
+  for (let i = 0; i + 1 < rows.length; i++) {
+    const r = WP.ptSegDist(p, P(rows[i]), P(rows[i + 1]));
+    if (r.d < best.d) best = { d: r.d, md: rows[i].md + r.t * (rows[i + 1].md - rows[i].md) };
+  }
+  return best;
+}
+
+/* Everything about one well that does not touch the page. Cached per well and invalidated when the well changes. */
+const modelCache = new WeakMap();
+function modelFor(w) {
+  const sig = JSON.stringify(w), c = modelCache.get(w);
+  if (c && c.sig === sig) return c.m;
+  const m = buildModel(w);
+  modelCache.set(w, { sig, m });
+  return m;
+}
+function buildModel(w) {
+  const surf = { n: w.surface.n, e: w.surface.e }, T = w.targets;
+  if (!T.length) return { err: 'Add at least one target.' };
+  const heel = T[0], disp = Math.hypot(heel.n - surf.n, heel.e - surf.e);
+  const azHeel = disp > 0.01 ? WP.norm360(Math.atan2(heel.e - surf.e, heel.n - surf.n) / D2R) : 0;
+  let sections, plan = null;
+  if (w.mode === 'auto') {
+    plan = WP.planFromTargets({ surface: surf, targets: T, type: w.d.type, solveFor: w.d.solveFor,
+      kop: w.d.kop, bur1: w.d.bur1, bur2: w.d.bur2, latDls: w.d.latDls, tanInc: w.d.tanInc, ext: w.d.ext, dropInc: w.d.dropInc });
+    if (!plan.ok) return { err: plan.msg };
+    sections = plan.sections;
+  } else sections = w.manual;
+  const vsAzi = (w.vsAzi !== '' && isFinite(w.vsAzi)) ? +w.vsAzi : (plan && plan.plane != null && w.d.type !== 'vertical' ? plan.plane : azHeel);
+  const survey = WP.computeSurvey(WP.buildStations(sections, 10), { n0: surf.n, e0: surf.e, kb: w.kb, vsAzi });
+  const last = survey[survey.length - 1];
+  const markers = [{ label: 'Surface', row: survey[0] }];
+  const iK = survey.findIndex(r => r.inc > 0.05);
+  if (iK > 0) markers.push({ label: 'KOP', row: survey[iK - 1] });
+  if (plan && plan.heelIdx >= 0 && w.d.type !== 'vertical') markers.push({ label: w.d.type === 'hbh' ? 'Landing' : 'Target', row: WP.lastAtSection(survey, plan.heelIdx) });
+  markers.push({ label: 'TD', row: last });
+  const misses = usedTargets(w).map(t => ({ label: t.name, tol: t.tol ?? 10, ...minDistToPoint(survey, t) }));
+  const secEnds = {};
+  survey.forEach(r => { if (r.sec >= 0) secEnds[r.sec] = r; });
+  let latLenOut = 0, hasLat = false, prevMd = 0;
+  sections.forEach((sc, i) => {
+    const en = secEnds[i]; if (!en) return;
+    if (sc.name === 'Lateral' || sc.name === 'Steer') { latLenOut += en.md - prevMd; hasLat = true; }
+    prevMd = en.md;
+  });
+  const kop = markers.find(m => m.label === 'KOP');
+  // how far the path goes behind the landing point (against the lateral direction), e.g. north of a setback line
+  let behind = null;
+  if (plan && plan.lateral && w.d.type === 'hbh') {
+    const L = markers.find(m => m.label === 'Landing'), az = plan.lateral.azi * D2R, hd = Math.hypot(T[1].n - T[0].n, T[1].e - T[0].e);
+    if (L && hd > 1) {
+      let best = { d: 0, md: 0 };
+      survey.forEach(r => { if (r.md > L.row.md) return; const d = -((r.northing - T[0].n) * Math.cos(az) + (r.easting - T[0].e) * Math.sin(az)); if (d > best.d) best = { d, md: r.md }; });
+      const d0 = -((survey[0].northing - T[0].n) * Math.cos(az) + (survey[0].easting - T[0].e) * Math.sin(az));
+      if (d0 <= 0 && best.d > 1) behind = best;       // only a back-build well (surface already on the lateral side of the landing line)
+    }
+  }
+  return { w, sections, plan, survey, vsAzi, azHeel, markers, misses, secEnds,
+    latLenOut: hasLat ? latLenOut : null, maxDls: Math.max(0, ...survey.map(r => r.dls)), maxInc: Math.max(...survey.map(r => r.inc)),
+    kopMd: kop ? kop.row.md : Infinity, behind, notes: plan ? plan.notes.concat(behind ? ['The path runs ' + Math.round(behind.d) + ' ft behind the landing point (opposite the lateral direction) at MD ' + Math.round(behind.md) + '. If the landing point is a setback line, the wellbore crosses it before landing.'] : []) : [] };
+}
+
+/* other wells on the pad plus any hand-entered outside offsets, all as survey rows */
+function buildOffs() {
+  const list = [];
+  project.wells.forEach((w, i) => {
+    if (w === state || w.asOffset === false) return;
+    const m = modelFor(w); if (m.err) return;
+    list.push({ name: w.name || 'Unnamed', rows: m.survey, kind: 'pad', color: PAD_COLORS[i % PAD_COLORS.length], kopMd: m.kopMd });
+  });
+  (project.refs || []).forEach((r, i) => {
+    if (r.asOffset === false) return;
+    const m = refModel(r); if (!m) return;
+    list.push({ name: (r.name || 'Reference') + ' (ref)', rows: m.rows, kind: 'ref', color: PAD_COLORS[(i + 3) % PAD_COLORS.length], kopMd: m.kopMd });
+  });
+  state.offsets.forEach((o, i) => list.push({ name: o.name, rows: offsetRows(o), kind: 'manual', color: OFF_COLORS[i % OFF_COLORS.length], kopMd: 0 }));
+  return list;
+}
+
+/* a plan that fails must not leave the previous path on screen: it would look like the current design */
+function failPlan(err) {
+  ACT.rows = ACT.dev = null;
+  M = { survey: null };
+  ['cvPlan', 'cvSec', 'cv3d', 'cvDls', 'cvSep'].forEach(id => { const c = $('#' + id); if (c && c.width) c.getContext('2d').clearRect(0, 0, c.width, c.height); });
+  $('#stats').innerHTML = '';
+  ['surveyTbl', 'secTbl', 'sepTbl'].forEach(id => { const t = $('#' + id); if (t) t.innerHTML = ''; });
+  state.targets.forEach((t, i) => { const el = $('#tmiss' + i); if (el) el.innerHTML = ''; });
+  showBanner(err);
+  renderWellBar(); renderPad();
+}
+
+function recalc() {
+  applyAllSlots();
+  const s = state;
+  if (isFinite(s.gl) && isFinite(s.kbOff)) s.kb = +(s.gl + s.kbOff).toFixed(2);           // KB elevation = ground + rig height
+  $('#kbOut').value = s.kb;
+  autosave();
+  $('#wellTitle').textContent = s.name;
+  document.title = (s.name ? s.name + ' · ' : '') + 'Well Path Planner';
+  const surf = { n: s.surface.n, e: s.surface.e };
+  if (s.slot) { const sr = $('#surfCoord .cw'); if (sr) cwFill(sr); }
+  // coordinate system info
+  if (isLL()) {
+    const ll = WP.toLatLon(surf.n, surf.e, s.crs), cv = WP.convergence(ll.lat, ll.lon, s.crs), far = Math.abs(ll.lon - WP.CRS[s.crs].lon0) > 3;
+    $('#crsInfo').innerHTML = `SHL: <b>${fmt(ll.lat, 6)}°, ${fmt(ll.lon, 6)}°</b><br>Grid convergence ≈ <b>${fmt(cv, 3)}°</b> (true az = grid az + γ). All azimuths here are <b>grid</b> azimuths.` +
+      (far ? `<br><span style="color:var(--warn)">This location is more than 3° from the zone’s central meridian. Check the zone.</span>` : '');
+  } else $('#crsInfo').innerHTML = 'Local grid: no lat/long. All azimuths are grid azimuths.';
+  const T = s.targets;
+  if (!T.length) { failPlan('Add at least one target.'); return; }
+  const heel = T[0];
+  const dn = heel.n - surf.n, de = heel.e - surf.e, disp = Math.hypot(dn, de);
+  const azHeel = disp > 0.01 ? WP.norm360(Math.atan2(de, dn) / D2R) : 0;
+  let der = `Surface → target 1: <b>${fmt(disp, 0)} ft @ ${fmt(azHeel, 1)}°</b>`;
+  if (s.d.type === 'hbh') for (let k = 0; k + 1 < T.length; k++) {
+    const a = T[k], b = T[k + 1], l = Math.hypot(b.n - a.n, b.e - a.e, b.tvd - a.tvd);
+    der += `<br>${k + 1} → ${k + 2}: <b>${fmt(l, 0)} ft</b>, inc ${fmt(Math.acos(Math.max(-1, Math.min(1, (b.tvd - a.tvd) / (l || 1)))) / D2R, 2)}°, az ${fmt(WP.norm360(Math.atan2(b.e - a.e, b.n - a.n) / D2R), 1)}°`;
+  }
+  $('#derived').innerHTML = der;
+
+  const mm = modelFor(s);
+  if (mm.err) { failPlan(mm.err); return; }
+  const plan = mm.plan;
+  if (plan) {
+    lastSolved = { theta: plan.theta, kop: plan.kop };
+    if (s.d.solveFor === 'kop') $('#inKop').value = fmt(plan.kop, 1).replace(/,/g, '');
+    else $('#inTan').value = fmt(plan.theta, 2).replace(/,/g, '');
+  }
+  const offs = buildOffs();
+  M = { ...mm, offs, sep: null };
+  stoRefresh(); M.offs = offs.concat(stoOffs());
+  const { survey, misses, maxDls, maxInc, latLenOut, vsAzi } = mm;
+  const last = survey[survey.length - 1];
+
+  s.targets.forEach((t, i) => {
+    const el = $('#tmiss' + i); if (!el) return;
+    const m = misses[i];
+    el.innerHTML = m ? `Path passes <b>${fmt(m.d, 2)} ft</b> from this target at MD ${fmt(m.md, 0)} ` + `<span class="pill ${m.d <= m.tol ? 'ok' : 'warn'}">${m.d <= m.tol ? 'inside tolerance' : 'outside tolerance'}</span>` : 'Not used for this well type.';
+  });
+
+  const warn = [];
+  if (maxDls > s.maxDls + 1e-6) warn.push(`Max DLS ${fmt(maxDls, 2)}°/100 ft exceeds the ${fmt(s.maxDls, 1)}° alarm.`);
+  offsetWarnings(mm, M.offs).forEach(x => warn.push(x));
+  showBanner('', mm.notes, warn);
+
+  $('#modeBadge').textContent = s.mode === 'auto' ? 'target-driven' : 'manual sections';
+  $('#modeBadge').className = 'pill ' + (s.mode === 'auto' ? 'ok' : 'warn');
+  $('#secLbl').textContent = `VS azimuth ${fmt(vsAzi, 1)}°`;
+
+  const st = (k, v, sub, bad) => `<div class="stat${bad ? ' bad' : ''}"><div class="k">${k}</div><div class="v">${v}${sub ? ` <small>${sub}</small>` : ''}</div></div>`;
+  let html = st('Total MD', fmt(last.md, 0), 'ft') + st('TVD at TD', fmt(last.tvd, 0), 'ft');
+  if (isFinite(mm.kopMd)) html += st('Vertical section', fmt(mm.kopMd, 0), 'ft to KOP');
+  html += st('Max inclination', fmt(maxInc, 1), '°') + st('Max DLS', fmt(maxDls, 2), '°/100', maxDls > s.maxDls + 1e-6) +
+    st('VS at TD', fmt(last.vs, 0), 'ft');
+  if (plan && plan.theta) html += st('Tangent inc', fmt(plan.theta, 2), '°');
+  if (latLenOut) html += st('Lateral MD', fmt(latLenOut, 0), 'ft');
+  if (misses.length) {
+    const w = misses.reduce((a, b) => (b.d - b.tol > a.d - a.tol ? b : a));
+    html += st('Worst target miss', fmt(w.d, 1), 'ft · ' + esc(w.label), w.d > w.tol);
+  }
+  $('#stats').innerHTML = html;
+
+  renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
+  drawAll();
+  computeActual(); renderRef(); renderSto(); renderActual();
+  if (SEC.on || STO.on || WALL.on) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
+}
+
+/* ================= survey table ================= */
+const COLS = [
+  ['md', 'MD', 1], ['inc', 'Inc °', 2], ['azi', 'Azi °', 2], ['tvd', 'TVD', 1], ['tvdss', 'TVDSS', 1],
+  ['n', '+N/−S', 1], ['e', '+E/−W', 1], ['vs', 'VS', 1], ['dls', 'DLS °/100', 2], ['br', 'Build °/100', 2], ['tr', 'Turn °/100', 2],
+  ['northing', 'Northing', 1], ['easting', 'Easting', 1]
+];
+function filteredRows() {
+  const k = +$('#repInt').value, sv = M.survey || [];
+  return sv.filter((r, i) => {
+    if (i === 0 || i === sv.length - 1) return true;
+    if (sv[i + 1].sec !== r.sec) return true;
+    if (k > 0) { const q = r.md / k; return Math.abs(q - Math.round(q)) * k < 1e-6; }
+    return false;
+  });
+}
+function secName(r) {
+  if (r.sec < 0) return 'Surface';
+  const sc = M.sections[r.sec]; return sc ? (sc.name || (sc.type === 'hold' ? 'Hold' : 'Curve')) : '';
+}
+function renderSurvey() {
+  if (!M.survey) return;
+  const rows = filteredRows();
+  const sv = M.survey;
+  let h = '<thead><tr>' + COLS.map(c => `<th>${c[1]}</th>`).join('') + '<th class="l">Section</th></tr></thead><tbody>';
+  const idx = new Map(sv.map((r, i) => [r, i]));
+  rows.forEach(r => {
+    const i = idx.get(r), bound = i === 0 || i === sv.length - 1 || sv[i + 1].sec !== r.sec;
+    h += `<tr class="${bound ? 'bound' : ''}">` + COLS.map(c => {
+      const bad = c[0] === 'dls' && r.dls > state.maxDls + 1e-6;
+      return `<td class="${bad ? 'bad' : ''}">${fmt(r[c[0]], c[2])}</td>`;
+    }).join('') + `<td class="l">${esc(secName(r))}</td></tr>`;
+  });
+  $('#surveyTbl').innerHTML = h + '</tbody>';
+}
+$('#repInt').onchange = renderSurvey;
+
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: type || 'text/plain' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const safeName = () => (state.name || 'well').replace(/[^\w.-]+/g, '_');
+const apiTag = () => String(state.api || '').trim().replace(/[^\w.-]+/g, '_');
+function updatePrintId() { const e = $('#printId'); if (e) e.textContent = state.name + (String(state.api || '').trim() ? '   API # ' + String(state.api).trim() : ''); }
+$('#bCsv').onclick = () => {
+  if (!M.survey) return;
+  const hdr = ['MD_ft', 'Inc_deg', 'Azi_deg', 'TVD_ft', 'TVDSS_ft', 'N_ft', 'E_ft', 'VS_ft', 'DLS_deg_per_100ft', 'Build_deg_per_100ft', 'Turn_deg_per_100ft', 'Northing_ft', 'Easting_ft', 'Section'];
+  const lines = [hdr.join(',')];
+  filteredRows().forEach(r => lines.push(COLS.map(c => (+r[c[0]]).toFixed(c[2] + 1)).concat('"' + secName(r) + '"').join(',')));
+  download(safeName() + (apiTag() ? '_' + apiTag() : '') + '_plan_survey.csv', lines.join('\n') + '\n', 'text/csv');
+};
+$('#bPrint').onclick = () => { updatePrintId(); drawAll(); window.print(); };
+window.addEventListener('beforeprint', () => { updatePrintId(); drawAll(); });
+
+/* ================= sections tab ================= */
+function renderSections() {
+  if (!M.survey) return;
+  const manual = state.mode === 'manual';
+  $('#secBar').innerHTML = manual
+    ? `<button id="bAddHold">+ Hold</button><button id="bAddCurve">+ Curve</button><button id="bBack" class="primary">Back to target-driven</button><span class="hint" style="margin:0">Manual mode: the targets no longer drive the path; target misses are shown above.</span>`
+    : `<button id="bManual" class="primary">Edit as manual sections</button><span class="hint" style="margin:0">Currently solved from your targets.</span>`;
+  let start = 0;
+  const num = (i, f, v, w) => `<input class="w" type="number" step="any" data-si="${i}" data-sf="${f}" value="${+(+v).toFixed(2)}">`;
+  let h = '<thead><tr><th class="l">#</th><th class="l">Name</th><th class="l">Type</th><th>Hold length</th><th>DLS °/100</th><th>Target inc °</th><th>Target azi °</th>' +
+    '<th>Length</th><th>End MD</th><th>Inc °</th><th>Azi °</th><th>TVD</th><th>+N/−S</th><th>+E/−W</th><th>VS</th>' + (manual ? '<th></th>' : '') + '</tr></thead><tbody>';
+  M.sections.forEach((sc, i) => {
+    const end = M.secEnds[i];
+    const len = end ? end.md - start : 0;
+    if (end) start = end.md;
+    const isH = sc.type === 'hold';
+    const cell = (f, txt) => manual ? (txt) : '';
+    const hv = isH ? (manual ? num(i, 'len', sc.len) : fmt(sc.len, 1)) : '';
+    const dl = !isH ? (manual ? num(i, 'dls', sc.dls) : fmt(sc.dls, 2)) : '';
+    const ti = !isH ? (manual ? num(i, 'inc', sc.inc) : fmt(sc.inc, 2)) : '';
+    const ta = !isH ? (manual ? num(i, 'azi', sc.azi) : fmt(sc.azi, 2)) : '';
+    h += `<tr><td class="l">${i + 1}</td><td class="l">${manual ? `<input data-si="${i}" data-sf="name" value="${esc(sc.name || '')}" style="width:100px">` : esc(sc.name || '')}</td>` +
+      `<td class="l">${manual ? `<select data-si="${i}" data-sf="type"><option value="hold"${isH ? ' selected' : ''}>Hold</option><option value="curve"${!isH ? ' selected' : ''}>Curve</option></select>` : (isH ? 'Hold' : 'Curve')}</td>` +
+      `<td>${hv}</td><td>${dl}</td><td>${ti}</td><td>${ta}</td>` +
+      (end ? `<td>${fmt(len, 1)}</td><td>${fmt(end.md, 1)}</td><td>${fmt(end.inc, 2)}</td><td>${fmt(end.azi, 2)}</td><td>${fmt(end.tvd, 1)}</td><td>${fmt(end.n, 1)}</td><td>${fmt(end.e, 1)}</td><td>${fmt(end.vs, 1)}</td>`
+        : '<td colspan="8" style="color:var(--muted)">zero length, skipped</td>') +
+      (manual ? `<td><button class="small ghost" data-mv="${i}:-1">↑</button><button class="small ghost" data-mv="${i}:1">↓</button><button class="small ghost" data-mv="${i}:0">✕</button></td>` : '') + '</tr>';
+  });
+  $('#secTbl').innerHTML = h + '</tbody>';
+  const on = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
+  on('#bManual', () => { state.mode = 'manual'; state.manual = JSON.parse(JSON.stringify(M.sections)); recalc(); });
+  on('#bBack', () => { state.mode = 'auto'; recalc(); });
+  on('#bAddHold', () => { state.manual.push({ type: 'hold', len: 500, name: 'Hold' }); recalc(); });
+  on('#bAddCurve', () => {
+    const l = M.survey[M.survey.length - 1];
+    state.manual.push({ type: 'curve', dls: 3, inc: +Math.min(90, l.inc + 10).toFixed(2), azi: +l.azi.toFixed(2), name: 'Curve' }); recalc();
+  });
+}
+$('#secTbl').addEventListener('change', e => {
+  const el = e.target.closest('[data-si]'); if (!el || state.mode !== 'manual') return;
+  const sc = state.manual[+el.dataset.si], f = el.dataset.sf;
+  if (f === 'name') sc.name = el.value;
+  else if (f === 'type') {
+    if (el.value === 'hold') { sc.type = 'hold'; sc.len = sc.len || 500; } else { sc.type = 'curve'; sc.dls = sc.dls || 3; sc.inc = sc.inc ?? 0; sc.azi = sc.azi ?? 0; }
+  } else { const v = parseFloat(el.value); if (!isFinite(v)) return; sc[f] = v; }
+  recalc();
+});
+$('#secTbl').addEventListener('click', e => {
+  const b = e.target.closest('[data-mv]'); if (!b) return;
+  const [i, d] = b.dataset.mv.split(':').map(Number), a = state.manual;
+  if (d === 0) a.splice(i, 1);
+  else if (i + d >= 0 && i + d < a.length) [a[i], a[i + d]] = [a[i + d], a[i]];
+  recalc();
+});
+
+/* ================= offsets ================= */
+function renderOffsetForms() {
+  $('#offList').innerHTML = state.offsets.map((o, i) => `
+    <div class="offcard">
+      <div class="top"><b style="color:${OFF_COLORS[i % OFF_COLORS.length]}">●</b><input data-oi="${i}" data-of="name" value="${esc(o.name)}" placeholder="Offset well name"><span class="pill" id="offStat${i}"></span><button class="small ghost" data-deloff="${i}">✕</button></div>
+      ${cwHtml('off:' + i)}
+      <label class="f" style="margin-top:6px;max-width:200px">KB elev (ft ASL)<input type="number" step="any" data-oi="${i}" data-of="kb" value="${o.kb}"></label>
+      <label class="f" style="margin-top:6px">Survey: MD, Inc, Azi per line (comma, space or tab; header ignored). Leave blank for a vertical well.
+        <textarea data-oi="${i}" data-of="text" placeholder="0, 0, 0&#10;500, 1.2, 135&#10;...">${esc(o.text)}</textarea></label>
+      <div class="g2" style="margin-top:6px"><label class="f">Vertical TD if no survey (ft MD)<input type="number" step="any" data-oi="${i}" data-of="td" value="${o.td}"></label>
+        <label class="f">Or load a CSV / text file<input type="file" data-offfile="${i}" accept=".csv,.txt,.dat"></label></div>
+    </div>`).join('') || '<div class="hint">No outside offset wells added. Other wells on the pad are compared automatically below.</div>';
+  $$('#offList [data-cw]').forEach(cwFill);
+}
+$('#bAddOff').onclick = () => {
+  state.offsets.push({ name: 'Offset ' + (state.offsets.length + 1), n: state.surface.n + 400, e: state.surface.e, kb: state.kb, td: 9000, text: '' });
+  renderOffsetForms(); recalc();
+};
+$('#offList').addEventListener('input', e => {
+  const el = e.target.closest('[data-oi]'); if (!el) return;
+  const o = state.offsets[+el.dataset.oi], f = el.dataset.of;
+  if (f === 'name' || f === 'text') o[f] = el.value; else { const v = parseFloat(el.value); if (!isFinite(v)) return; o[f] = v; }
+  recalc();
+});
+$('#offList').addEventListener('click', e => {
+  const b = e.target.closest('[data-deloff]'); if (!b) return;
+  state.offsets.splice(+b.dataset.deloff, 1); renderOffsetForms(); recalc();
+});
+$('#offList').addEventListener('change', e => {
+  const el = e.target.closest('[data-offfile]'); if (!el || !el.files[0]) return;
+  const i = +el.dataset.offfile, rd = new FileReader();
+  rd.onload = () => { state.offsets[i].text = String(rd.result); renderOffsetForms(); recalc(); };
+  rd.readAsText(el.files[0]);
+});
+$('#minSep').addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) { state.minSep = v; recalc(); } });
+
+const PAD_COLORS = ['#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#8a877d', '#4f7fc0', '#5a9a57', '#8466c4'];   // TAH blue, green, purple, amber, grey and darker variants
+function offsetRows(o) {
+  let st = WP.parseSurveyText(o.text);
+  if (!st.length) st = [{ md: 0, inc: 0, azi: 0 }, { md: Math.max(1, o.td), inc: 0, azi: 0 }];
+  else if (st[0].md > 0) st.unshift({ md: 0, inc: 0, azi: 0 });
+  return WP.computeSurvey(st, { n0: o.n, e0: o.e, kb: o.kb, vsAzi: 0 });
+}
+function updateOffStats() {
+  state.offsets.forEach((o, i) => {
+    const el = $('#offStat' + i); if (!el) return;
+    const n = WP.parseSurveyText(o.text).length; el.textContent = n ? n + ' stations' : 'vertical to ' + fmt(o.td, 0);
+  });
+}
+const minInRegion = (sp, start) => { let b = null; sp.forEach(x => { if (x.md >= start && (!b || x.d < b.d)) b = x; }); return b; };
+/* Pad wells start one slot apart and stay parallel while both are vertical, so only distances from the
+ * shallower of the two kickoffs down count toward the alert. */
+function offsetWarnings(mm, offs) {
+  const out = [], pc = covOf(mm.survey);
+  offs.forEach(o => {
+    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(mm.kopMd, o.kopMd) : -Infinity;
+    if (pad && !isFinite(start)) return;
+    const os = o.rows.length > 600 ? 3 : 1, oc = pc && covOf(o.rows);
+    const sp = oc ? WP.separationSF(mm.survey, o.rows, pc, oc, 5, os) : WP.separation(mm.survey, o.rows, 5, os);
+    const dm = minInRegion(sp, start); if (!dm) return;
+    let sm = null; if (oc) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
+    const label = o.kind === 'state' ? o.name + ' (state survey)' : o.name, parts = [];
+    if (dm.d < state.minSep) parts.push(`center distance ${fmt(dm.d, 0)} ft at MD ${fmt(dm.md, 0)} (alert ${fmt(state.minSep, 0)} ft)`);
+    if (sm && sm.sf < ERR.sf) parts.push(`separation factor ${fmt(sm.sf, 2)} at MD ${fmt(sm.md, 0)} with ${fmt(sm.d, 0)} ft between centers (alert below ${fmt(ERR.sf, 1)})` + (sm.sf < 1 ? ', error ellipses overlap' : ''));
+    if (parts.length) out.push(`${state.name} vs ${label}: ${parts.join('; ')}. See Offsets & clearance.`);
+  });
+  return out;
+}
+/* ---- survey uncertainty settings and covariance cache ---- */
+const ERR = { tool: 'mwd', sf: 1.5, ell: false };
+try { const t = localStorage.getItem('wellplanner.errTool'), s = parseFloat(localStorage.getItem('wellplanner.errSf')); if (t === 'mwd' || t === 'gyro' || t === 'off') ERR.tool = t; if (s > 0) ERR.sf = s; ERR.ell = localStorage.getItem('wellplanner.errEll') === '1'; } catch (e) {}
+$('#errTool').value = ERR.tool; $('#errSf').value = ERR.sf; $('#errEll').checked = ERR.ell;
+const errSave = () => { try { localStorage.setItem('wellplanner.errTool', ERR.tool); localStorage.setItem('wellplanner.errSf', String(ERR.sf)); localStorage.setItem('wellplanner.errEll', ERR.ell ? '1' : '0'); } catch (x) {} };
+$('#errTool').onchange = e => { ERR.tool = e.target.value; errSave(); renderOffsetResults(); drawAll(); };
+$('#errSf').oninput = e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; ERR.sf = v; errSave(); renderOffsetResults(); };
+$('#errEll').onchange = e => { ERR.ell = e.target.checked; errSave(); drawAll(); };
+const covCache = new WeakMap();
+function covOf(rows) {
+  if (ERR.tool === 'off' || !rows || rows.length < 2 || !rows.every(r => isFinite(r.inc) && isFinite(r.azi))) return null;
+  let c = covCache.get(rows); if (c && c.tool === ERR.tool) return c.cov;
+  const cov = WP.errorModel(rows, WP.ERR_PRESETS[ERR.tool]); covCache.set(rows, { tool: ERR.tool, cov }); return cov;
+}
+function renderOffsetResults() {
+  if (!M.survey) return;
+  M.sep = null;
+  if (!$('#pane-offsets').classList.contains('on')) return;     // heavy: only when the tab is showing
+  const pc = covOf(M.survey);
+  M.sep = M.offs.map(o => {
+    const os = o.rows.length > 600 ? 3 : 1, oc = pc && covOf(o.rows);       // never skip stations of a sparse survey: chords across 300 ft misjudge distance
+    return oc ? WP.separationSF(M.survey, o.rows, pc, oc, 2, os) : WP.separation(M.survey, o.rows, 2, os);
+  });
+  const useSf = !!pc;
+  let h = '<thead><tr><th class="l">Other well</th><th class="l">Kind</th><th>Min distance, all depths (ft)</th><th>Min distance below kickoff (ft)</th>' + (useSf ? '<th>Min separation factor</th>' : '') + '<th>At plan MD</th><th>At other well MD</th><th class="l">Status</th></tr></thead><tbody>';
+  M.offs.forEach((o, i) => {
+    const sp = M.sep[i];
+    let all = sp[0]; sp.forEach(x => { if (x.d < all.d) all = x; });
+    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity;
+    const reg = pad ? minInRegion(sp, start) : all;
+    let sfMin = null; if (useSf && sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sfMin || x.sf < sfMin.sf)) sfMin = x; });
+    const judged = reg, okD = !judged || judged.d >= state.minSep, okS = !sfMin || sfMin.sf >= ERR.sf, ok = okD && okS, at = judged || all;
+    const why = !okD ? 'closer than ' + fmt(state.minSep, 0) + ' ft' : 'separation factor below ' + fmt(ERR.sf, 1);
+    h += `<tr><td class="l"><b style="color:${o.color}">●</b> ${esc(o.name)}</td><td class="l">${o.kind === 'pad' ? 'pad well' : o.kind === 'ref' ? 'reference well' : o.kind === 'state' ? 'state record' : 'outside offset'}</td><td>${fmt(all.d, 1)}</td><td>${pad ? (reg ? fmt(reg.d, 1) : '–') : '–'}</td>` +
+      (useSf ? `<td>${sfMin ? (isFinite(sfMin.sf) ? fmt(sfMin.sf, 2) : '∞') + ` <span style="color:var(--muted)">at MD ${fmt(sfMin.md, 0)}</span>` : '–'}</td>` : '') +
+      `<td>${fmt(at.md, 0)}</td><td>${fmt(at.offMd, 0)}</td>` +
+      `<td class="l"><span class="pill ${ok ? 'ok' : 'warn'}">${!judged ? 'no kickoff to compare' : ok ? 'clear' : why}</span></td></tr>`;
+  });
+  if (!M.offs.length) h += '<tr><td class="l" colspan="8" style="color:var(--muted)">No other wells or offsets.</td></tr>';
+  $('#sepTbl').innerHTML = h + '</tbody>';
+}
+
+/* ================= drawing ================= */
+function setupCanvas(c) {
+  const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const w = Math.max(50, r.width), hgt = Math.max(50, r.height);
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(hgt * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(hgt * dpr); }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, hgt);
+  g.font = '11px -apple-system,Segoe UI,system-ui,sans-serif';
+  return { g, w, h: hgt };
+}
+function niceStep(range, target) {
+  const raw = Math.max(range, 1e-9) / target, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+}
+/* ================= PLSS sections (BLM) =================
+ * Live: BLM National PLSS service, queried for the lateral's bounding box. Offline: tiles in ./sections made by
+ * tools/fetch_sections.py (script files, so they also load from file://). */
+const SEC = { on: false, cache: new Map(), covered: [], tiles: {}, tileState: {}, grid: new Map(), gridCrs: '', src: '', msg: '', loading: false, nearKey: null, near: [] };
+try { SEC.on = localStorage.getItem('wellplanner.sections') === '1'; } catch (e) {}
+window.WPSEC = (tx, ty, rows) => { SEC.tiles[tx + '_' + ty] = rows; };
+$('#secOn').checked = SEC.on;
+$('#secOn').onchange = e => { SEC.on = e.target.checked; try { localStorage.setItem('wellplanner.sections', SEC.on ? '1' : '0'); } catch (x) {} SEC.nearKey = null; if (SEC.on) ensureSections(); updateSecInfo(); drawAll(); };
+try { SEC.only = localStorage.getItem('wellplanner.secOnly') === '1'; } catch (e) { SEC.only = false; }
+$('#secOnly').checked = SEC.only;
+$('#secOnly').onchange = e => { SEC.only = e.target.checked; try { localStorage.setItem('wellplanner.secOnly', SEC.only ? '1' : '0'); } catch (x) {} updateSecInfo(); drawAll(); };
+SEC.sb = 330;                                 // typical setback from section lines, ft (recent direction: 100)
+try { const v = parseFloat(localStorage.getItem('wellplanner.setback')); if (v >= 0) SEC.sb = v; } catch (e) {}
+$('#secSb').value = SEC.sb;
+$('#secSb').oninput = e => { const v = parseFloat(e.target.value); if (!(v >= 0)) return; SEC.sb = v; try { localStorage.setItem('wellplanner.setback', String(v)); } catch (x) {} updateSecInfo(); drawAll(); };
+const MILE = 5280;
+function secLateralPts() {
+  if (!M.survey) return [];
+  const L = M.markers && M.markers.find(m => m.label === 'Landing'), md0 = L && state.d.type === 'hbh' ? L.row.md : 0;
+  const rows = M.survey.filter(r => r.md >= md0), out = [];
+  rows.forEach((r, i) => { if (i % 5 === 0 || i === rows.length - 1) out.push({ n: r.northing, e: r.easting }); });
+  return out;
+}
+function secPathPts() {                        // whole wellbore, every 5th station
+  if (!M.survey) return [];
+  const out = []; M.survey.forEach((r, i) => { if (i % 5 === 0 || i === M.survey.length - 1) out.push({ n: r.northing, e: r.easting }); });
+  return out;
+}
+function secBox(pad) {                       // lon/lat box around the whole wellbore, pad in ft
+  const pts = secPathPts(); if (!pts.length || !isLL()) return null;
+  let n0 = Infinity, n1 = -Infinity, e0 = Infinity, e1 = -Infinity;
+  pts.forEach(p => { n0 = Math.min(n0, p.n); n1 = Math.max(n1, p.n); e0 = Math.min(e0, p.e); e1 = Math.max(e1, p.e); });
+  n0 -= pad; n1 += pad; e0 -= pad; e1 += pad;
+  const c = [[n0, e0], [n0, e1], [n1, e0], [n1, e1]].map(q => WP.toLatLon(q[0], q[1], state.crs));
+  return { w: Math.min(...c.map(q => q.lon)), e: Math.max(...c.map(q => q.lon)), s: Math.min(...c.map(q => q.lat)), n: Math.max(...c.map(q => q.lat)) };
+}
+const secKey = r => r.id + '|' + r.sec + '|' + (r.dup || '0');
+async function liveSections(b) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const q = new URLSearchParams({ geometry: [b.w, b.s, b.e, b.n].join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+      outFields: 'PLSSID,FRSTDIVNO,FRSTDIVDUP', where: "FRSTDIVTYP='SN'", resultRecordCount: '2000', f: 'geojson' });
+    const res = await fetch('https://gis.blm.gov/arcgis/rest/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer/2/query?' + q, { signal: ctl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json(); if (!Array.isArray(d.features)) throw new Error('bad reply');
+    return d.features.filter(f => f.geometry).map(f => {
+      const g = f.geometry, ring = g.type === 'Polygon' ? g.coordinates[0] : g.coordinates.map(p => p[0]).sort((a, b) => b.length - a.length)[0];
+      return { id: f.properties.PLSSID, sec: String(f.properties.FRSTDIVNO), dup: String(f.properties.FRSTDIVDUP || '0'), ll: ring.flatMap(p => [p[0], p[1]]) };
+    });
+  } finally { clearTimeout(timer); }
+}
+function loadTile(tx, ty) {
+  const key = tx + '_' + ty;
+  if (SEC.tileState[key]) return SEC.tileState[key];
+  return SEC.tileState[key] = new Promise(res => {
+    const s = document.createElement('script'); s.src = 'sections/s_' + key + '.js';
+    s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s);
+  });
+}
+async function tileSections(b) {
+  const jobs = [];
+  for (let x = Math.floor(b.w); x <= Math.floor(b.e); x++) for (let y = Math.floor(b.s); y <= Math.floor(b.n); y++) jobs.push(loadTile(x, y).then(ok => ok ? SEC.tiles[x + '_' + y] : null));
+  const got = (await Promise.all(jobs)).filter(Boolean);
+  if (!got.length) throw new Error('no tiles');
+  return got.flat().map(r => ({ id: r[0], sec: String(r[1]), dup: '0', ll: r[2] }));
+}
+async function ensureSections() {
+  if (!(SEC.on || STO.on || WALL.on) || !M.survey || SEC.loading) return;
+  if (!isLL()) { SEC.msg = 'needs a State Plane zone (a local grid has no lat/long)'; updateSecInfo(); return; }
+  const need = secBox(MILE * 1.2); if (!need) return;
+  if (SEC.covered.some(c => need.w >= c.w && need.e <= c.e && need.s >= c.s && need.n <= c.n)) { updateSecInfo(); return; }
+  const want = { w: need.w - .06, e: need.e + .06, s: need.s - .05, n: need.n + .05 };
+  SEC.loading = true; SEC.msg = 'loading…'; updateSecInfo();
+  let rows = null, src = '';
+  try { rows = await liveSections(want); src = 'live from BLM'; } catch (e) { rows = null; }
+  if (!rows) { try { rows = await tileSections(want); src = 'offline files'; } catch (e) { rows = null; } }
+  SEC.loading = false;
+  if (rows) { rows.forEach(r => { r.bb = [Math.min(...r.ll.filter((_, i) => i % 2 === 0)), Math.max(...r.ll.filter((_, i) => i % 2 === 0)), Math.min(...r.ll.filter((_, i) => i % 2)), Math.max(...r.ll.filter((_, i) => i % 2))]; SEC.cache.set(secKey(r), r); }); SEC.covered.push(want); SEC.src = src; SEC.msg = ''; SEC.nearKey = null; }
+  else SEC.msg = 'no section data: the BLM service is unreachable and there are no offline files for this area';
+  drawAll(); updateSecInfo();
+  if (STO.on) { STO.key = ''; recalc(); }
+}
+function secNear() {                          // sections within 1 mile of the lateral, in grid coordinates
+  const key = M.survey && (M.survey.length + '|' + M.survey[M.survey.length - 1].northing + '|' + state.crs + '|' + SEC.cache.size + '|' + state.d.type);
+  if (SEC.nearKey === key) return SEC.near;
+  SEC.nearKey = key; SEC.near = [];
+  const box = secBox(MILE * 1.2), pts = secLateralPts(); if (!box || !pts.length) return SEC.near;
+  if (SEC.gridCrs !== state.crs) { SEC.gridCrs = state.crs; SEC.grid = new Map(); }
+  const cand = [];
+  SEC.cache.forEach((s, k) => {
+    if (s.bb[1] < box.w || s.bb[0] > box.e || s.bb[3] < box.s || s.bb[2] > box.n) return;
+    let ring = SEC.grid.get(k);
+    if (!ring) { ring = []; for (let i = 0; i + 1 < s.ll.length; i += 2) { const q = WP.toGrid(s.ll[i + 1], s.ll[i], state.crs); ring.push({ n: q.n, e: q.e }); } SEC.grid.set(k, ring); }
+    cand.push({ s, ring });
+  });
+  const rings = cand.map(c => c.ring), near = {}, fp = WP.pathFootage(rings, M.survey);
+  WP.sectionsNear(rings, pts, MILE).forEach(h => { near[h.i] = h; });
+  // every section within 1 mile of the lateral, plus any the wellbore passes through (e.g. the SHL section, a back-build section)
+  SEC.near = cand.map((c, i) => ({ ...c, d: near[i] ? near[i].d : null, foot: fp.foot[i], spans: fp.spans[i], crossed: fp.foot[i] > 0 })).filter(x => x.d !== null || x.foot > 0);
+  return SEC.near;
+}
+const secShown = () => SEC.only ? secNear().filter(x => x.foot > 0) : secNear();
+function updateSecInfo() {
+  const stat = $('#secStat'), info = $('#secInfo'); if (!stat) return;
+  if (!SEC.on) { stat.textContent = ''; info.innerHTML = ''; return; }
+  stat.textContent = SEC.msg ? '· ' + SEC.msg : SEC.src ? '· ' + SEC.src : '';
+  if (SEC.sb > 0) stat.textContent += ' · setback = ' + SEC.sb + ' ft from each section line';
+  const nr = secNear(), nm = x => WP.plssName(x.s.id, x.s.sec), f0 = n => fmt(n, 0);
+  if (!nr.length || !M.survey) { info.innerHTML = ''; return; }
+  const cr = nr.filter(x => x.foot > 0).sort((a, b) => a.spans[0][0] - b.spans[0][0]);
+  const rows = M.survey, p0 = { n: rows[0].northing, e: rows[0].easting }, shl = nr.find(x => WP.ptInRing(p0, x.ring));
+  const L = M.markers && M.markers.find(m => m.label === 'Landing'), landMd = L && state.d.type === 'hbh' ? L.row.md : null;
+  let h = `<b>Wellbore passes through (MD ft):</b> ${cr.length ? cr.map(x => `${nm(x)} <b>${f0(x.foot)}</b>${x === shl ? ' (SHL section)' : ''}`).join(' · ') : 'none of the loaded sections'}`;
+  if (shl) {
+    // MD before landing (or whole well if no landing) that lies outside the SHL section
+    const end = landMd === null ? rows[rows.length - 1].md : landMd, outside = [];
+    let cur = 0; shl.spans.slice().sort((a, b) => a[0] - b[0]).forEach(([a, b]) => { if (a > cur && cur < end) outside.push([cur, Math.min(a, end)]); cur = Math.max(cur, b); });
+    if (cur < end) outside.push([cur, end]);
+    const tot = outside.reduce((a, [s, e]) => a + (e - s), 0), at = md => rows.reduce((b, r) => Math.abs(r.md - md) < Math.abs(b.md - md) ? r : b, rows[0]);
+    let far = 0; rows.forEach(r => { if (r.md <= end && !WP.ptInRing({ n: r.northing, e: r.easting }, shl.ring)) far = Math.max(far, WP.ptRingDist({ n: r.northing, e: r.easting }, shl.ring).d); });
+    const label = landMd === null ? 'Whole wellbore' : 'Before landing';
+    h += tot > 5 ? `<br><b>${label}: ${f0(tot)} ft of wellbore is outside the SHL section</b>` + outside.filter(([s, e]) => e - s > 5).map(([s, e]) => ` · MD ${f0(s)}–${f0(e)} (TVD ${f0(at(s).tvd)}–${f0(at(e).tvd)})`).join('') + `, reaching ${f0(far)} ft beyond its boundary.`
+      : `<br>${label}: the wellbore stays inside the SHL section.`;
+    h += `<br><span style="color:var(--muted)">Footage is measured along the wellbore and is good to about 10 ft at each section line.</span>`;
+  } else h += `<br><span style="color:var(--muted)">The SHL is not inside a loaded section, so it can’t be compared with the section lines.</span>`;
+  if (!SEC.only) { const ot = nr.filter(x => !(x.foot > 0)); h += `<br><span style="color:var(--muted)">Also within 1 mile of the lateral: ${ot.length ? ot.map(nm).join(', ') : 'none'}</span>`; }
+  info.innerHTML = h;
+}
+function drawSections(g, X, Y, v, ink, acc, muted) {
+  if (!SEC.on) return;
+  const sx = state.surface.e, sn = state.surface.n;
+  const list = secShown();
+  list.forEach(x => {
+    g.beginPath(); x.ring.forEach((q, k) => k ? g.lineTo(X(q.e - sx), Y(q.n - sn)) : g.moveTo(X(q.e - sx), Y(q.n - sn))); g.closePath();
+    g.globalAlpha = x.crossed ? .14 : .05; g.fillStyle = acc; g.fill();
+    g.globalAlpha = x.crossed ? .9 : .5; g.strokeStyle = x.crossed ? acc : muted; g.lineWidth = x.crossed ? 1.6 : 1.1; g.stroke(); g.globalAlpha = 1;
+  });
+  if (SEC.sb > 0) {                            // setback lines: dashed, inside each section boundary
+    g.save(); g.setLineDash([6, 4]); g.strokeStyle = css('--warn'); g.lineWidth = 1.3; g.globalAlpha = .9;
+    list.forEach(x => {
+      const r = x.inset && x.insetD === SEC.sb ? x.inset : (x.insetD = SEC.sb, x.inset = WP.insetRing(x.ring, SEC.sb));
+      g.beginPath(); r.forEach((q, k) => k ? g.lineTo(X(q.e - sx), Y(q.n - sn)) : g.moveTo(X(q.e - sx), Y(q.n - sn))); g.closePath(); g.stroke();
+    });
+    g.restore();
+  }
+  g.textAlign = 'center'; const f0 = g.font;
+  list.forEach(x => {
+    const cn = x.ring.reduce((a, q) => a + q.n, 0) / x.ring.length, ce = x.ring.reduce((a, q) => a + q.e, 0) / x.ring.length;
+    const size = v.s * MILE; if (size < 40) return;
+    const nm = WP.plssName(x.s.id, x.s.sec), parts = nm.split(' '), cx = X(ce - sx), cy = Y(cn - sn);
+    g.fillStyle = x.crossed ? ink : muted; g.globalAlpha = .85;
+    g.font = 'bold 13px system-ui, sans-serif'; g.fillText(parts[0], cx, size < 90 ? cy + 4 : cy - 1);
+    if (size >= 90) { g.font = '11px system-ui, sans-serif'; g.fillText(parts.slice(1).join(' '), cx, cy + 13); }
+    g.globalAlpha = 1;
+  });
+  g.font = f0;
+}
+/* ================= Reference wells (copies of wells made in this tool) =================
+ * project.refs holds frozen copies of wells from other saved plans. Each one is rebuilt with its own design, then moved
+ * into this project's coordinate system (through lat/long, with the grid-convergence difference applied to azimuths). */
+const refCache = new WeakMap();
+function refModel(r) {
+  const sig = JSON.stringify(r) + '|' + state.crs, c = refCache.get(r);
+  if (c && c.sig === sig) return c.m;
+  let m = null;
+  const mm = modelFor(r);
+  if (!mm.err) {
+    if (r.crs === state.crs) m = { rows: mm.survey, kopMd: mm.kopMd };
+    else if (r.crs !== 'local' && state.crs !== 'local') {
+      const ll = WP.toLatLon(r.surface.n, r.surface.e, r.crs), g1 = WP.convergence(ll.lat, ll.lon, r.crs), g2 = WP.convergence(ll.lat, ll.lon, state.crs), p = WP.toGrid(ll.lat, ll.lon, state.crs);
+      const st = mm.survey.map(x => ({ md: x.md, inc: x.inc, azi: WP.norm360(x.azi + g1 - g2) }));
+      m = { rows: WP.computeSurvey(st, { n0: p.n, e0: p.e, kb: r.kb, vsAzi: 0 }), kopMd: mm.kopMd };
+    }
+  }
+  refCache.set(r, { sig, m }); return m;
+}
+const REF = { pending: null };
+function renderRef() {
+  const el = $('#refList'); if (!el) return;
+  const others = project.wells.map((w, i) => ({ w, i })).filter(x => x.w !== state);
+  let h = '';
+  if (others.length) h += '<div class="hint" style="margin:0 0 4px">This project</div>' + others.map(x =>
+    `<label class="chk refrow"><input type="checkbox" data-asoff="w${x.i}" ${x.w.asOffset === false ? '' : 'checked'}><span><b>${esc(x.w.name || 'Unnamed')}</b>${x.w.slot ? ' · slot ' + slotId(x.w.slot.c, x.w.slot.r) : ''}</span></label>`).join('');
+  const refs = project.refs || [];
+  h += '<div class="hint" style="margin:6px 0 4px">Reference copies' + (refs.length ? '' : ': none yet') + '</div>' + refs.map((r, i) => {
+    const ok = !!refModel(r), why = r.crs === state.crs ? 'could not build this well' : 'coordinate system differs and one of them is a local grid';
+    return `<div class="refrow"><label class="chk"><input type="checkbox" data-asoff="r${i}" ${r.asOffset === false ? '' : 'checked'}><span><b>${esc(r.name || 'Unnamed')}</b> <span style="color:var(--muted)">from ${esc(r.refSrc || 'a saved plan')}${r.refAdded ? ', added ' + esc(r.refAdded) : ''}</span>${ok ? '' : ` <span style="color:var(--warn)">not shown: ${why}</span>`}</span></label><button class="small" data-refdel="${i}" title="Remove this reference copy">Remove</button></div>`;
+  }).join('');
+  el.innerHTML = h;
+  const pk = $('#refPick');
+  if (!REF.pending) { pk.innerHTML = ''; return; }
+  pk.innerHTML = `<div class="hint" style="margin:8px 0 4px">Wells in ${esc(REF.pending.src)}: choose the ones to add</div>` + REF.pending.wells.map((w, i) =>
+    `<label class="chk refrow"><input type="checkbox" data-pick="${i}" checked><span><b>${esc(w.name || 'Unnamed')}</b> <span style="color:var(--muted)">${esc(w.crs)} · ${w.targets.length} targets</span></span></label>`).join('') +
+    '<div class="toolbar" style="margin-top:6px"><button class="small primary" id="bRefGo">Add selected</button><button class="small" id="bRefCancel">Cancel</button></div>';
+}
+$('#bRefAdd').onclick = () => $('#refFile').click();
+$('#refFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const p = migrateProject(JSON.parse(rd.result)); if (!p || !p.wells.length) throw new Error('no wells found');
+      REF.pending = { src: f.name, wells: p.wells }; renderRef();
+    } catch (err) { REF.pending = null; renderRef(); $('#refPick').innerHTML = `<span style="color:var(--warn)">That file is not a saved well plan: ${esc(err.message)}</span>`; }
+  };
+  rd.readAsText(f); e.target.value = '';
+};
+$('#refCard').addEventListener('click', e => {
+  const d = e.target.closest('[data-refdel]');
+  if (d) { const r = project.refs[+d.dataset.refdel]; if (r && confirm('Remove the reference copy of "' + r.name + '"?')) { project.refs.splice(+d.dataset.refdel, 1); recalc(); } return; }
+  if (e.target.closest('#bRefCancel')) { REF.pending = null; renderRef(); return; }
+  if (e.target.closest('#bRefGo')) {
+    const picks = $$('#refPick [data-pick]').filter(c => c.checked).map(c => REF.pending.wells[+c.dataset.pick]);
+    const today = new Date().toISOString().slice(0, 10), norm = s => String(s || '').trim().toLowerCase();
+    picks.forEach(w => {
+      const copy = Object.assign(JSON.parse(JSON.stringify(w)), { slot: null, asOffset: true, refSrc: REF.pending.src, refAdded: today });
+      const k = project.refs.findIndex(r => norm(r.name) === norm(copy.name));
+      if (k >= 0) project.refs[k] = copy; else project.refs.push(copy);
+    });
+    REF.pending = null; recalc();
+  }
+});
+$('#refCard').addEventListener('change', e => {
+  const c = e.target.closest('[data-asoff]'); if (!c) return;
+  const kind = c.dataset.asoff[0], i = +c.dataset.asoff.slice(1), w = kind === 'w' ? project.wells[i] : project.refs[i];
+  if (w) { w.asOffset = c.checked; recalc(); }
+});
+
+/* ================= Drilled wells from state records =================
+ * Data: offsets/prb.js (tools/build_offsets.py: WOGCC headers, KB elevations, filed directional surveys for the PRB
+ * project's horizontal wells). A well is included when its surface, bottom hole or surveyed path lies inside a section
+ * the wellbore passes through. Only wells with a filed survey get a path; the rest are listed. */
+const STO = { on: false, tn: true, data: null, state: 'idle', list: [], key: '', rows: new Map(), skip: new Set(), msg: '' };
+window.WPOFF = d => { STO.data = d; };
+try { STO.on = localStorage.getItem('wellplanner.sto') === '1'; STO.tn = localStorage.getItem('wellplanner.stoTrue') !== '0'; } catch (e) {}
+$('#stoOn').checked = STO.on; $('#stoTrue').checked = STO.tn;
+$('#stoOn').onchange = e => { STO.on = e.target.checked; try { localStorage.setItem('wellplanner.sto', STO.on ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
+$('#stoTrue').onchange = e => { STO.tn = e.target.checked; try { localStorage.setItem('wellplanner.stoTrue', STO.tn ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
+function loadStoData() {
+  if (STO.data || STO.state === 'loading') return;
+  STO.state = 'loading';
+  const s = document.createElement('script'); s.src = 'offsets/prb.js';
+  s.onload = () => { STO.state = STO.data ? 'ready' : 'missing'; STO.key = ''; recalc(); };
+  s.onerror = () => { STO.state = 'missing'; STO.msg = 'offsets/prb.js was not found. Run tools/build_offsets.py to create it.'; renderSto(); };
+  document.head.appendChild(s);
+}
+function stoPath(w) {                          // survey rows in project grid, or null when no filed survey
+  if (!w.st) return null;
+  const ck = w.api + '|' + state.crs + '|' + STO.tn; if (STO.rows.has(ck)) return STO.rows.get(ck);
+  const p = WP.toGrid(w.shl[0], w.shl[1], state.crs), g = STO.tn ? WP.convergence(w.shl[0], w.shl[1], state.crs) : 0;
+  const st = w.st.map(r => ({ md: r[0], inc: r[1], azi: WP.norm360(r[2] - g) }));
+  if (st[0].md > 0) st.unshift({ md: 0, inc: 0, azi: 0 });
+  const kb = w.kb != null ? w.kb : (w.gl != null ? w.gl + 20 : 0);
+  const out = { rows: WP.computeSurvey(st, { n0: p.n, e0: p.e, kb, vsAzi: 0 }), kbAssumed: w.kb == null };
+  STO.rows.set(ck, out); return out;
+}
+function stoRefresh() {
+  if (!STO.on || !isLL() || !M.survey) { STO.list = []; STO.key = ''; return; }
+  if (!STO.data) { loadStoData(); STO.list = []; return; }
+  const trav = secNear().filter(x => x.foot > 0), last = M.survey[M.survey.length - 1];
+  const key = [M.survey.length, Math.round(last.northing), Math.round(last.easting), state.crs, STO.tn, SEC.cache.size, trav.length, state.name].join('|');
+  if (key === STO.key) return; STO.key = key;
+  const box = secBox(MILE * 1.5);
+  if (!box || !trav.length) { STO.list = []; return; }
+  const rings = trav.map(x => x.ring), inAny = p => { for (let i = 0; i < rings.length; i++) if (WP.ptInRing(p, rings[i])) return i; return -1; };
+  const hit = (la, lo) => la >= box.s && la <= box.n && lo >= box.w && lo <= box.e;
+  const out = [];
+  const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), me = norm(state.name);
+  STO.data.wells.forEach(w => {
+    if (me && norm(w.name) === me) return;                       // the well being planned may already have a state record
+    if (!hit(w.shl[0], w.shl[1]) && !(w.bhl && hit(w.bhl[0], w.bhl[1]))) return;
+    const secs = new Set(), pt = (la, lo) => { const q = WP.toGrid(la, lo, state.crs), i = inAny({ n: q.n, e: q.e }); if (i >= 0) secs.add(i); };
+    const path = stoPath(w);
+    if (path) path.rows.forEach((r, i) => { if (i % 4 === 0 || i === path.rows.length - 1) { const k = inAny({ n: r.northing, e: r.easting }); if (k >= 0) secs.add(k); } });
+    else { pt(w.shl[0], w.shl[1]); if (w.bhl) pt(w.bhl[0], w.bhl[1]); }
+    if (!secs.size) return;
+    out.push({ w, path, secs: [...secs].map(i => WP.plssName(trav[i].s.id, trav[i].s.sec)) });
+  });
+  out.sort((a, b) => (!!b.path - !!a.path) || String(a.w.name).localeCompare(String(b.w.name)));
+  STO.list = out;
+}
+function stoOffs() {
+  const out = []; let k = 0;
+  STO.list.forEach(x => { if (!x.path || STO.skip.has(x.w.api)) return; out.push({ name: x.w.name, rows: x.path.rows, kind: 'state', color: OFF_COLORS[k++ % OFF_COLORS.length], kopMd: 0, api: x.w.api }); });
+  return out;
+}
+function renderSto() {
+  const el = $('#stoInfo'); if (!el) return;
+  const oh = $('#stoOffHint'); if (oh) oh.style.display = STO.on ? 'none' : '';
+  if (!STO.on) { el.innerHTML = ''; return; }
+  if (!isLL()) { el.innerHTML = 'Needs a State Plane zone: a local grid has no lat/long to match against the state records.'; return; }
+  if (STO.msg && STO.state === 'missing') { el.innerHTML = `<span style="color:var(--warn)">${esc(STO.msg)}</span>`; return; }
+  if (!STO.data) { el.textContent = 'Loading state well records…'; return; }
+  if (SEC.loading || !SEC.cache.size) { el.textContent = 'Waiting for section data…'; return; }
+  const withSurvey = STO.list.filter(x => x.path), none = STO.list.filter(x => !x.path);
+  let h = `<span style="color:var(--muted)">Records built ${esc(STO.data.built || '?')} · ${STO.data.wells.length.toLocaleString()} wells · ${STO.data.wells.filter(w => w.st).length.toLocaleString()} with filed surveys. Horizontal wells of the PRB project only: vertical and older wells are not in this file.</span>`;
+  if (!STO.list.length) { el.innerHTML = h + '<br>No wells from the records lie in the sections this wellbore passes through.'; return; }
+  h += `<br><b>${withSurvey.length}</b> with a filed survey (used for clearance) · <b>${none.length}</b> without (listed only).<table><thead><tr><th></th><th>Well</th><th>Operator</th><th>Status</th><th>Section</th><th>Survey</th></tr></thead><tbody>`;
+  STO.list.forEach(x => {
+    const w = x.w, off = STO.skip.has(w.api);
+    h += `<tr class="${x.path ? '' : 'none'}"><td>${x.path ? `<input type="checkbox" data-sto="${esc(w.api)}" ${off ? '' : 'checked'}>` : ''}</td><td>${esc(w.name)}</td><td>${esc((w.op || '').replace(/ (LLC|INC|LP|CORP.*|COMPANY)$/i, ''))}</td><td>${esc(w.status || '')}</td><td>${esc(x.secs.join(', '))}</td>` +
+      `<td>${x.path ? w.st.length + ' stations' + (x.path.kbAssumed ? ' · KB assumed GL+20' : '') : 'none on file'}</td></tr>`;
+  });
+  el.innerHTML = h + '</tbody></table>';
+}
+$('#stoInfo').addEventListener('change', e => {
+  const c = e.target.closest('[data-sto]'); if (!c) return;
+  if (c.checked) STO.skip.delete(c.dataset.sto); else STO.skip.add(c.dataset.sto);
+  recalc();
+});
+const planPoint = r => ({ x: r.easting - state.surface.e, y: r.northing - state.surface.n });
+function offPlanTvd(r) { return r.tvdss + state.kb; }
+
+const P2 = {
+  plan: { id: 'cvPlan', ydown: false, view: null, mouse: null, xl: 'East of surface (ft)', yl: 'North of surface (ft)' },
+  sec: { id: 'cvSec', ydown: true, view: null, mouse: null, xl: 'Vertical section (ft)', yl: 'TVD (ft)' },
+  apPlan: { id: 'cvApPlan', base: 'plan', ydown: false, view: null, mouse: null, xl: 'East of surface (ft)', yl: 'North of surface (ft)' },
+  apSec: { id: 'cvApSec', base: 'sec', ydown: true, view: null, mouse: null, xl: 'Vertical section (ft)', yl: 'TVD (ft)' }
+};
+function pts2D(kind) {
+  const sv = M.survey, a = Math.cos(M.vsAzi * D2R), b = Math.sin(M.vsAzi * D2R);
+  const map = kind === 'plan'
+    ? { row: r => ({ x: r.easting - state.surface.e, y: r.northing - state.surface.n }), off: r => ({ x: r.easting - state.surface.e, y: r.northing - state.surface.n }) }
+    : { row: r => ({ x: r.vs, y: r.tvd }), off: r => ({ x: (r.northing - state.surface.n) * a + (r.easting - state.surface.e) * b, y: offPlanTvd(r) }) };
+  const tg = t => kind === 'plan' ? { x: t.e - state.surface.e, y: t.n - state.surface.n }
+    : { x: (t.n - state.surface.n) * a + (t.e - state.surface.e) * b, y: t.tvd };
+  return { map, tg };
+}
+function draw2D(key) {
+  const p = P2[key], kind = p.base || key, AP = !!p.base, c = $('#' + p.id);
+  if (!c.offsetParent || !M.survey) return;
+  const { g, w, h } = setupCanvas(c);
+  const ink = css('--ink'), muted = css('--muted'), grid = css('--grid'), acc = css('--accent'), warn = css('--warn');
+  const m = { l: 58, r: 14, t: 12, b: 34 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const { map, tg } = pts2D(kind);
+  const sy = p.ydown ? 1 : -1;
+
+  const pl = M.survey.map(map.row);
+  const offs = AP ? [] : M.offs.map(o => o.rows.map(map.off));
+  const act = AP && ACT.rows ? ACT.rows.map(map.off) : null;
+  const ut = usedTargets(), tgs = ut.map(tg);
+  const all = [...pl, ...offs.flat(), ...(act || []), ...tgs];
+  if (kind === 'sec') all.push({ x: 0, y: 0 });
+  if (kind === 'plan' && !AP && SEC.on) secShown().forEach(s => s.ring.forEach(q => all.push({ x: q.e - state.surface.e, y: q.n - state.surface.n })));
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  all.forEach(q => { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); });
+  const fit = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, s: Math.min(iw / Math.max(x1 - x0, 50) , ih / Math.max(y1 - y0, 50)) * 0.88 };
+  p.lastView = fit;
+  const v = p.view || fit;
+  const X = x => m.l + iw / 2 + (x - v.cx) * v.s, Y = y => m.t + ih / 2 + sy * (y - v.cy) * v.s;
+  p.geo = { m, iw, ih, sy, v };
+
+  g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
+  // grid
+  const step = niceStep(Math.min(iw, ih) / v.s, 5);
+  const gx0 = Math.ceil((v.cx - iw / 2 / v.s) / step) * step, gx1 = v.cx + iw / 2 / v.s;
+  const ya = v.cy - ih / 2 / v.s, yb = v.cy + ih / 2 / v.s, gy0 = Math.ceil(ya / step) * step;
+  g.strokeStyle = grid; g.lineWidth = 1; g.beginPath();
+  for (let x = gx0; x <= gx1; x += step) { g.moveTo(Math.round(X(x)) + .5, m.t); g.lineTo(Math.round(X(x)) + .5, m.t + ih); }
+  for (let y = gy0; y <= yb; y += step) { g.moveTo(m.l, Math.round(Y(y)) + .5); g.lineTo(m.l + iw, Math.round(Y(y)) + .5); }
+  g.stroke();
+
+  if (kind === 'plan' && !AP) drawSections(g, X, Y, v, ink, acc, muted);
+  // tops (section only)
+  if (kind === 'sec') {
+    g.setLineDash([5, 4]); g.lineWidth = 1; g.fillStyle = muted; g.textAlign = 'left';
+    state.tops.forEach(t => {
+      g.strokeStyle = muted; g.beginPath();
+      if (parseFloat(t.dip)) {      // a dipping surface: its depth under each point of the wellbore, so it crosses the path where the top really is
+        M.survey.forEach((r, i) => { const px = X(r.vs), py = Y(WP.topTvdAt(t, r.northing, r.easting, state.surface)); if (i) g.lineTo(px, py); else g.moveTo(px, py); });
+        g.stroke(); const r0 = M.survey[0]; g.fillText(`${t.name} ${fmt(t.tvd, 0)} · dip ${fmt(t.dip, 1)}° → ${fmt(t.azi || 0, 0)}°`, m.l + 6, Y(WP.topTvdAt(t, r0.northing, r0.easting, state.surface)) - 3);
+      } else { const y = Y(t.tvd); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.fillText(`${t.name} ${fmt(t.tvd, 0)}`, m.l + 6, y - 3); }
+    });
+    g.setLineDash([]);
+    g.strokeStyle = ink; g.globalAlpha = .5; g.beginPath(); g.moveTo(m.l, Y(0)); g.lineTo(m.l + iw, Y(0)); g.stroke(); g.globalAlpha = 1;
+  }
+  // offsets
+  if (kind === 'plan' && !AP && (project.pad.cols * project.pad.rows > 1 || project.wells.some(w => w.slot))) {   // pad slots
+    WP.padSlots(project.pad, project.pad.cols, project.pad.rows).forEach(sl => {
+      const x = X(sl.e - state.surface.e), y = Y(sl.n - state.surface.n);
+      g.strokeStyle = muted; g.lineWidth = 1; g.strokeRect(x - 3.5, y - 3.5, 7, 7);
+      if (v.s * Math.min(project.pad.dx, project.pad.dy || project.pad.dx) > 38) { g.fillStyle = muted; g.textAlign = 'center'; g.fillText(sl.id, x, y - 8); }
+    });
+  }
+  offs.forEach((o, i) => {
+    g.strokeStyle = M.offs[i].color; g.lineWidth = 1.6; g.beginPath();
+    o.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
+    const q = o[o.length - 1]; g.fillStyle = g.strokeStyle; g.textAlign = 'left'; g.fillText(M.offs[i].name, X(q.x) + 5, Y(q.y) + 4);
+  });
+  // plan path
+  g.strokeStyle = acc; g.lineWidth = 2.4; g.lineJoin = 'round'; g.beginPath();
+  pl.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
+  // survey error ellipses (horizontal slice of the position covariance), plan view only
+  if (kind === 'plan' && ERR.ell && !AP) {
+    const cov = covOf(M.survey);
+    if (cov) {
+      g.strokeStyle = acc; g.lineWidth = 1; g.globalAlpha = .75;
+      let nextMd = 1000; const idx = [];
+      M.survey.forEach((r, k) => { if (r.md >= nextMd || k === M.survey.length - 1) { idx.push(k); while (nextMd <= r.md) nextMd += 1000; } });
+      idx.forEach(k => {
+        const C = cov[k], cx = C[3], cy = C[0], cxy = C[1], a = Math.sqrt(cx); if (!(a > 0)) return;
+        const b = cxy / a, c = Math.sqrt(Math.max(0, cy - b * b)), K = 2.79, q = pl[k];
+        g.beginPath();
+        for (let s = 0; s <= 48; s++) { const t = s / 48 * Math.PI * 2, ex = K * a * Math.cos(t), ey = K * (b * Math.cos(t) + c * Math.sin(t)); const px = X(q.x + ex), py = Y(q.y + ey); s ? g.lineTo(px, py) : g.moveTo(px, py); }
+        g.stroke();
+      });
+      g.globalAlpha = 1;
+    }
+  }
+  if (act) {
+    g.strokeStyle = css('--blue'); g.lineWidth = 3.4; g.lineJoin = 'round'; g.beginPath();
+    act.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
+    const e = act[act.length - 1]; g.fillStyle = css('--blue'); g.beginPath(); g.arc(X(e.x), Y(e.y), 4, 0, 7); g.fill();
+  }
+  // targets
+  const diamond = (q, label) => {
+    const x = X(q.x), y = Y(q.y); g.strokeStyle = warn; g.fillStyle = css('--panel'); g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y); g.lineTo(x, y + 6); g.lineTo(x - 6, y); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = warn; g.textAlign = 'left'; g.fillText(label, x + 9, y - 6);
+  };
+  if (tgs.length > 1) {
+    g.strokeStyle = warn; g.globalAlpha = .45; g.lineWidth = 1.2; g.setLineDash([4, 4]); g.beginPath();
+    tgs.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+  }
+  tgs.forEach((q, i) => diamond(q, ut[i].name));
+  // markers
+  M.markers.forEach(mk => {
+    const q = map.row(mk.row), x = X(q.x), y = Y(q.y);
+    g.fillStyle = mk.label === 'TD' ? ink : acc; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill();
+    g.fillStyle = ink; g.textAlign = 'left'; g.fillText(mk.label, x + 7, y + 12);
+  });
+  // hover
+  let hv = null;
+  if (p.mouse && !AP) {
+    let best = 26 * 26;
+    pl.forEach((q, i) => { const dx = X(q.x) - p.mouse.x, dy = Y(q.y) - p.mouse.y, d = dx * dx + dy * dy; if (d < best) { best = d; hv = i; } });
+    if (hv !== null) { g.fillStyle = ink; g.beginPath(); g.arc(X(pl[hv].x), Y(pl[hv].y), 5, 0, 7); g.fill(); }
+  }
+  g.restore();
+
+  // axes labels
+  g.fillStyle = muted; g.textAlign = 'center';
+  for (let x = gx0; x <= gx1; x += step) { const px = X(x); if (px > m.l + 14 && px < m.l + iw - 14) g.fillText(fmt(x, 0), px, m.t + ih + 14); }
+  g.textAlign = 'right';
+  for (let y = gy0; y <= yb; y += step) { const py = Y(y); if (py > m.t + 6 && py < m.t + ih - 4) g.fillText(fmt(y, 0), m.l - 6, py + 4); }
+  g.textAlign = 'center'; g.fillText(p.xl, m.l + iw / 2, h - 5);
+  g.save(); g.translate(12, m.t + ih / 2); g.rotate(-Math.PI / 2); g.fillText(p.yl, 0, 0); g.restore();
+  g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
+  if (AP) apLegend(g, m.l + 10, m.t + 14);
+  if (hv !== null) {
+    const r = M.survey[hv], t = `MD ${fmt(r.md, 0)}  Inc ${fmt(r.inc, 1)}°  Azi ${fmt(r.azi, 1)}°  TVD ${fmt(r.tvd, 0)}  VS ${fmt(r.vs, 0)}  DLS ${fmt(r.dls, 1)}`;
+    const tw = g.measureText(t).width + 12;
+    g.fillStyle = css('--panel'); g.globalAlpha = .92; g.fillRect(m.l + 4, m.t + 4, tw, 20); g.globalAlpha = 1;
+    g.strokeStyle = css('--line'); g.strokeRect(m.l + 4.5, m.t + 4.5, tw, 20);
+    g.fillStyle = ink; g.textAlign = 'left'; g.fillText(t, m.l + 10, m.t + 18);
+  }
+}
+Object.entries(P2).forEach(([kind, p]) => {
+  const c = $('#' + p.id);
+  const cur = () => p.view || p.lastView;
+  let drag = null;
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY }; });
+  c.addEventListener('pointerup', () => drag = null);
+  c.addEventListener('pointermove', e => {
+    const r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (drag && cur()) {
+      const v = { ...cur() }, g = p.geo;
+      v.cx -= (e.clientX - drag.x) / v.s; v.cy -= (e.clientY - drag.y) / (g.sy * v.s);
+      p.view = v; drag = { x: e.clientX, y: e.clientY };
+    }
+    p.mouse = { x: mx, y: my }; later(() => draw2D(kind));
+  });
+  c.addEventListener('pointerleave', () => { p.mouse = null; later(() => draw2D(kind)); });
+  c.addEventListener('dblclick', () => { p.view = null; draw2D(kind); });
+  c.addEventListener('wheel', e => {
+    e.preventDefault(); const v = { ...cur() }, g = p.geo, r = c.getBoundingClientRect();
+    const mx = e.clientX - r.left - g.m.l - g.iw / 2, my = e.clientY - r.top - g.m.t - g.ih / 2;
+    const f = Math.exp(-e.deltaY * 0.0015), s2 = v.s * f;
+    const dx = v.cx + mx / v.s, dy = v.cy + my / (g.sy * v.s);
+    v.cx = dx - mx / s2; v.cy = dy - my / (g.sy * s2); v.s = s2; p.view = v; draw2D(kind);
+  }, { passive: false });
+});
+
+/* ---- 3D ---- */
+const V3 = { yaw: -35 * D2R, pitch: 28 * D2R, zoom: 1, drag: null };
+function draw3D(id = 'cv3d') {
+  const AP = id !== 'cv3d', c = $('#' + id); if (!c.offsetParent || !M.survey) return;
+  const { g, w, h } = setupCanvas(c);
+  const ink = css('--ink'), muted = css('--muted'), acc = css('--accent'), warn = css('--warn'), line = css('--line');
+  const W = r => [r.easting - state.surface.e, r.northing - state.surface.n, -r.tvd];
+  const plan = M.survey.map(W);
+  const offs = AP ? [] : M.offs.map(o => o.rows.map(r => [r.easting - state.surface.e, r.northing - state.surface.n, -offPlanTvd(r)]));
+  const actP = AP && ACT.rows ? ACT.rows.map(r => [r.easting - state.surface.e, r.northing - state.surface.n, -offPlanTvd(r)]) : [];
+  const tg = t => [t.e - state.surface.e, t.n - state.surface.n, -t.tvd];
+  const ut = usedTargets(), tw3 = ut.map(tg);
+  const all = [...plan, ...offs.flat(), ...actP, ...tw3, [0, 0, 0]];
+  const lo = [0, 1, 2].map(i => Math.min(...all.map(q => q[i]))), hi = [0, 1, 2].map(i => Math.max(...all.map(q => q[i])));
+  const ctr = lo.map((l, i) => (l + hi[i]) / 2);
+  const rad = Math.max(50, 0.5 * Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]));
+  const s = Math.min(w, h) / 2 * 0.86 / rad * V3.zoom;
+  const cy = Math.cos(V3.yaw), sy = Math.sin(V3.yaw), cp = Math.cos(V3.pitch), sp = Math.sin(V3.pitch);
+  const P = q => {
+    const X = q[0] - ctr[0], Y = q[1] - ctr[1], Z = q[2] - ctr[2];
+    const x1 = X * cy - Y * sy, y1 = X * sy + Y * cy;
+    return [w / 2 + x1 * s, h / 2 - (Z * cp + y1 * sp) * s];
+  };
+  const seg = (a, b, col, lw, dash) => { g.strokeStyle = col; g.lineWidth = lw; g.setLineDash(dash || []); const A = P(a), B = P(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); g.setLineDash([]); };
+  // bounding box + floor
+  const corner = (i, j, k) => [i ? hi[0] : lo[0], j ? hi[1] : lo[1], k ? hi[2] : lo[2]];
+  for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+    seg(corner(0, a, b), corner(1, a, b), line, 1); seg(corner(a, 0, b), corner(a, 1, b), line, 1); seg(corner(a, b, 0), corner(a, b, 1), line, 1);
+  }
+  g.fillStyle = muted; g.textAlign = 'center';
+  const lab = (q, t) => { const A = P(q); g.fillText(t, A[0], A[1] + 12); };
+  lab([ctr[0], hi[1], lo[2]], 'N'); lab([hi[0], ctr[1], lo[2]], 'E'); lab([lo[0], ctr[1], lo[2]], 'W'); lab([ctr[0], lo[1], lo[2]], 'S');
+  const poly = (pts, col, lw, dash, flat) => {
+    g.strokeStyle = col; g.lineWidth = lw; g.setLineDash(dash || []); g.beginPath();
+    pts.forEach((q, i) => { const A = P(flat ? [q[0], q[1], lo[2]] : q); i ? g.lineTo(A[0], A[1]) : g.moveTo(A[0], A[1]); }); g.stroke(); g.setLineDash([]);
+  };
+  poly(plan, line, 2, [], true);                                 // floor shadow
+  offs.forEach((o, i) => { poly(o, M.offs[i].color, 1.6); });
+  poly(plan, acc, 2.6);
+  if (actP.length) { poly(actP, css('--blue'), 3.4); const e = actP[actP.length - 1], A = P(e); g.fillStyle = css('--blue'); g.beginPath(); g.arc(A[0], A[1], 4, 0, 7); g.fill(); apLegend(g, 12, 18); }
+  // survey error ellipses: cross-section of the position uncertainty perpendicular to the hole, every 1,000 ft, 2.79 sigma
+  if (ERR.ell && !AP) {
+    const ring = (rows, cov, col, lw) => {
+      if (!cov) return;
+      let nextMd = 1000;
+      rows.forEach((r, k) => {
+        if (!(r.md >= nextMd || k === rows.length - 1)) return; while (nextMd <= r.md) nextMd += 1000;
+        const i = r.inc * D2R, a = r.azi * D2R, t = [Math.sin(i) * Math.cos(a), Math.sin(i) * Math.sin(a), Math.cos(i)];   // N, E, V(down)
+        const e1 = [Math.cos(i) * Math.cos(a), Math.cos(i) * Math.sin(a), -Math.sin(i)], e2 = [-Math.sin(a), Math.cos(a), 0];   // high side, right side
+        const C = cov[k], m = [[C[0], C[1], C[2]], [C[1], C[3], C[4]], [C[2], C[4], C[5]]];
+        const q = (u, v) => { let z = 0; for (let x = 0; x < 3; x++) for (let y = 0; y < 3; y++) z += u[x] * m[x][y] * v[y]; return z; };
+        const c11 = q(e1, e1), c12 = q(e1, e2), c22 = q(e2, e2), L1 = Math.sqrt(Math.max(c11, 0)); if (!(L1 > 0)) return;
+        const L21 = c12 / L1, L22 = Math.sqrt(Math.max(0, c22 - L21 * L21)), K = 2.79;
+        g.strokeStyle = col; g.lineWidth = lw; g.globalAlpha = .8; g.beginPath();
+        for (let n = 0; n <= 36; n++) {
+          const th = n / 36 * Math.PI * 2, u = K * L1 * Math.cos(th), v = K * (L21 * Math.cos(th) + L22 * Math.sin(th));
+          // direction in N,E,V(down) -> plot axes (E, N, up)
+          const dN = u * e1[0] + v * e2[0], dE = u * e1[1] + v * e2[1], dV = u * e1[2] + v * e2[2];
+          const A = P([r.easting - state.surface.e + dE, r.northing - state.surface.n + dN, (rows === M.survey ? -r.tvd : -offPlanTvd(r)) - dV]);
+          n ? g.lineTo(A[0], A[1]) : g.moveTo(A[0], A[1]);
+        }
+        g.stroke(); g.globalAlpha = 1;
+      });
+    };
+    M.offs.forEach(o => ring(o.rows, covOf(o.rows), o.color, 1));
+    ring(M.survey, covOf(M.survey), acc, 1.4);
+  }
+  const dot = (q, col, r, label) => { const A = P(q); g.fillStyle = col; g.beginPath(); g.arc(A[0], A[1], r, 0, 7); g.fill(); if (label) { g.fillStyle = ink; g.textAlign = 'left'; g.fillText(label, A[0] + 7, A[1] - 5); } };
+  for (let k = 1; k < tw3.length; k++) seg(tw3[k - 1], tw3[k], warn, 1.2, [4, 4]);
+  tw3.forEach((q, i) => dot(q, warn, 5, ut[i].name));
+  dot([0, 0, 0], ink, 4, 'Surface');
+  const td = plan[plan.length - 1], tl = tw3[tw3.length - 1];
+  dot(td, ink, 4, tl && Math.hypot(td[0] - tl[0], td[1] - tl[1], td[2] - tl[2]) < 1 ? '' : 'TD');
+}
+const draw3DAll = () => { draw3D('cv3d'); draw3D('cvAp3d'); };
+['cv3d', 'cvAp3d'].forEach(id => {
+  const c = $('#' + id);
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); V3.drag = { x: e.clientX, y: e.clientY }; });
+  c.addEventListener('pointerup', () => V3.drag = null);
+  c.addEventListener('pointermove', e => {
+    if (!V3.drag) return;
+    V3.yaw += (e.clientX - V3.drag.x) * 0.008; V3.pitch = Math.max(-1.5, Math.min(1.5, V3.pitch + (e.clientY - V3.drag.y) * 0.008));
+    V3.drag = { x: e.clientX, y: e.clientY }; later(draw3DAll);
+  });
+  c.addEventListener('wheel', e => { e.preventDefault(); V3.zoom = Math.max(.2, Math.min(12, V3.zoom * Math.exp(-e.deltaY * 0.0015))); draw3DAll(); }, { passive: false });
+  c.addEventListener('dblclick', () => { V3.yaw = -35 * D2R; V3.pitch = 28 * D2R; V3.zoom = 1; draw3DAll(); });
+});
+
+/* ---- line charts ---- */
+function lineChart(canvasId, o) {
+  const c = $('#' + canvasId); if (!c.offsetParent) return;
+  const { g, w, h } = setupCanvas(c);
+  const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
+  const m = { l: 52, r: o.right ? 46 : 14, t: 12, b: 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const ext = ax => {
+    let lo = Infinity, hi = -Infinity;
+    o.series.filter(s => (s.axis || 'left') === ax).forEach(s => s.pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
+    (o.hlines || []).filter(l => (l.axis || 'left') === ax).forEach(l => { lo = Math.min(lo, l.y); hi = Math.max(hi, l.y); });
+    if (!isFinite(lo)) return [0, 1];
+    lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; return [lo, hi + pad];
+  };
+  const xs = o.series.flatMap(s => s.pts.map(p => p[0])); const xlo = Math.min(...xs), xhi = Math.max(...xs, xlo + 1);
+  const L = ext('left'), R = o.right ? ext('right') : null;
+  const X = x => m.l + (x - xlo) / (xhi - xlo) * iw;
+  const Yf = (r, y) => m.t + ih - (y - r[0]) / (r[1] - r[0]) * ih;
+  const sx = niceStep(xhi - xlo, 6), sl = niceStep(L[1] - L[0], 5);
+  g.lineWidth = 1; g.strokeStyle = grid; g.fillStyle = muted; g.textAlign = 'right'; g.beginPath();
+  for (let y = Math.ceil(L[0] / sl) * sl; y <= L[1]; y += sl) { g.moveTo(m.l, Math.round(Yf(L, y)) + .5); g.lineTo(m.l + iw, Math.round(Yf(L, y)) + .5); }
+  g.stroke();
+  for (let y = Math.ceil(L[0] / sl) * sl; y <= L[1]; y += sl) g.fillText(fmt(y, sl < 1 ? 1 : 0), m.l - 6, Yf(L, y) + 4);
+  if (R) { const sr = niceStep(R[1] - R[0], 5); g.textAlign = 'left'; for (let y = Math.ceil(R[0] / sr) * sr; y <= R[1]; y += sr) g.fillText(fmt(y, sr < 1 ? 1 : 0), m.l + iw + 6, Yf(R, y) + 4); }
+  g.textAlign = 'center';
+  for (let x = Math.ceil(xlo / sx) * sx; x <= xhi; x += sx) g.fillText(fmt(x, 0), X(x), m.t + ih + 14);
+  g.fillText(o.xl, m.l + iw / 2, h - 4);
+  g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
+  (o.hlines || []).forEach(l => { const r = (l.axis || 'left') === 'right' ? R : L, y = Yf(r, l.y); g.strokeStyle = l.color; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.color; g.textAlign = 'left'; g.fillText(l.label, m.l + 6, y - 4); });
+  o.series.forEach(s => {
+    const r = (s.axis || 'left') === 'right' ? R : L; g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
+    s.pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Yf(r, p[1])) : g.moveTo(X(p[0]), Yf(r, p[1]))); g.stroke();
+  });
+  g.restore(); g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
+  // legend
+  let lx = m.l + 8; g.textAlign = 'left';
+  o.series.forEach(s => { g.fillStyle = s.color; g.fillRect(lx, m.t + ih - 16, 14, 3); g.fillStyle = ink; g.fillText(s.name, lx + 19, m.t + ih - 11); lx += g.measureText(s.name).width + 36; });
+}
+function drawDls() {
+  if (!M.survey) return;
+  lineChart('cvDls', {
+    xl: 'Measured depth (ft)', right: true,
+    series: [{ name: 'Inclination (°)', color: css('--blue'), pts: M.survey.map(r => [r.md, r.inc]) },
+             { name: 'DLS (°/100 ft)', color: css('--accent'), axis: 'right', pts: M.survey.slice(1).map(r => [r.md, r.dls]) }],
+    hlines: [{ axis: 'right', y: state.maxDls, color: css('--accent'), label: 'DLS alarm ' + fmt(state.maxDls, 1) }]
+  });
+}
+function drawSep() {
+  const c = $('#cvSep'); if (!c.offsetParent) return;
+  if (!M.survey || !M.sep || !M.offs.length) {
+    const { g, w, h } = setupCanvas(c); g.fillStyle = css('--muted'); g.textAlign = 'center';
+    g.fillText(M.offs && M.offs.length ? 'Calculating…' : 'No other wells or offsets to compare.', w / 2, h / 2); return;
+  }
+  lineChart('cvSep', {
+    xl: 'Plan measured depth (ft)',
+    series: M.offs.map((o, i) => ({ name: o.name, color: o.color, pts: M.sep[i].map(x => [x.md, Math.min(x.d, 5000)]) })),
+    hlines: [{ y: state.minSep, color: css('--warn'), label: 'alert ' + fmt(state.minSep, 0) + ' ft' }]
+  });
+}
+
+/* ================= plan vs actual ================= */
+/* state.actual = { src, added, trueNorth, tie: 'auto'|'plan'|'surface', rows: [{md, inc, azi}] } (azimuths as filed). */
+const ACT = { rows: null, dev: null, tieHow: '', conv: 0 };
+function apLegend(g, x, y) {
+  g.save(); g.font = '12px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'left'; g.lineWidth = 3;
+  g.strokeStyle = css('--accent'); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 20, y); g.stroke();
+  g.fillStyle = css('--ink'); g.fillText('Plan', x + 26, y + 4);
+  g.strokeStyle = css('--blue'); g.beginPath(); g.moveTo(x + 70, y); g.lineTo(x + 90, y); g.stroke();
+  g.fillStyle = css('--ink'); g.fillText('Actual', x + 96, y + 4); g.restore();
+}
+function computeActual() {
+  ACT.rows = ACT.dev = null; ACT.tieHow = ''; ACT.conv = 0;
+  const a = state.actual; if (!a || !a.rows || a.rows.length < 2 || !M.survey) return;
+  if (a.trueNorth && isLL()) { const ll = WP.toLatLon(state.surface.n, state.surface.e, state.crs); ACT.conv = WP.convergence(ll.lat, ll.lon, state.crs); }
+  const st = a.rows.map(r => ({ md: r.md, inc: r.inc, azi: WP.norm360(r.azi - ACT.conv) })), first = st[0].md, mode = a.tie || 'auto';
+  let tie = { n: 0, e: 0, tvd: 0 };
+  if (mode === 'plan' || (mode === 'auto' && first > 1)) { const t = WP.planAtMd(M.survey, first); tie = { n: t.n, e: t.e, tvd: t.tvd }; ACT.tieHow = `tied to the plan at MD ${fmt(first, 0)}`; }
+  else if (mode === 'surface' && first > 0) { tie = { n: 0, e: 0, tvd: first }; ACT.tieHow = `tied to the surface, vertical to MD ${fmt(first, 0)}`; }
+  else ACT.tieHow = 'starts at the surface';
+  ACT.rows = WP.actualSurvey(st, { n0: state.surface.n, e0: state.surface.e, kb: state.kb, vsAzi: M.vsAzi, tie });
+  ACT.dev = WP.planVsActual(ACT.rows, M.survey);
+}
+function drawApDist() {
+  if (!ACT.dev) return;
+  lineChart('cvApDist', {
+    xl: 'Actual measured depth (ft)',
+    series: [{ name: 'Distance to plan', color: css('--ink'), pts: ACT.dev.map(d => [d.md, d.dist]) },
+             { name: 'Right (+) / left (−)', color: css('--accent'), pts: ACT.dev.map(d => [d.md, d.right]) },
+             { name: 'High (+) / low (−)', color: css('--blue'), pts: ACT.dev.map(d => [d.md, d.high]) }]
+  });
+}
+function drawActual() {
+  if (!$('#pane-actual').classList.contains('on') || !ACT.rows) return;
+  draw2D('apPlan'); draw2D('apSec'); draw3D('cvAp3d'); drawApDist();
+}
+function renderActual() {
+  if (!$('#pane-actual').classList.contains('on')) return;
+  const a = state.actual, has = !!ACT.rows;
+  $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
+  $('#apSecLbl').textContent = M.survey ? `VS azimuth ${fmt(M.vsAzi, 1)}°` : '';
+  if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; }
+  if (!a) { if (!$('#actMsg').dataset.keep) $('#actMsg').textContent = 'Import the as-drilled survey (MD, inclination, azimuth), full or partial, to compare it with this well’s plan.'; return; }
+  if (!M.survey) { $('#actMsg').textContent = 'The plan does not build right now, so there is nothing to compare with.'; return; }
+  if (!has) { $('#actMsg').textContent = `${a.rows.length} station${a.rows.length === 1 ? '' : 's'} so far. Add at least two to draw the actual path.`; return; }
+  const r = ACT.rows, last = r[r.length - 1], dv = ACT.dev, ld = dv[dv.length - 1];
+  let mx = dv[0]; dv.forEach(d => { if (d.dist > mx.dist) mx = d; });
+  const planEnd = M.survey[M.survey.length - 1];
+  $('#actMsg').innerHTML = `${esc(a.src || 'Pasted survey')} · ${r.length} stations, MD ${fmt(r[0].md, 0)} to ${fmt(last.md, 0)} · ${ACT.tieHow}` +
+    (a.trueNorth ? ` · azimuths converted from true north (${fmt(ACT.conv, 3)}° convergence)` : ' · azimuths taken as grid') +
+    (last.md > planEnd.md + 1 ? ' · <b>the actual survey runs past the plan TD</b>' : '');
+  $('#actMsg').dataset.keep = '';
+  const st = (k, v, u, cls) => `<div class="stat ${cls || ''}"><div class="k">${k}</div><div class="v">${v}${u ? ` <small>${u}</small>` : ''}</div></div>`;
+  $('#actStats').innerHTML =
+    st('Last actual MD', fmt(last.md, 0), 'ft') + st('Last actual TVD', fmt(last.tvd, 0), 'ft') +
+    st('Distance to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
+    st('Right (+) / left (−)', fmt(ld.right, 1), 'ft') + st('High (+) / low (−)', fmt(ld.high, 1), 'ft') +
+    st('Largest distance', fmt(mx.dist, 1), `ft at MD ${fmt(mx.md, 0)}`);
+  let h = '<thead><tr><th>MD (ft)</th><th>Inc (°)</th><th>Azi (°, grid)</th><th>TVD (ft)</th><th>VS (ft)</th><th>Distance to plan (ft)</th><th>Right + / left − (ft)</th><th>High + / low − (ft)</th><th>Plan MD at closest (ft)</th></tr></thead><tbody>';
+  let nextMd = -Infinity;
+  r.forEach((q, i) => {
+    if (!(q.md >= nextMd || i === r.length - 1 || i === 0)) return; nextMd = Math.floor(q.md / 100) * 100 + 100;
+    const d = dv[i];
+    h += `<tr><td>${fmt(q.md, 0)}</td><td>${fmt(q.inc, 2)}</td><td>${fmt(q.azi, 2)}</td><td>${fmt(q.tvd, 1)}</td><td>${fmt(q.vs, 1)}</td><td>${fmt(d.dist, 1)}</td><td>${fmt(d.right, 1)}</td><td>${fmt(d.high, 1)}</td><td>${fmt(d.planMd, 0)}</td></tr>`;
+  });
+  $('#actTbl').innerHTML = h + '</tbody>';
+  drawActual();
+}
+function actualMsg(t) { const m = $('#actMsg'); m.textContent = t; m.dataset.keep = '1'; }
+function loadActualText(text, src) {
+  const r = WP.parseActualText(text);
+  if (r.rows.length < 2) { renderActual(); actualMsg(`Found ${r.rows.length} usable station${r.rows.length === 1 ? '' : 's'} in ${src || 'the pasted text'}. Each line needs MD, inclination and azimuth (a header line that names them is fine).` + (state.actual ? ' The existing actual survey was kept.' : '')); return; }
+  const prev = state.actual;
+  state.actual = { src: src || 'pasted survey', added: new Date().toISOString().slice(0, 10), trueNorth: prev ? !!prev.trueNorth : false, tie: prev ? prev.tie : 'auto', rows: r.rows };
+  P2.apPlan.view = P2.apSec.view = null;
+  recalc();
+  actAddMsg(prev ? `Replaced the previous survey (${prev.rows.length} stations) with ${r.rows.length}.` : '');
+  const extra = [r.skipped ? `${r.skipped} line${r.skipped === 1 ? '' : 's'} skipped` : '', r.dropped ? `${r.dropped} repeated MD dropped` : ''].filter(Boolean).join(', ');
+  if (extra) { const m = $('#actMsg'); m.insertAdjacentHTML('beforeend', ` · ${extra}`); }
+}
+function mergeActual(rows) {
+  if (!rows.length) return null;
+  const a = state.actual || (state.actual = { src: 'entered by hand', added: new Date().toISOString().slice(0, 10), trueNorth: false, tie: 'auto', rows: [] });
+  const key = md => Math.round(md * 100), map = new Map(a.rows.map(r => [key(r.md), r]));
+  const lastMd = a.rows.length ? a.rows[a.rows.length - 1].md : -Infinity;
+  let added = 0, replaced = 0, inserted = 0;
+  rows.forEach(r => { const k = key(r.md); if (map.has(k)) replaced++; else { added++; if (r.md < lastMd) inserted++; } map.set(k, { md: r.md, inc: r.inc, azi: WP.norm360(r.azi) }); });
+  a.rows = [...map.values()].sort((x, y) => x.md - y.md);
+  recalc();
+  const L = a.rows[a.rows.length - 1];
+  return `${added} added${replaced ? `, ${replaced} replaced` : ''}${inserted ? `, ${inserted} inserted above the last station` : ''}. Survey now has ${a.rows.length} station${a.rows.length === 1 ? '' : 's'} to MD ${fmt(L.md, 0)}.`;
+}
+const actAddMsg = t => { $('#actAddMsg').textContent = t; };
+function addStationFromFields() {
+  const md = parseFloat($('#actMd').value), inc = parseFloat($('#actInc').value), azi = parseFloat($('#actAzi').value);
+  if (!isFinite(md) || md < 0 || !isFinite(inc) || inc < 0 || inc > 180 || !isFinite(azi)) { actAddMsg('Enter MD, inclination (0 to 180) and azimuth.'); return; }
+  const t = mergeActual([{ md, inc, azi }]); actAddMsg(t);
+  ['actMd', 'actInc', 'actAzi'].forEach(id => { $('#' + id).value = ''; }); $('#actMd').focus();
+}
+$('#bActAdd').onclick = addStationFromFields;
+['actMd', 'actInc', 'actAzi'].forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') addStationFromFields(); }));
+$('#bActAddPaste').onclick = () => {
+  const r = WP.parseActualText($('#actAddPaste').value);
+  if (!r.rows.length) { actAddMsg('No usable stations found. Each line needs MD, inclination and azimuth.'); return; }
+  const t = mergeActual(r.rows); actAddMsg(t + (r.skipped ? ` ${r.skipped} line${r.skipped === 1 ? '' : 's'} skipped.` : '')); $('#actAddPaste').value = '';
+};
+$('#bActUndo').onclick = () => {
+  const a = state.actual; if (!a || !a.rows.length) { actAddMsg('There are no stations to remove.'); return; }
+  const g = a.rows.pop(); if (!a.rows.length) state.actual = null; recalc(); actAddMsg(`Removed the station at MD ${fmt(g.md, 0)}.`);
+};
+$('#bActFile').onclick = () => $('#actFile').click();
+$('#actFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { loadActualText(await f.text(), f.name); } catch (x) { actualMsg('Could not read that file: ' + x.message); } };
+$('#bActPaste').onclick = () => { $('#actPasteBox').hidden = false; $('#actPaste').focus(); };
+$('#bActPasteCancel').onclick = () => { $('#actPasteBox').hidden = true; };
+$('#bActUse').onclick = () => { const t = $('#actPaste').value; loadActualText(t, 'pasted survey'); if (state.actual) { $('#actPasteBox').hidden = true; $('#actPaste').value = ''; } };
+$('#bActClear').onclick = () => { if (!confirm('Remove the actual survey from this well?')) return; state.actual = null; $('#actMsg').dataset.keep = ''; recalc(); };
+$('#actTie').onchange = e => { if (state.actual) { state.actual.tie = e.target.value; recalc(); } };
+$('#actTrue').onchange = e => { if (state.actual) { state.actual.trueNorth = e.target.checked; recalc(); } };
+
+/* ================= wall plot ================= */
+/* A one-page landscape Letter plot like a standard wall plot: header, formation tops, design targets, section details,
+ * plan view and a close-up section view. Built as SVG in points (1/72 in) so printing to PDF stays vector. */
+const WALL = { on: false };
+const ZONE_NAME = { 'WY-E': 'Wyoming Eastern Zone', 'WY-EC': 'Wyoming East Central Zone', 'WY-WC': 'Wyoming West Central Zone', 'WY-W': 'Wyoming Western Zone' };
+let wallLogo = window.WALL_LOGO || null;
+try { const t = JSON.parse(localStorage.getItem('wellplanner.wallLogo') || 'null'); if (t && t.src) wallLogo = t; } catch (e) {}
+const r2 = v => Math.round(v * 100) / 100;
+const wallNice = (v, list) => list.find(x => x >= v) || list[list.length - 1];
+function wallShortId(name) { const m = String(name).replace(/^[^\d]*?(?=\d)/, ''); return /\d/.test(name) ? m : name; }
+function wallFootage() {
+  const w = state.wall; if (w.footText && w.footText.trim()) return w.footText.trim();
+  if (!isLL() || !M.survey) return '';
+  const p = { n: state.surface.n, e: state.surface.e }, sec = secNear().find(x => WP.ptInRing(p, x.ring)); if (!sec) return '';
+  const f = WP.ringFootage(sec.ring, p), pick = {
+    fnl: ['FNL', f.n], fsl: ['FSL', f.s], fel: ['FEL', f.e], fwl: ['FWL', f.w]
+  };
+  let a, b;
+  if (w.foot === 'auto') { a = f.n !== null && (f.s === null || f.n <= f.s) ? pick.fnl : pick.fsl; b = f.e !== null && (f.w === null || f.e <= f.w) ? pick.fel : pick.fwl; }
+  else { const m = { fnlfel: ['fnl', 'fel'], fnlfwl: ['fnl', 'fwl'], fslfel: ['fsl', 'fel'], fslfwl: ['fsl', 'fwl'] }[w.foot] || ['fnl', 'fel']; a = pick[m[0]]; b = pick[m[1]]; }
+  return [a, b].filter(x => x[1] !== null).map(x => `${x[1].toFixed(1)} ${x[0]}`).join('   ');
+}
+function wallSvg() {
+  if (!M.survey) return '';
+  const s = state, w = s.wall, sv = M.survey, surf = s.surface, F = 'Helvetica, Arial, sans-serif';
+  const ll = isLL() ? WP.toLatLon(surf.n, surf.e, s.crs) : null, conv = ll ? WP.convergence(ll.lat, ll.lon, s.crs) : 0;
+  const trueN = -conv;
+  const esc2 = x => esc(String(x));
+  let o = '';
+  const T = (x, y, str, sz, a = {}) => { o += `<text x="${r2(x)}" y="${r2(y)}" font-size="${sz}"${a.anchor ? ` text-anchor="${a.anchor}"` : ''}${a.bold ? ' font-weight="bold"' : ''}${a.fill ? ` fill="${a.fill}"` : ''}${a.rot ? ` transform="rotate(${a.rot} ${r2(x)} ${r2(y)})"` : ''}>${esc2(str)}</text>`; };
+  const L = (x1, y1, x2, y2, col = '#000', wd = .6, dash) => { o += `<line x1="${r2(x1)}" y1="${r2(y1)}" x2="${r2(x2)}" y2="${r2(y2)}" stroke="${col}" stroke-width="${wd}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; };
+  const PL = (pts, col, wd, dash, close) => { o += `<${close ? 'polygon' : 'polyline'} points="${pts.map(p => r2(p[0]) + ',' + r2(p[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${wd}" stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; };
+
+  /* ---- logo ---- */
+  if (wallLogo) { const lw = 150, lh = lw * wallLogo.h / wallLogo.w; o += `<image href="${wallLogo.src}" x="14" y="10" width="${lw}" height="${r2(lh)}"/>`; }
+
+  /* ---- formation tops (left) ---- */
+  const tops = WP.formationMds(s.tops, sv, surf).filter(t => t.md !== null);
+  let yL = 152; T(88, yL, 'FORMATION TOP DETAILS', 8.3, { anchor: 'middle' }); yL += 19;
+  T(49, yL, 'TVDPath', 8.3, { anchor: 'end' }); T(86, yL, 'MDPath', 8.3, { anchor: 'end' }); T(138, yL, 'Formation', 8.3, { anchor: 'middle' }); yL += 9;
+  tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(138, yL, t.name, 8.3, { anchor: 'middle' }); yL += 9.2; });
+
+  /* ---- header block ---- */
+  const cx = 335;
+  T(cx, 22, s.name, 10.2, { anchor: 'middle', bold: true });
+  const foot = wallFootage(); if (foot) T(cx, 34, foot, 9.8, { anchor: 'middle' });
+  if (ll) { T(cx, 55, 'North American Datum 1983', 9.8, { anchor: 'middle' }); T(cx, 66, 'US State Plane 1983', 9.8, { anchor: 'middle' }); T(cx, 77, ZONE_NAME[s.crs] || WP.CRS[s.crs].name, 9.8, { anchor: 'middle' }); }
+  else T(cx, 62, 'Local grid coordinates', 9.8, { anchor: 'middle' });
+  T(cx - 46, 99, 'GL: ' + (+s.gl).toFixed(1), 9.8, { anchor: 'end' }); T(cx - 32, 99, `WELL @ ${(+s.kb).toFixed(1)}usft (Original Well Elev)`, 9.8);
+  if (ll) { T(cx - 46, 110, 'Latitude ' + ll.lat.toFixed(6), 9.8, { anchor: 'end' }); T(cx + 9, 110, 'Longitude ' + ll.lon.toFixed(6), 9.8); }
+  T(cx - 46, 121, 'Easting ' + surf.e.toFixed(2), 9.8, { anchor: 'end' }); T(cx + 9, 121, 'Northing ' + surf.n.toFixed(2), 9.8);
+
+  /* ---- design targets ---- */
+  const tg = usedTargets(), id = wallShortId(s.name), tname = t => w.wellId && id ? `${t.name} - ${id}` : t.name;
+  let yC = 140; T(cx, yC, 'DESIGN TARGET DETAILS', 6.8, { anchor: 'middle' }); yC += 8; T(cx - 6, yC, 'Plan: ' + (w.plan || ''), 6.8, { anchor: 'start' }); yC += 15;
+  const col = { name: 215, tvd: 273, ns: 305, ew: 335, n: 405, e: 450 };
+  T(col.name, yC, 'Name', 6.8, { anchor: 'middle' }); T(col.tvd, yC, 'TVD', 6.8, { anchor: 'middle' }); T(col.ns, yC, '+N/-S', 6.8, { anchor: 'middle' }); T(col.ew, yC, '+E/-W', 6.8, { anchor: 'middle' });
+  T(col.n, yC, 'Northing', 6.8, { anchor: 'middle' }); T(col.e, yC, 'Easting', 6.8, { anchor: 'middle' }); yC += 8;
+  tg.forEach((t, i) => {
+    T(173, yC, tname(t), 6.8); T(col.tvd, yC, (+t.tvd).toFixed(1), 6.8, { anchor: 'middle' }); T(col.ns, yC, (t.n - surf.n).toFixed(1), 6.8, { anchor: 'middle' }); T(col.ew, yC, (t.e - surf.e).toFixed(1), 6.8, { anchor: 'middle' });
+    T(col.n, yC, (+t.n).toFixed(2), 6.8, { anchor: 'middle' }); T(col.e, yC, (+t.e).toFixed(2), 6.8, { anchor: 'middle' });
+    const ms = M.misses && M.misses[i]; yC += 7.5;
+    T(253, yC, ms ? (ms.d < 0.5 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`) : '', 6.8); yC += 7.5;
+  });
+
+  /* ---- section details ---- */
+  const rows = WP.wallSectionRows(M.sections, M.secEnds, sv[0]);
+  const oMain = o, secTop = yC - 4; o = '';
+  yC += 4; T(cx + 25, yC, 'SECTION DETAILS', 6.8, { anchor: 'middle' }); yC += 13;
+  const sc = [178, 203, 232, 257, 286, 318, 345, 371, 394, 424];
+  ['Sec', 'MD', 'Inc', 'Azi', 'TVD', '+N/-S', '+E/-W', 'Dleg', 'TFace', 'VSect'].forEach((h, i) => T(sc[i], yC, h, 6.8, { anchor: 'middle' })); T(446, yC, 'Annotation', 6.8); yC += 8;
+  rows.forEach((r, i) => {
+    const v = [String(i + 1), r.md.toFixed(1), r.inc.toFixed(2), r.azi.toFixed(2), r.tvd.toFixed(1), r.n.toFixed(1), r.e.toFixed(1), r.dls.toFixed(2), r.tf.toFixed(2), r.vs.toFixed(1)];
+    v.forEach((x, k) => T(sc[k], yC, x, 6.8, { anchor: 'middle' })); T(446, yC, r.note, 6.8); yC += 7.7;
+  });
+  const secOut = o, secBot = yC - 2; o = oMain;
+  const secLeft = 160, secRight = Math.max(500, 446 + 3.4 * Math.max(0, ...rows.map(r => String(r.note).length)) + 6);
+  const plotTop = Math.max(yC, yL, 300) + 10;
+
+  /* ---- plan view (right) ---- */
+  const PX0 = 506, PX1 = 738, PY0 = 40, PY1 = plotTop - 12, pw = PX1 - PX0, ph = PY1 - PY0;
+  const pathPts = sv.map(r => [r.easting - surf.e, r.northing - surf.n]).concat(tg.map(t => [t.e - surf.e, t.n - surf.n]));
+  const bx0 = Math.min(...pathPts.map(p => p[0])), bx1 = Math.max(...pathPts.map(p => p[0])), by0 = Math.min(...pathPts.map(p => p[1])), by1 = Math.max(...pathPts.map(p => p[1]));
+  const scaleList = [100, 200, 250, 300, 400, 500, 600, 750, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 8000, 10000];
+  const fit = Math.max((bx1 - bx0) / (pw / 72 * .86), (by1 - by0) / (ph / 72 * .86), 1);
+  const ftIn = parseFloat(w.scale) > 0 ? parseFloat(w.scale) : wallNice(fit, scaleList), k = 72 / ftIn;     // points per ft
+  const ccx = (bx0 + bx1) / 2, ccy = (by0 + by1) / 2, PXf = e => PX0 + pw / 2 + (e - ccx) * k, PYf = n => PY0 + ph / 2 - (n - ccy) * k;
+  o += `<defs><clipPath id="cpPlan"><rect x="${PX0}" y="${PY0}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  o += `<rect x="${PX0}" y="${PY0}" width="${pw}" height="${ph}" fill="none" stroke="#000" stroke-width=".7"/>`;
+  const major = ftIn / 2, minor = major / 5;
+  const eLo = ccx - pw / 2 / k, eHi = ccx + pw / 2 / k, nLo = ccy - ph / 2 / k, nHi = ccy + ph / 2 / k;
+  for (let e = Math.ceil(eLo / minor) * minor; e <= eHi; e += minor) { const big = Math.abs(e / major - Math.round(e / major)) < 1e-6; L(PXf(e), PY0, PXf(e), PY0 - (big ? 7 : 3.5), '#000', big ? .8 : .5); if (big) T(PXf(e), PY0 - 10, String(Math.round(e)), 7.1, { anchor: 'middle' }); }
+  for (let n = Math.ceil(nLo / minor) * minor; n <= nHi; n += minor) { const big = Math.abs(n / major - Math.round(n / major)) < 1e-6; L(PX1, PYf(n), PX1 + (big ? 7 : 3.5), PYf(n), '#000', big ? .8 : .5); if (big) T(PX1 + 9, PYf(n) + 2.5, String(Math.round(n)), 7.1); }
+  T((PX0 + PX1) / 2, PY0 - 24, `West(-)/East(+) (${ftIn} usft/in)`, 8.4, { anchor: 'middle' });
+  T(PX1 + 36, (PY0 + PY1) / 2, `South(-)/North(+) (${ftIn} usft/in)`, 8.4, { anchor: 'middle', rot: 90 });
+  o += `<g clip-path="url(#cpPlan)">`;
+  const secs = w.secs === 'none' ? [] : w.secs === 'near' ? secNear() : secNear().filter(x => x.foot > 0);
+  secs.forEach(x => {
+    PL(x.ring.map(q => [PXf(q.e - surf.e), PYf(q.n - surf.n)]), '#e03030', .8, null, true);
+    if (w.setback && SEC.sb > 0) PL(WP.insetRing(x.ring, SEC.sb).map(q => [PXf(q.e - surf.e), PYf(q.n - surf.n)]), '#2e7d32', 1.2, '5 3', true);
+  });
+  secs.forEach(x => {
+    const cn = x.ring.reduce((a, q) => a + q.n, 0) / x.ring.length, ce = x.ring.reduce((a, q) => a + q.e, 0) / x.ring.length;
+    T(PXf(ce - surf.e), PYf(cn - surf.n), WP.plssName(x.s.id, x.s.sec), 7.3, { anchor: 'middle', bold: true });
+  });
+  PL(sv.filter((_, i) => i % 3 === 0 || i === sv.length - 1).map(r => [PXf(r.easting - surf.e), PYf(r.northing - surf.n)]), '#0000ff', 1.6);
+  // rig at the surface location
+  const rx = PXf(0), ry = PYf(0); PL([[rx - 5, ry], [rx + 5, ry], [rx + 2, ry - 14], [rx - 2, ry - 14]], '#000', .8, null, true); L(rx - 5, ry, rx + 2, ry - 14, '#000', .6); L(rx + 5, ry, rx - 2, ry - 14, '#000', .6); L(rx - 9, ry, rx + 9, ry, '#000', 1);
+  tg.forEach((t, i) => {
+    const x = PXf(t.e - surf.e), y = PYf(t.n - surf.n), side = i % 2 ? 1 : -1, lx = x + side * 26, ly = y - 14;
+    L(x - 8, y, x + 8, y, '#e03030', 1); L(x, y, lx, ly, '#000', .5, '3 2'); T(lx, ly - 2, tname(t), 7.1, { anchor: side > 0 ? 'start' : 'middle' });
+  });
+  o += `</g>`;
+
+  /* ---- section view (bottom) ---- */
+  const X0 = 58, X1 = 770, Y0 = plotTop + 6, Y1 = 574, vsAzi = M.vsAzi;
+  const tvds = tg.map(t => +t.tvd), maxT = Math.max(...tvds, sv[sv.length - 1].tvd);
+  let yMax = parseFloat(w.tvdMax), yMin = parseFloat(w.tvdMin);
+  if (!isFinite(yMax)) yMax = Math.ceil((maxT + 150) / 250) * 250;
+  if (!isFinite(yMin)) yMin = Math.max(0, yMax - 2000);
+  const ySpan = yMax - yMin, yStep = wallNice(ySpan / 5, [50, 100, 200, 250, 400, 500, 1000, 2000]);
+  const vsAll = sv.map(r => r.vs), vLo0 = Math.min(...vsAll), vHi0 = Math.max(...vsAll), vSpan0 = Math.max(vHi0 - vLo0, 100);
+  const xStep = wallNice(vSpan0 / 15, [50, 100, 200, 250, 500, 600, 1000, 2000]);
+  const xMin = Math.floor((vLo0 - vSpan0 * .04) / xStep) * xStep, xMax = Math.ceil((vHi0 + vSpan0 * .04) / xStep) * xStep;
+  const SX = v => X0 + (v - xMin) / (xMax - xMin) * (X1 - X0), SY = d => Y0 + (d - yMin) / ySpan * (Y1 - Y0);
+  o += `<defs><clipPath id="cpSec"><rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}"/></clipPath></defs>`;
+  for (let d = Math.ceil(yMin / yStep) * yStep; d <= yMax + 1e-6; d += yStep) { L(X0, SY(d), X1, SY(d), '#cfcfcf', .6); L(X0 - 7, SY(d), X0, SY(d), '#000', .8); T(X0 - 10, SY(d) + 2, String(Math.round(d)), 5.5, { anchor: 'end' }); }
+  for (let d = Math.ceil(yMin / (yStep / 5)) * (yStep / 5); d <= yMax + 1e-6; d += yStep / 5) if (Math.abs(d / yStep - Math.round(d / yStep)) > 1e-6) L(X0 - 4, SY(d), X0, SY(d), '#000', .5);
+  for (let v = xMin; v <= xMax + 1e-6; v += xStep) { L(SX(v), Y0, SX(v), Y1, '#cfcfcf', .6); T(SX(v), Y1 + 9, String(Math.round(v)), 5.5, { anchor: 'middle' }); }
+  L(X0, Y0, X0, Y1, '#000', .8); L(X0, Y1, X1, Y1, '#000', .8);
+  T((X0 + X1) / 2, Y1 + 19, `Vertical Section at ${vsAzi.toFixed(2)}°`, 7.3, { anchor: 'middle' });
+  T(24, (Y0 + Y1) / 2, 'True Vertical Depth', 7.3, { anchor: 'middle', rot: -90 });
+  o += `<g clip-path="url(#cpSec)">`;
+  tops.forEach(t => { if (t.dip) PL(sv.map(r => [SX(r.vs), SY(WP.topTvdAt(t.top, r.northing, r.easting, surf))]), '#ef8a4a', 1.2); else L(X0, SY(t.tvd), X1, SY(t.tvd), '#ef8a4a', 1.2); });
+  PL(sv.filter((_, i) => i % 2 === 0 || i === sv.length - 1).map(r => [SX(r.vs), SY(r.tvd)]), '#0000ff', 1.6);
+  tg.forEach(t => {
+    const row = sv.reduce((b, r) => Math.hypot(r.northing - t.n, r.easting - t.e, r.tvd - t.tvd) < Math.hypot(b.northing - t.n, b.easting - t.e, b.tvd - t.tvd) ? r : b, sv[0]);
+    const x = SX(row.vs), y = SY(t.tvd); L(x, y - 9, x, y + 9, '#e03030', 1.1); T(x, y + 19, tname(t), 5.5, { anchor: 'middle' });
+  });
+  o += `</g>`;
+  let flip = -1;
+  tops.forEach(t => { const lt = t.dip ? WP.topTvdAt(t.top, sv[0].northing, sv[0].easting, surf) : t.tvd; if (lt >= yMin && lt <= yMax) { const y = SY(lt); flip = -flip; L(X0, y, X0 + 14, y + flip * 9, '#000', .5, '3 2'); T(X0 + 16, y + flip * 9 + (flip < 0 ? -1 : 6), t.name, 5.5); } });
+  o += `<rect x="${secLeft}" y="${r2(secTop)}" width="${r2(secRight - secLeft)}" height="${r2(secBot - secTop)}" fill="#fff"/>` + secOut;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" width="792" height="612" font-family="${F}" style="background:#fff">` + `<rect width="792" height="612" fill="#fff"/>` + o + `</svg>`;
+}
+/* ================= drill plan: Landmark-style "Standard Planning Report", portrait Letter pages as SVG ================= */
+function drillPlanPages() {
+  if (!M.survey) return [];
+  const s = state, w = s.wall || {}, sv = M.survey, surf = s.surface, ll = isLL() ? WP.toLatLon(surf.n, surf.e, s.crs) : null, conv = ll ? WP.convergence(ll.lat, ll.lon, s.crs) : 0;
+  const DD = window.WALL_DEFAULTS || {}, company = w.company || DD.company || '', project = w.project || DD.project || '', site = w.site || s.name, wellbore = w.wellbore || 'Wellbore #1', design = w.plan || 'Design #1';
+  const step = parseFloat(w.dpStep) > 0 ? parseFloat(w.dpStep) : 100, tdMd = sv[sv.length - 1].md;
+  const nf = (v, d = 1) => { const z = Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v; return z.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  const now = new Date(), MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const p2 = n => String(n).padStart(2, '0'), h12 = now.getHours() % 12 || 12;
+  const dateLong = `${now.getDate()} ${MON[now.getMonth()]}, ${now.getFullYear()}`, dateShort = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
+  const stamp = `${dateShort}  ${h12}:${p2(now.getMinutes())}:${p2(now.getSeconds())}${now.getHours() < 12 ? 'AM' : 'PM'}`;
+  const LIL = '#d3e5d2', PALE = '#eef5ee', NAVY = '#38763a', F = 'Arial, Helvetica, sans-serif';
+  const zone = ZONE_NAME[s.crs] || (WP.CRS[s.crs] ? WP.CRS[s.crs].name : '');
+  const tg = usedTargets(), id = wallShortId(s.name), tname = t => w.wellId && id ? `${t.name} - ${id}` : t.name;
+  const pages = []; let o = '', y = 0, pageNo = 0;
+  const T = (x, yy, str, sz = 7.15, a = {}) => { o += `<text x="${r2(x)}" y="${r2(yy)}" font-size="${sz}"${a.anchor ? ` text-anchor="${a.anchor}"` : ''}${a.bold ? ' font-weight="bold"' : ''}${a.italic ? ' font-style="italic"' : ''}${a.fill ? ` fill="${a.fill}"` : ''}>${esc(String(str))}</text>`; };
+  const R = (x, yy, wd, ht, fill) => { o += `<rect x="${r2(x)}" y="${r2(yy)}" width="${r2(wd)}" height="${r2(ht)}" fill="${fill}"/>`; };
+  const LN = (x1, y1, x2, y2, col = '#000', wd = 1) => { o += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${wd}"/>`; };
+  const finish = () => {
+    LN(28.8, 739.25, 581.55, 739.25); T(29, 753, stamp, 6.95); T(306, 754, 'Page ' + pageNo, 6.95, { anchor: 'middle' }); T(581, 754, 'Well Path Planner', 6.95, { anchor: 'end' });
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 792" width="612" height="792" font-family="${F}"><rect width="612" height="792" fill="#fff"/>${o}</svg>`);
+  };
+  const newPage = (hdr = true) => {
+    if (o) finish(); o = ''; pageNo++; y = 150;
+    if (!hdr) return;
+    R(30.2, 63.75, 546.65, 76.8, LIL); R(110, 67.5, 170.8, 71.5, PALE); R(403.6, 66.8, 170.4, 72.3, PALE); LN(30.25, 60.8, 576.9, 60.8, LIL, 1.5);
+    T(306, 44.3, 'Planning Report', 8.95, { anchor: 'middle', bold: true, fill: NAVY });
+    const L = [['Database:', 'EDM'], ['Company:', company], ['Project:', project], ['Site:', site], ['Well:', s.name], ['Wellbore:', wellbore], ['Design:', design]];
+    L.forEach((r, i) => { T(32, 75 + i * 10.5, r[0], 6.95); T(113, 75 + i * 10.5, r[1], 7.15); });
+    [['Local Co-ordinate Reference:', 'Well ' + s.name], ['TVD Reference:', `WELL @ ${nf(s.kb)}usft (Original Well Elev)`], ['MD Reference:', `WELL @ ${nf(s.kb)}usft (Original Well Elev)`], ['North Reference:', 'Grid'], ['Survey Calculation Method:', 'Minimum Curvature']]
+      .forEach((r, i) => { T(285, 75 + i * 10.5, r[0], 6.95); T(408, 75 + i * 10.5, r[1], 7.15); });
+  };
+  const bar = title => { R(30.9, y, 546.65, 13.5, LIL); T(34, y + 9.6, title, 7.8, { bold: true }); y += 18; };
+  const kv = (x, yy, lab, val, vx) => { T(x, yy, lab, 6.95); T(vx, yy, val, 7.15); };
+
+  /* ---------- cover ---------- */
+  newPage(false);
+  T(118.8, 178, company, 21.5, { bold: true }); T(118.8, 197, project, 12.25); T(118.8, 213.5, site, 12.25); T(118.8, 230, s.name, 12.25);
+  T(118.8, 263, wellbore, 12.25); T(118.8, 319, 'Plan: ' + design, 12.25);
+  T(118.8, 393, 'Standard Planning Report', 21.5, { bold: true }); T(118.8, 424, dateLong, 10.5);
+
+  /* ---------- well information ---------- */
+  newPage(); const cy = () => y;
+  bar('Project'); kv(34, y, 'Project', project, 109); y += 11;
+  if (ll) { kv(34, y, 'Map System:', 'US State Plane 1983', 105); kv(280, y, 'System Datum:', 'Mean Sea Level', 401); y += 11; kv(34, y, 'Geo Datum:', 'North American Datum 1983', 105); y += 11; kv(34, y, 'Map Zone:', zone, 105); y += 14; }
+  else { kv(34, y, 'Map System:', 'Local grid coordinates', 105); y += 14; }
+  bar('Site'); kv(34, y, 'Site', site, 109); y += 11;
+  kv(34, y, 'Site Position:', '', 109); kv(205, y, 'Northing:', nf(surf.n, 2) + ' usft', 298); if (ll) kv(365, y, 'Latitude:', ll.lat.toFixed(6), 541); y += 11;
+  kv(34, y, 'From:', 'Map', 109); kv(205, y, 'Easting:', nf(surf.e, 2) + ' usft', 304); if (ll) kv(365, y, 'Longitude:', ll.lon.toFixed(6), 534); y += 11;
+  kv(34, y, 'Position Uncertainty:', '0.0 usft', 172); kv(205, y, 'Slot Radius:', '', 325); if (ll) kv(365, y, 'Grid Convergence:', nf(conv, 2) + ' °', 540); y += 16;
+  bar('Well'); kv(34, y, 'Well', s.name, 109); y += 11;
+  kv(34, y, 'Well Position', '+N/-S', 109); T(175, y, '0.0 usft', 7.15); kv(217, y, 'Northing:', nf(surf.n, 2) + ' usft', 320); if (ll) kv(397, y, 'Latitude:', ll.lat.toFixed(6), 541); y += 11;
+  kv(109, y, '+E/-W', '0.0 usft', 175); kv(217, y, 'Easting:', nf(surf.e, 2) + ' usft', 326); if (ll) kv(397, y, 'Longitude:', ll.lon.toFixed(6), 535); y += 11;
+  kv(34, y, 'Position Uncertainty', '0.0 usft', 175); kv(217, y, 'Wellhead Elevation:', nf(s.kb) + ' usft', 338); kv(397, y, 'Ground Level:', nf(s.gl) + ' usft', 537); y += 16;
+  bar('Wellbore'); kv(34, y, 'Wellbore', wellbore, 111); y += 16;
+  bar('Design'); kv(34, y, 'Design', design, 109); y += 11; kv(34, y, 'Audit Notes:', '', 109); y += 11;
+  kv(34, y, 'Version:', '', 60); kv(207, y, 'Phase:', 'PROTOTYPE', 267); kv(353, y, 'Tie On Depth:', '0.0', 460); y += 16;
+  kv(34, y, 'Vertical Section:', '', 86); T(175, y, 'Depth From (TVD)', 6.95); T(289, y, '+N/-S', 6.95); T(354, y, '+E/-W', 6.95); T(448, y, 'Direction', 6.95); y += 9;
+  T(196, y, '(usft)', 6.95); T(290, y, '(usft)', 6.95); T(355, y, '(usft)', 6.95); T(459, y, '(°)', 6.95); y += 12;
+  T(200, y, '0.0', 7.15); T(293, y, '0.0', 7.15); T(359, y, '0.0', 7.15); T(452, y, nf(M.vsAzi, 2), 7.15); y += 22;
+  bar('Plan Survey Tool Program'); kv(160, y - 4, 'Date', dateShort, 184); y += 8;
+  T(55, y, 'Depth From', 6.95); T(115, y, 'Depth To', 6.95); T(155, y, 'Survey (Wellbore)', 6.95); T(274, y, 'Tool Name', 6.95); T(372, y, 'Remarks', 6.95); y += 9;
+  T(65, y, '(usft)', 6.95); T(122, y, '(usft)', 6.95); y += 13;
+  T(47, y, '1', 7.15); T(87, y, '0.0', 7.15); T(120, y, nf(tdMd), 7.15); T(155, y, `${design} (${wellbore})`, 7.15); T(272, y, 'MWD', 7.15); y += 12; T(272, y, 'OWSG MWD - Standard', 7.15);
+
+  /* ---------- generic table: lilac title bar, 3-line header, rows with optional note line under ---------- */
+  const table = (title, cols, rows, nx = 100) => {
+    const head = () => {
+      bar(title); R(30.9, y - 4, 546.65, 30, LIL);
+      cols.forEach(c => (c.h || []).slice(-3).forEach((ln, k, a) => { if (ln) T(c.hx !== undefined ? c.hx : c.x - 18, y + 4 + (3 - a.length + k) * 9, ln, 6.95, { anchor: c.left ? 'start' : 'middle' }); }));
+      y += 36;
+    };
+    newPage(); head();
+    rows.forEach(r => {
+      if (y > (r.note ? 712 : 722)) { newPage(); head(); }
+      r.cells.forEach((v, i) => { const c = cols[i]; if (c.left) T(c.x, y, v, 7.15); else T(c.x, y, v, 7.15, { anchor: 'end' }); });
+      y += 9.2; if (r.note) { R(30.9, y - 7.1, 546.65, 9.2, LIL); T(nx, y, r.note, 7.15, { italic: true }); y += 9.2; }
+    });
+    y += 6;
+  };
+  const rates = (a, b) => {
+    const dm = b.md - a.md; if (!(dm > 0)) return [0, 0, 0];
+    const I1 = a.inc * D2R, I2 = b.inc * D2R, dA = (b.azi - a.azi) * D2R;
+    const dls = Math.acos(Math.max(-1, Math.min(1, Math.cos(I1) * Math.cos(I2) + Math.sin(I1) * Math.sin(I2) * Math.cos(dA)))) / D2R / dm * 100;
+    let da = b.azi - a.azi; if (da > 180) da -= 360; if (da < -180) da += 360;
+    return [dls, (b.inc - a.inc) / dm * 100, a.inc < 0.01 ? 0 : da / dm * 100];
+  };
+  const hit = r => { const t = tg.find(t => Math.hypot(r.n - (t.n - surf.n), r.e - (t.e - surf.e), r.tvd - t.tvd) < 2); return t ? tname(t) : ''; };
+
+  /* ---------- plan sections ---------- */
+  const secRows = WP.wallSectionRows(M.sections, M.secEnds, sv[0]);
+  const pc = ['Measured|Depth|(usft)', '|Inclination|(°)', '|Azimuth|(°)', 'Vertical|Depth|(usft)', '|+N/-S|(usft)', '|+E/-W|(usft)', 'Dogleg|Rate|(°/100usft)', 'Build|Rate|(°/100usft)', 'Turn|Rate|(°/100usft)', '|TFO|(°)'];
+  const pxs = [58, 100, 142, 188, 236, 284, 330, 374, 418, 462];
+  const pcols = pxs.map((x, i) => ({ x, h: pc[i].split('|') })).concat([{ x: 472, left: true, hx: 472, h: ['', '', 'Target'] }]);
+  table('Plan Sections', pcols, secRows.map((r, k) => {
+    const [dls, bld, trn] = k ? rates(secRows[k - 1], r) : [0, 0, 0];
+    return { cells: [nf(r.md), nf(r.inc, 2), nf(r.azi, 2), nf(r.tvd), nf(r.n), nf(r.e), nf(dls, 2), nf(bld, 2), nf(trn, 2), nf(r.tf, 2), hit(r)] };
+  }));
+
+  /* ---------- planned survey ---------- */
+  const key = md => Math.round(md * 100), mdMap = new Map(), notes = new Map();
+  const addMd = md => { if (md >= 0 && md <= tdMd + 1e-6) mdMap.set(key(md), md); };
+  for (let m = 0; m <= tdMd + 1e-6; m += step) addMd(m); addMd(tdMd);
+  const note = (md, txt) => { addMd(md); const k = key(md); notes.set(k, (notes.get(k) ? notes.get(k) + ' - ' : '') + txt); };
+  secRows.forEach((r, k) => { if (k) { addMd(r.md); const h = hit(r); notes.set(key(r.md), r.note + (h ? ' - ' + h : '')); } });
+  const tops = WP.formationMds(s.tops, sv, surf).filter(t => t.md !== null);
+  tops.forEach(t => note(t.md, t.name));
+  tg.forEach(t => { if (secRows.some(r => hit(r) === tname(t))) return; const b = sv.reduce((q, r) => Math.hypot(r.n - (t.n - surf.n), r.e - (t.e - surf.e), r.tvd - t.tvd) < Math.hypot(q.n - (t.n - surf.n), q.e - (t.e - surf.e), q.tvd - t.tvd) ? r : q, sv[0]); note(b.md, tname(t)); });
+  const mds = [...mdMap.values()].sort((a, b) => a - b), pts = mds.map(m => WP.planAtMd(sv, m));
+  const svc = ['Measured|Depth|(usft)', 'Inclination|(°)', 'Azimuth|(°)', 'Vertical|Depth|(usft)', '+N/-S|(usft)', '+E/-W|(usft)', 'Vertical|Section|(usft)', 'Dogleg|Rate|(°/100usft)', 'Build|Rate|(°/100usft)', 'Turn|Rate|(°/100usft)'];
+  const sxs = [78, 130, 182, 236, 290, 342, 396, 450, 508, 566];
+  table('Planned Survey', sxs.map((x, i) => ({ x, h: svc[i].split('|'), hx: x - 20 })), pts.map((p, k) => {
+    const [dls, bld, trn] = k ? rates(pts[k - 1], p) : [0, 0, 0];
+    return { cells: [nf(p.md), nf(p.inc, 2), nf(p.azi, 2), nf(p.tvd), nf(p.n), nf(p.e), nf(p.vs), nf(dls, 2), nf(bld, 2), nf(trn, 2)], note: notes.get(key(p.md)) };
+  }), 130);
+
+  /* ---------- design targets ---------- */
+  if (tg.length) {
+    if (y > 560) newPage();
+    bar('Design Targets');
+    const tx = [{ x: 34, left: true, t: ['Target Name', '- hit/miss target', '- Shape'] }];
+    const hd = ['Dip Angle|(°)', 'Dip Dir.|(°)', 'TVD|(usft)', '+N/-S|(usft)', '+E/-W|(usft)', 'Northing|(usft)', 'Easting|(usft)', 'Latitude', 'Longitude'];
+    const hx = [168, 208, 252, 300, 350, 410, 466, 520, 572];
+    R(30.9, y - 4, 546.65, 30, LIL); T(34, y + 4, 'Target Name', 6.95); T(34, y + 13, '- hit/miss target', 6.95); T(34, y + 22, '- Shape', 6.95);
+    hd.forEach((h, i) => h.split('|').forEach((ln, k, a) => T(hx[i] - 20, y + 4 + (a.length === 1 ? 9 : k * 9) + (a.length === 1 ? 0 : 0), ln, 6.95, { anchor: 'middle' })));
+    y += 36;
+    tg.forEach((t, i) => {
+      const lt = ll ? WP.toLatLon(t.n, t.e, s.crs) : null, ms = M.misses && M.misses[i];
+      [nf(0, 2), nf(0, 2), nf(+t.tvd), nf(t.n - surf.n), nf(t.e - surf.e), nf(t.n, 2), nf(t.e, 2), lt ? lt.lat.toFixed(6) : '', lt ? lt.lon.toFixed(6) : ''].forEach((v, k) => T(hx[k], y, v, 7.15, { anchor: 'end' }));
+      T(34, y, tname(t), 7.15); y += 9.2;
+      T(40, y, ms ? (ms.d < 0.5 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`) : '', 7.15); y += 9.2; T(40, y, '- Point', 7.15); y += 14;
+    });
+    y += 8;
+  }
+
+  /* ---------- formations ---------- */
+  if (tops.length) {
+    if (y > 600) newPage();
+    bar('Formations'); R(30.9, y - 4, 546.65, 30, LIL);
+    [['Measured|Depth|(usft)', 58], ['Vertical|Depth|(usft)', 104], ['Name', 0], ['Lithology', 0], ['Dip|(°)', 0], ['Dip|Direction|(°)', 0]].forEach(() => {});
+    T(40, y + 4, 'Measured', 6.95, { anchor: 'middle' }); T(40, y + 13, 'Depth', 6.95, { anchor: 'middle' }); T(40, y + 22, '(usft)', 6.95, { anchor: 'middle' });
+    T(90, y + 4, 'Vertical', 6.95, { anchor: 'middle' }); T(90, y + 13, 'Depth', 6.95, { anchor: 'middle' }); T(90, y + 22, '(usft)', 6.95, { anchor: 'middle' });
+    T(120, y + 22, 'Name', 6.95); T(300, y + 22, 'Lithology', 6.95); T(430, y + 13, 'Dip', 6.95, { anchor: 'middle' }); T(430, y + 22, '(°)', 6.95, { anchor: 'middle' });
+    T(500, y + 4, 'Dip', 6.95, { anchor: 'middle' }); T(500, y + 13, 'Direction', 6.95, { anchor: 'middle' }); T(500, y + 22, '(°)', 6.95, { anchor: 'middle' });
+    y += 36;
+    tops.forEach(t => { if (y > 722) { newPage(); } T(58, y, nf(t.md), 7.15, { anchor: 'end' }); T(108, y, nf(t.tvd), 7.15, { anchor: 'end' }); T(120, y, t.name, 7.15); T(430, y, nf(t.dip, 2), 7.15, { anchor: 'middle' }); T(500, y, nf(t.azi, 2), 7.15, { anchor: 'middle' }); y += 11; });
+    y += 8;
+  }
+
+  /* ---------- plan annotations ---------- */
+  if (y > 640) newPage();
+  bar('Plan Annotations'); R(30.9, y - 4, 546.65, 39, LIL);
+  [['Measured', 'Depth', '(usft)', 58], ['Vertical', 'Depth', '(usft)', 112]].forEach(h => { T(h[3] - 18, y + 4, h[0], 6.95, { anchor: 'middle' }); T(h[3] - 18, y + 13, h[1], 6.95, { anchor: 'middle' }); T(h[3] - 18, y + 22, h[2], 6.95, { anchor: 'middle' }); });
+  T(190, y + 4, 'Local Coordinates', 6.95, { anchor: 'middle' }); T(160, y + 22, '+N/-S', 6.95, { anchor: 'middle' }); T(220, y + 22, '+E/-W', 6.95, { anchor: 'middle' }); T(160, y + 31, '(usft)', 6.95, { anchor: 'middle' }); T(220, y + 31, '(usft)', 6.95, { anchor: 'middle' });
+  T(262, y + 31, 'Comment', 6.95); y += 45;
+  secRows.slice(1).forEach(r => { if (y > 722) newPage(); T(58, y, nf(r.md), 7.15, { anchor: 'end' }); T(112, y, nf(r.tvd), 7.15, { anchor: 'end' }); T(170, y, nf(r.n), 7.15, { anchor: 'end' }); T(230, y, nf(r.e), 7.15, { anchor: 'end' }); T(262, y, r.note, 7.15); y += 9.2; });
+  finish(); return pages;
+}
+function drillPreview() {
+  const det = $('#dpDet'); if (!det || !det.open || !$('#pane-wall').classList.contains('on')) return;
+  $('#drillPrev').innerHTML = M.survey ? drillPlanPages().map(p => p.replace('width="612" height="792"', 'style="width:100%;max-width:560px;height:auto;border:1px solid var(--line);margin:0 6px 10px 0;background:#fff"')).join('') : '';
+}
+function drawWall() {
+  if (!$('#pane-wall').classList.contains('on')) return;
+  const box = $('#wallPrev'); if (!M.survey) { box.innerHTML = '<div class="hint">The plan does not build right now.</div>'; return; }
+  box.innerHTML = wallSvg().replace('width="792" height="612"', 'style="width:100%;height:auto;border:1px solid var(--line)"');
+  const note = [];
+  if (isLL() && !wallFootage()) note.push('No footage call yet: the section data is not loaded (turn on Show sections on the Plots tab once, or type the footage below).');
+  $('#wallNote').textContent = note.join(' ');
+  drillPreview();
+}
+function syncWallInputs() {
+  const w = state.wall;
+  $$('[data-w]').forEach(el => { const k = el.dataset.w; if (el.type === 'checkbox') el.checked = !!w[k]; else el.value = w[k] === undefined ? '' : w[k]; });
+}
+document.addEventListener('input', e => { const el = e.target.closest('[data-w]'); if (!el || el.type === 'checkbox' || el.tagName === 'SELECT') return; state.wall[el.dataset.w] = el.value; autosave(); drawWall(); });
+document.addEventListener('change', e => { const el = e.target.closest('[data-w]'); if (!el) return; state.wall[el.dataset.w] = el.type === 'checkbox' ? el.checked : el.value; autosave(); drawWall(); });
+function printPages(svgs, pageCss) {
+  const el = $('#wallPrint'); el.innerHTML = svgs.join('');
+  const st = document.createElement('style'); st.id = 'wallPageStyle'; st.textContent = '@page{size:' + pageCss + ';margin:0}'; document.head.appendChild(st);
+  document.body.classList.add('wallmode'); setTimeout(() => window.print(), 80);
+}
+const wallPrint = () => printPages([wallSvg().replace('width="792" height="612"', 'width="11in" height="8.5in"')], '11in 8.5in');
+const drillPrint = () => printPages(drillPlanPages().map(p => p.replace('width="612" height="792"', 'width="8.5in" height="11in"')), '8.5in 11in');
+window.addEventListener('afterprint', () => { document.body.classList.remove('wallmode'); const st = $('#wallPageStyle'); if (st) st.remove(); $('#wallPrint').innerHTML = ''; });
+$('#bDrillPrint').onclick = () => { if (M.survey) drillPrint(); };
+$('#dpDet').addEventListener('toggle', drillPreview);
+$('#bWallPrint').onclick = () => { if (M.survey) wallPrint(); };
+$('#bWallSvg').onclick = () => { if (M.survey) download(safeName() + (apiTag() ? '_' + apiTag() : '') + '_wall_plot.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + wallSvg().replace('width="792" height="612"', 'width="11in" height="8.5in"'), 'image/svg+xml'); };
+$('#bWallLogo').onclick = () => $('#wallLogoFile').click();
+$('#wallLogoFile').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { wallLogo = { src: rd.result, w: im.naturalWidth, h: im.naturalHeight }; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify(wallLogo)); } catch (x) { $('#wallNote').textContent = 'The logo is too big to remember between sessions, but it is used for now.'; } drawWall(); }; im.src = rd.result; };
+  rd.readAsDataURL(f);
+};
+$('#bWallLogoReset').onclick = () => { try { localStorage.removeItem('wellplanner.wallLogo'); } catch (e) {} wallLogo = window.WALL_LOGO || null; drawWall(); };
+$('#bWallNoLogo').onclick = () => { wallLogo = null; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify({ src: '' })); } catch (e) {} drawWall(); };
+
+function drawAll() { if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawPad(); drawActual(); drawWall(); }
+
+/* ================= tabs, resize, theme ================= */
+$$('.tab').forEach(b => b.onclick = () => {
+  $$('.tab').forEach(x => x.classList.toggle('on', x === b));
+  $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  if (b.dataset.tab === 'offsets') renderOffsetResults();
+  if (b.dataset.tab === 'actual') renderActual();
+  WALL.on = b.dataset.tab === 'wall';
+  if (WALL.on) { syncWallInputs(); if (typeof ensureSections === 'function') ensureSections(); }
+  drawAll();
+});
+new ResizeObserver(() => later(drawAll)).observe($('main'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => drawAll());
+
+/* ================= project: wells and pad ================= */
+const slotId = (c, r) => 'C' + c + 'R' + r;
+const wellAtSlot = (c, r) => project.wells.find(w => w.slot && w.slot.c === c && w.slot.r === r);
+function applyAllSlots() {
+  project.wells.forEach(w => { if (w.slot) { const p = WP.padSlot(project.pad, w.slot.c, w.slot.r); w.surface.n = p.n; w.surface.e = p.e; } });
+}
+document.addEventListener('input', e => {                 // pad settings
+  const el = e.target.closest('[data-pk]'); if (!el) return;
+  let v = parseFloat(el.value); if (!isFinite(v)) return;
+  const k = el.dataset.pk;
+  if (k === 'pad.cols' || k === 'pad.rows') v = Math.max(1, Math.min(12, Math.round(v)));
+  if (k === 'pad.refCol' || k === 'pad.refRow') v = Math.max(1, Math.round(v));
+  if (k === 'pad.dx' || k === 'pad.dy') v = Math.max(0, v);
+  setp(project, k, v); recalc();
+});
+$('#bPadUse').onclick = () => {
+  project.pad.ref = { n: state.surface.n, e: state.surface.e };
+  if (state.slot) { project.pad.refCol = state.slot.c; project.pad.refRow = state.slot.r; }
+  writeInputs(); cwFill($('#padRef .cw')); recalc();
+};
+
+/* the pad template is rolled up unless opened; the choice is remembered */
+function setPadOpen(open, save) {
+  $('#padBody').hidden = !open; $('#padArrow').textContent = open ? '▾' : '▸'; $('#padHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (save) { try { localStorage.setItem('wellplanner.padOpen', open ? '1' : '0'); } catch (e) {} }
+  if (open) drawPad();
+}
+$('#padHead').onclick = () => setPadOpen($('#padBody').hidden, true);
+$('#padHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPadOpen($('#padBody').hidden, true); } };
+{ let o = false; try { o = localStorage.getItem('wellplanner.padOpen') === '1'; } catch (e) {} setPadOpen(o, false); }
+function setLsOpen(open, save) {
+  $('#lsBody').hidden = !open; $('#lsArrow').textContent = open ? '▾' : '▸'; $('#lsHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (save) { try { localStorage.setItem('wellplanner.lsOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#lsHead').onclick = () => setLsOpen($('#lsBody').hidden, true);
+$('#lsHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLsOpen($('#lsBody').hidden, true); } };
+{ let o = false; try { o = localStorage.getItem('wellplanner.lsOpen') === '1'; } catch (e) {} setLsOpen(o, false); }
+
+let wellSig = '';
+function renderWellBar() {
+  const sig = project.active + '|' + project.wells.map(w => (w.name || '') + '~' + (w.slot ? slotId(w.slot.c, w.slot.r) : '')).join('|');
+  if (sig === wellSig) return; wellSig = sig;
+  $('#wellSel').innerHTML = project.wells.map((w, i) => `<option value="${i}"${i === project.active ? ' selected' : ''}>${esc(w.name || 'Unnamed')}${w.slot ? ' (' + slotId(w.slot.c, w.slot.r) + ')' : ''}</option>`).join('');
+}
+function selectWell(i) { project.active = i; state = project.wells[i]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init(); }
+$('#wellSel').onchange = e => selectWell(+e.target.value);
+$('#bWellDel').onclick = () => {
+  if (project.wells.length < 2) { alert('A project needs at least one well.'); return; }
+  if (!confirm('Delete "' + state.name + '"? This cannot be undone.')) return;
+  project.wells.splice(project.active, 1);
+  selectWell(Math.max(0, project.active - 1));
+};
+
+function renderSlotSel() {
+  const P = project.pad, have = new Set(), opts = ['<option value="custom">Custom location (type coordinates)</option>'];
+  WP.padSlots(P, P.cols, P.rows).forEach(sl => {
+    const o = wellAtSlot(sl.c, sl.r), taken = o && o !== state; have.add(sl.id);
+    opts.push(`<option value="${sl.c}-${sl.r}"${taken ? ' disabled' : ''}>Pad slot ${sl.id}${o ? ' (' + esc(o.name) + ')' : ''}</option>`);
+  });
+  if (state.slot && !have.has(slotId(state.slot.c, state.slot.r))) opts.push(`<option value="${state.slot.c}-${state.slot.r}">Pad slot ${slotId(state.slot.c, state.slot.r)} (outside the grid)</option>`);
+  const el = $('#slotSel'); el.innerHTML = opts.join('');
+  el.value = state.slot ? state.slot.c + '-' + state.slot.r : 'custom';
+}
+$('#slotSel').onchange = e => {
+  const v = e.target.value;
+  if (v === 'custom') state.slot = null;
+  else {
+    const [c, r] = v.split('-').map(Number), o = wellAtSlot(c, r);
+    if (o && o !== state) { alert('Slot ' + slotId(c, r) + ' already holds ' + o.name + '.'); renderSlotSel(); return; }
+    state.slot = { c, r };
+  }
+  recalc(); cwFill($('#surfCoord .cw'));
+};
+
+function createWellAtSlot(c, r) {
+  const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r);
+  const dn = p.n - src.surface.n, de = p.e - src.surface.e;
+  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; w.api = ''; w.actual = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
+  w.surface = { n: p.n, e: p.e };
+  w.targets.forEach(t => { t.n += dn; t.e += de; });      // same geometry, moved with the surface location
+  project.wells.push(w);
+  selectWell(project.wells.length - 1);
+}
+
+function renderPad() {
+  const P = project.pad, n = P.cols * P.rows, filled = project.wells.filter(w => w.slot).length;
+  $('#padCount').textContent = `${n} slot${n === 1 ? '' : 's'} · ${filled} filled`;
+  let info = `Pad X axis points to azimuth <b>${fmt(WP.norm360(90 - P.rot), 1)}°</b>, Y axis to <b>${fmt(WP.norm360(-P.rot), 1)}°</b> (grid). Rotation is counter-clockwise from grid east/north.`;
+  if (P.refCol > P.cols || P.refRow > P.rows) info += `<br><span style="color:var(--warn)">The known point (${slotId(P.refCol, P.refRow)}) is outside the ${P.cols} × ${P.rows} grid.</span>`;
+  $('#padInfo').innerHTML = info;
+  renderSlotSel();
+  renderLatSpace();
+}
+
+/* ---- lateral spacing helper ---- */
+let lsRef = -1;
+function lsPlan() {
+  const ri = lsRef >= 0 && lsRef < project.wells.length ? lsRef : project.active;
+  return { ri, sp: WP.spaceLaterals(project.wells, ri, { spacing: parseFloat($('#lsSp').value), stagger: parseFloat($('#lsSt').value) || 0, dir: +$('#lsDir').value }) };
+}
+function renderLatSpace() {
+  const sel = $('#lsRef'), sig = project.wells.map(w => w.name).join('|') + '#' + (lsRef >= 0 ? lsRef : project.active);
+  if (sel._sig !== sig) {
+    sel._sig = sig;
+    sel.innerHTML = project.wells.map((w, i) => `<option value="${i}">${esc(w.name || 'Unnamed')}</option>`).join('');
+    sel.value = lsRef >= 0 && lsRef < project.wells.length ? lsRef : project.active;
+  }
+  const { ri, sp } = lsPlan();
+  if (!sp.ok) { $('#lsInfo').innerHTML = `<span style="color:var(--warn)">${esc(sp.msg)}</span>`; $('#bLsApply').disabled = true; return; }
+  const s = parseFloat($('#lsSp').value);
+  if (!(s >= 0)) { $('#lsInfo').innerHTML = '<span style="color:var(--warn)">Enter a spacing of zero or more.</span>'; $('#bLsApply').disabled = true; return; }
+  const rows = sp.assignments.sort((a, b) => a.rank - b.rank).map(a => `${esc(project.wells[a.index].name)}: ${fmt(Math.abs(a.offset), 0)} ft ${a.offset < 0 ? 'left' : 'right'}${a.tvd ? ', ' + (a.tvd > 0 ? '+' : '') + fmt(a.tvd, 0) + ' ft TVD' : ''}`);
+  $('#lsInfo').innerHTML = `Lateral azimuth of ${esc(project.wells[ri].name)} is <b>${fmt(sp.az, 1)}°</b> (grid).` + (rows.length ? '<br>' + rows.join('<br>') : '<br>No other horizontal wells yet.') +
+    (sp.skipped.length ? '<br><span style="color:var(--muted)">Skipped (not horizontal): ' + sp.skipped.map(i => esc(project.wells[i].name)).join(', ') + '</span>' : '');
+  $('#bLsApply').disabled = !rows.length;
+}
+['lsSp', 'lsSt', 'lsDir'].forEach(id => $('#' + id).addEventListener('input', renderLatSpace));
+$('#lsRef').onchange = e => { lsRef = +e.target.value; renderLatSpace(); };
+$('#bLsApply').onclick = () => {
+  const { ri, sp } = lsPlan(); if (!sp.ok || !sp.assignments.length) return;
+  if (!confirm('Replace the target positions of ' + sp.assignments.length + ' well(s) with copies of "' + project.wells[ri].name + '" targets at ' + $('#lsSp').value + ' ft spacing?')) return;
+  const ref = project.wells[ri];
+  sp.assignments.forEach(a => {
+    const w = project.wells[a.index];
+    w.targets = ref.targets.map(t => Object.assign(JSON.parse(JSON.stringify(t)), { n: t.n + a.n, e: t.e + a.e, tvd: t.tvd + a.tvd }));
+  });
+  selectWell(project.active);
+};
+function drawPad() {
+  const c = $('#cvPad'); if (!c.offsetParent) return;
+  const { g, w, h } = setupCanvas(c);
+  const P = project.pad, slots = WP.padSlots(P, P.cols, P.rows);
+  const ink = css('--ink'), muted = css('--muted'), line = css('--line'), acc = css('--accent');
+  const xs = slots.map(s => s.e), ys = slots.map(s => s.n), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const m = 40, sx = x1 - x0 > 1e-6 ? (w - 2 * m) / (x1 - x0) : Infinity, sy = y1 - y0 > 1e-6 ? (h - 2 * m) / (y1 - y0) : Infinity;
+  const sc = Math.min(sx, sy, 6);
+  const X = e => w / 2 + (e - (x0 + x1) / 2) * sc, Y = n => h / 2 - (n - (y0 + y1) / 2) * sc;
+  // faint lines along rows and columns so the rotation is easy to see
+  g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
+  for (let r = 1; r <= P.rows; r++) { const a = WP.padSlot(P, 1, r), b = WP.padSlot(P, P.cols, r); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
+  for (let cc = 1; cc <= P.cols; cc++) { const a = WP.padSlot(P, cc, 1), b = WP.padSlot(P, cc, P.rows); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
+  g.stroke();
+  c._slots = [];
+  g.textAlign = 'center';
+  slots.forEach(sl => {
+    const x = X(sl.e), y = Y(sl.n), well = wellAtSlot(sl.c, sl.r), wi = well ? project.wells.indexOf(well) : -1;
+    const isActive = well === state, isRef = sl.c === P.refCol && sl.r === P.refRow;
+    c._slots.push({ c: sl.c, r: sl.r, x, y });
+    if (well) { g.fillStyle = PAD_COLORS[wi % PAD_COLORS.length]; g.fillRect(x - 8, y - 8, 16, 16); }
+    else { g.setLineDash([3, 3]); g.strokeStyle = muted; g.lineWidth = 1; g.strokeRect(x - 8, y - 8, 16, 16); g.setLineDash([]); g.fillStyle = muted; g.fillText('+', x, y + 4); }
+    if (isActive) { g.strokeStyle = ink; g.lineWidth = 2.5; g.strokeRect(x - 11, y - 11, 22, 22); }
+    if (isRef) { g.fillStyle = css('--warn'); g.beginPath(); g.moveTo(x + 8, y - 8); g.lineTo(x + 16, y - 8); g.lineTo(x + 8, y); g.closePath(); g.fill(); }
+    g.fillStyle = muted; g.fillText(sl.id, x, y - 14);
+    if (well) { g.fillStyle = ink; const nm = (well.name || '').slice(0, 14); g.fillText(nm, x, y + 22); }
+  });
+  // north arrow and pad X axis
+  const t = P.rot * D2R, ax = 26, ay = 28;
+  g.strokeStyle = muted; g.fillStyle = muted; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(ax, ay + 12); g.lineTo(ax, ay - 12); g.stroke(); g.fillText('N', ax, ay - 16);
+  g.strokeStyle = acc; g.fillStyle = acc;
+  g.beginPath(); g.moveTo(ax + 22, ay); g.lineTo(ax + 22 + Math.cos(t) * 20, ay - Math.sin(t) * 20); g.stroke();
+  g.fillText('X', ax + 22 + Math.cos(t) * 28, ay - Math.sin(t) * 28 + 4);
+}
+$('#cvPad').addEventListener('click', e => {
+  const c = e.currentTarget, rc = c.getBoundingClientRect(), mx = e.clientX - rc.left, my = e.clientY - rc.top;
+  let best = null, bd = 20 * 20;
+  (c._slots || []).forEach(s => { const d = (s.x - mx) ** 2 + (s.y - my) ** 2; if (d < bd) { bd = d; best = s; } });
+  if (!best) return;
+  const w = wellAtSlot(best.c, best.r);
+  if (w) { if (w !== state) selectWell(project.wells.indexOf(w)); } else createWellAtSlot(best.c, best.r);
+});
+
+/* ================= file actions ================= */
+$('#bSave').onclick = () => download((project.wells.length > 1 ? 'pad_project' : safeName()) + '.wellplan.json', JSON.stringify(project, null, 2), 'application/json');
+$('#bOpen').onclick = () => $('#fileOpen').click();
+$('#fileOpen').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const p = migrateProject(JSON.parse(rd.result)); if (!p) throw new Error('not a project');
+      project = p; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init();
+    } catch (err) { showBanner('That file is not a valid well plan: ' + err.message); }
+  };
+  rd.readAsText(f); e.target.value = '';
+};
+$('#bNew').onclick = () => {
+  if (confirm('Start a new project? Unsaved changes, including all wells on this pad, will be lost.')) {
+    project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init();
+  }
+};
+
+function init() {
+  writeInputs();
+  $('#surfCoord').innerHTML = cwHtml('surface'); $('#padRef').innerHTML = cwHtml('pad');
+  applyAllSlots();
+  cwFill($('#surfCoord .cw')); cwFill($('#padRef .cw'));
+  renderTargets(); renderTops(); renderOffsetForms();
+  $('#minSep').value = state.minSep;
+  M = { survey: null };
+  recalc();
+}
+init();
+</script>
+</body>
+</html>
