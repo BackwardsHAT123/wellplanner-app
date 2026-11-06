@@ -320,6 +320,7 @@ td.bad{color:var(--warn);font-weight:700}
       <label class="chk"><input type="checkbox" id="stoOn"><span>Include wells drilled in the sections the wellbore passes through</span></label>
       <label class="chk"><input type="checkbox" id="stoTrue"><span>Filed survey azimuths are true north (convert to grid)</span></label>
     </div>
+    <div class="toolbar" style="margin:8px 0 0"><button id="bStoFile" class="small">Load state wells file…</button><input type="file" id="stoFile" accept=".js" hidden><span id="stoFileMsg" class="hint" style="margin:0"></span></div>
     <div class="hint" style="margin:6px 0 0">Tracks are drawn on the plots. The well list and clearance are on the Offsets &amp; clearance tab.</div>
   </div>
   </div>
@@ -1372,14 +1373,33 @@ try { STO.on = localStorage.getItem('wellplanner.sto') === '1'; STO.tn = localSt
 $('#stoOn').checked = STO.on; $('#stoTrue').checked = STO.tn;
 $('#stoOn').onchange = e => { STO.on = e.target.checked; try { localStorage.setItem('wellplanner.sto', STO.on ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
 $('#stoTrue').onchange = e => { STO.tn = e.target.checked; try { localStorage.setItem('wellplanner.stoTrue', STO.tn ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
+/* The state-wells file (offsets/prb.js) is not on the public page. It is read from the private copy once with "Load state wells file…"
+ * and kept in this browser (IndexedDB), so the public page never serves it. */
+const idb = (mode, fn) => new Promise((res, rej) => { const q = indexedDB.open('wellplanner', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onerror = () => rej(q.error); q.onsuccess = () => { const t = q.result.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }; });
+function useStoText(text) { STO.data = null; (0, eval)(text); if (!STO.data || !STO.data.wells) throw new Error('not a state wells file'); STO.state = 'ready'; STO.msg = ''; STO.key = ''; STO.rows.clear(); }
 function loadStoData() {
   if (STO.data || STO.state === 'loading') return;
   STO.state = 'loading';
   const s = document.createElement('script'); s.src = 'offsets/prb.js';
   s.onload = () => { STO.state = STO.data ? 'ready' : 'missing'; STO.key = ''; recalc(); };
-  s.onerror = () => { STO.state = 'missing'; STO.msg = 'offsets/prb.js was not found. Run tools/build_offsets.py to create it.'; renderSto(); };
+  s.onerror = () => {
+    idb('readonly', st => st.get('stoText')).then(t => { if (!t) throw 0; useStoText(t); recalc(); })
+      .catch(() => { STO.state = 'missing'; STO.msg = 'No state wells file here. Use "Load state wells file…" once and pick offsets/prb.js from the private wellplanner folder.'; renderSto(); });
+  };
   document.head.appendChild(s);
 }
+$('#bStoFile').onclick = () => $('#stoFile').click();
+$('#stoFile').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try { useStoText(rd.result); } catch (x) { $('#stoFileMsg').textContent = 'That file is not a state wells file.'; return; }
+    idb('readwrite', st => st.put(rd.result, 'stoText')).then(() => { $('#stoFileMsg').textContent = 'Loaded ' + STO.data.wells.length.toLocaleString() + ' wells; kept in this browser.'; }).catch(() => { $('#stoFileMsg').textContent = 'Loaded for now; this browser would not keep it.'; });
+    if (!STO.on) { STO.on = true; $('#stoOn').checked = true; try { localStorage.setItem('wellplanner.sto', '1'); } catch (x) {} }
+    recalc();
+  };
+  rd.readAsText(f);
+};
 function stoPath(w) {                          // survey rows in project grid, or null when no filed survey
   if (!w.st) return null;
   const ck = w.api + '|' + state.crs + '|' + STO.tn; if (STO.rows.has(ck)) return STO.rows.get(ck);
