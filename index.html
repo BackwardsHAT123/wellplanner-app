@@ -404,11 +404,22 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
       <div id="actMsg" class="derived"></div>
     </div>
+    <div class="card" id="logCard">
+      <h3>Well logs</h3>
+      <div class="toolbar">
+        <button id="bLogFile">Import LAS…</button><input type="file" id="logFile" accept=".las,.LAS,.txt,text/*" hidden>
+        <button id="bLogClear" class="ghost">Remove all logs</button>
+      </div>
+      <div id="logPick" hidden></div>
+      <div id="logMsg" class="hint" style="margin:6px 0 0"></div>
+      <div id="logCurves"></div>
+    </div>
     <div id="actBody">
       <div class="stats" id="actStats"></div>
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
+        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs actual MD · hover to mark the same spot on the plan, 3D and distance charts</span></h4><div id="logTracks"></div></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
@@ -500,7 +511,7 @@ const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs:
 const DEFAULT = () => {
   const s = WP.toGrid(43.70, -105.45, 'WY-E');            // sample surface location, Campbell Co. area
   return {
-    name: 'Sample 1H', api: '', actual: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
+    name: 'Sample 1H', api: '', actual: null, logs: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
     surface: { n: +s.n.toFixed(2), e: +s.e.toFixed(2) }, gl: 5080, kbOff: 27, kb: 5107, vsAzi: '',
     targets: [
       { name: 'Landing', n: +(s.n + 700).toFixed(2), e: +(s.e + 700).toFixed(2), tvd: 9800, tol: 10 },
@@ -1748,7 +1759,7 @@ function lineChart(canvasId, o) {
   const c = $('#' + canvasId); if (!c.offsetParent) return;
   const { g, w, h } = setupCanvas(c);
   const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
-  const m = { l: 52, r: o.right ? 46 : 14, t: 12, b: 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const m = { l: 52, r: o.right ? 46 : 14, t: 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
   const ext = ax => {
     let lo = Infinity, hi = -Infinity;
     o.series.filter(s => (s.axis || 'left') === ax).forEach(s => s.pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
@@ -1756,7 +1767,7 @@ function lineChart(canvasId, o) {
     if (!isFinite(lo)) return [0, 1];
     lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; return [lo, hi + pad];
   };
-  const xs = o.series.flatMap(s => s.pts.map(p => p[0])); const xlo = Math.min(...xs), xhi = Math.max(...xs, xlo + 1);
+  const xs = o.xrange ? o.xrange : o.series.flatMap(s => s.pts.map(p => p[0])); const xlo = Math.min(...xs), xhi = Math.max(...xs, xlo + 1);
   const L = ext('left'), R = o.right ? ext('right') : null;
   const X = x => m.l + (x - xlo) / (xhi - xlo) * iw;
   const Yf = (r, y) => m.t + ih - (y - r[0]) / (r[1] - r[0]) * ih;
@@ -1767,8 +1778,8 @@ function lineChart(canvasId, o) {
   for (let y = Math.ceil(L[0] / sl) * sl; y <= L[1]; y += sl) g.fillText(fmt(y, sl < 1 ? 1 : 0), m.l - 6, Yf(L, y) + 4);
   if (R) { const sr = niceStep(R[1] - R[0], 5); g.textAlign = 'left'; for (let y = Math.ceil(R[0] / sr) * sr; y <= R[1]; y += sr) g.fillText(fmt(y, sr < 1 ? 1 : 0), m.l + iw + 6, Yf(R, y) + 4); }
   g.textAlign = 'center';
-  for (let x = Math.ceil(xlo / sx) * sx; x <= xhi; x += sx) g.fillText(fmt(x, 0), X(x), m.t + ih + 14);
-  g.fillText(o.xl, m.l + iw / 2, h - 4);
+  if (!o.hideX) { for (let x = Math.ceil(xlo / sx) * sx; x <= xhi; x += sx) g.fillText(fmt(x, 0), X(x), m.t + ih + 14);
+    g.fillText(o.xl, m.l + iw / 2, h - 4); }
   g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
   (o.hlines || []).forEach(l => { const r = (l.axis || 'left') === 'right' ? R : L, y = Yf(r, l.y); g.strokeStyle = l.color; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.color; g.textAlign = 'left'; g.fillText(l.label, m.l + 6, y - 4); });
   o.series.forEach(s => {
@@ -1778,7 +1789,7 @@ function lineChart(canvasId, o) {
   c._lc = { m, iw, xlo, xhi };
   if (o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {
     const cx = X(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(cx, m.t); g.lineTo(cx, m.t + ih); g.stroke(); g.setLineDash([]);
-    o.series.forEach(s => { const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill(); });
+    o.series.forEach(s => { const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; if (!best) return; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill(); });
   }
   g.restore(); g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
   // legend
@@ -1846,10 +1857,10 @@ function setApHover(i) {
   ACT.hov = { i, md: a.md, a: { x: a.easting - sf.e, y: a.northing - sf.n, z: -offPlanTvd(a) }, p: { x: p.easting - sf.e, y: p.northing - sf.n, z: -p.tvd } };
   drawActual();
 }
-(() => {
-  const c = $('#cvApDist'); let raf = 0;
-  c.addEventListener('mousemove', e => {
-    if (!c._lc || !ACT.dev || raf) return; const cx = e.clientX, rect = c.getBoundingClientRect();
+function attachApHover(box, pick) {          // pick(e) -> the canvas under the pointer, or null
+  let raf = 0;
+  box.addEventListener('mousemove', e => {
+    const c = pick(e); if (!c || !c._lc || !ACT.dev || raf) return; const cx = e.clientX, rect = c.getBoundingClientRect();
     raf = requestAnimationFrame(() => {
       raf = 0; const L = c._lc, f = (cx - rect.left - L.m.l) / L.iw;
       if (f < 0 || f > 1) return setApHover(null);
@@ -1858,14 +1869,89 @@ function setApHover(i) {
       setApHover(bi);
     });
   });
-  c.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); raf = 0; setApHover(null); });
-})();
+  box.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); raf = 0; setApHover(null); });
+}
+attachApHover($('#cvApDist'), e => e.currentTarget);
+attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas'));
+/* ================= well logs ================= */
+/* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
+const LOG = { pending: null };
+const LOG_DEF = [[/^(gr|gamma|gamma_?ray|gam|gr_?[a-z0-9]*)$/i, 1], [/^(tg|total_?gas|tgas|gas_?total)$/i, 2], [/^rop[a-z0-9_]*$/i, 3]];
+const logGroup = name => LOG_DEF.findIndex(d => d[0].test(String(name).trim()));
+const logColors = () => [css('--good'), css('--accent'), css('--blue'), css('--ink'), css('--amber'), css('--warn')];
+const logMsg = t => { $('#logMsg').textContent = t || ''; };
+function renderLogPick() {
+  const box = $('#logPick'), p = LOG.pending; box.hidden = !p; if (!p) { box.innerHTML = ''; return; }
+  const seen = new Set();
+  box.innerHTML = `<div class="hint" style="margin:6px 0">${esc(p.src)}${p.r.well ? ' · ' + esc(p.r.well) : ''} · ${p.r.depth.length.toLocaleString()} depth rows, MD ${fmt(p.r.depth[0], 1)} to ${fmt(p.r.depth[p.r.depth.length - 1], 1)} ft${p.r.toFeet !== 1 ? ' (converted from metres)' : ''}. Tick the curves to import.</div>` +
+    `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 12px" class="chkcol">` +
+    p.r.curves.map((c, i) => { const g = logGroup(c.mnem), on = g >= 0 && !seen.has(g); if (on) seen.add(g);
+      return `<label class="chk"><input type="checkbox" data-lp="${i}"${on ? ' checked' : ''}><span><b>${esc(c.mnem)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''}${c.desc ? ' <span class="mut">' + esc(c.desc) + '</span>' : ''}</span></label>`; }).join('') +
+    `</div><div class="toolbar" style="margin-top:8px"><button class="small primary" id="bLogGo">Import selected</button><button class="small" id="bLogAll">All</button><button class="small" id="bLogNone">None</button><button class="small" id="bLogCancel">Cancel</button></div>`;
+}
+function renderLogs() {
+  renderLogPick();
+  const L = state.logs, cs = L ? L.curves : [];
+  $('#bLogClear').hidden = !cs.length;
+  const opts = t => ['<option value="0">Hidden</option>'].concat([1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${k === t ? ' selected' : ''}>Track ${k}</option>`)).join('').replace('<option value="0">', `<option value="0"${t === 0 ? ' selected' : ''}>`);
+  const col = logColors();
+  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
+    cs.map((c, i) => { const r = WP.logRange(c);
+      return `<span style="display:inline-block;width:14px;height:3px;background:${col[i % col.length]}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
+        `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select><button class="small ghost" data-ld="${i}" title="Remove this curve">×</button>`; }).join('') + `</div>` : '';
+}
+function drawLogs() {
+  const wrap = $('#logPlot'), box = $('#logTracks'), L = state.logs, cs = L ? L.curves.filter(c => c.trk > 0) : [];
+  if (!ACT.rows || !cs.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
+  if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
+  const lo = ACT.rows[0].md, hi = ACT.rows[ACT.rows.length - 1].md, col = logColors();
+  tr.forEach((t, i) => {
+    const own = cs.filter(c => c.trk === t);
+    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], cursor: ACT.hov ? ACT.hov.md : null,
+      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', pts: WP.logSeries(c, lo, hi, 1500) })) });
+  });
+}
+function logChanged() { autosave(); renderLogs(); drawActual(); }
+$('#bLogFile').onclick = () => $('#logFile').click();
+$('#logFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const r = WP.parseLAS(await f.text());
+  if (!r.ok) { LOG.pending = null; renderLogPick(); logMsg('Could not read ' + f.name + ': ' + r.error); return; }
+  LOG.pending = { src: f.name, r }; logMsg(''); renderLogPick();
+};
+$('#logCard').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'bLogCancel') { LOG.pending = null; renderLogPick(); return; }
+  if (b.id === 'bLogAll' || b.id === 'bLogNone') { $$('#logPick [data-lp]').forEach(c => { c.checked = b.id === 'bLogAll'; }); return; }
+  if (b.id === 'bLogClear') { if (confirm('Remove all well logs from this well?')) { state.logs = null; logChanged(); logMsg(''); } return; }
+  if (b.dataset.ld !== undefined) { state.logs.curves.splice(+b.dataset.ld, 1); if (!state.logs.curves.length) state.logs = null; logChanged(); return; }
+  if (b.id === 'bLogGo') {
+    const p = LOG.pending, picks = $$('#logPick [data-lp]').filter(c => c.checked).map(c => +c.dataset.lp);
+    if (!picks.length) { logMsg('Tick at least one curve to import.'); return; }
+    const L = state.logs || (state.logs = { curves: [] }), nm = x => String(x).trim().toLowerCase(); let added = 0, repl = 0;
+    picks.forEach(i => {
+      const m = p.r.curves[i], c = WP.packLogCurve({ name: m.mnem, unit: m.unit, desc: m.desc, src: p.src, trk: 0 }, p.r.depth, p.r.cols[i]);
+      const k = L.curves.findIndex(x => nm(x.name) === nm(c.name));
+      if (k >= 0) { c.trk = L.curves[k].trk; L.curves[k] = c; repl++; }
+      else { const g = logGroup(c.name), t = g >= 0 ? LOG_DEF[g][1] : 0; c.trk = t && !L.curves.some(x => x.trk === t) ? t : 0; L.curves.push(c); added++; }
+    });
+    LOG.pending = null; logChanged();
+    logMsg(`Imported ${picks.length} curve${picks.length === 1 ? '' : 's'}${repl ? ` (${repl} replaced)` : ''}. Use the Track menus to choose what is shown and where.`);
+  }
+});
+$('#logCard').addEventListener('change', e => {
+  const s = e.target.closest('[data-lt]'); if (!s) return;
+  state.logs.curves[+s.dataset.lt].trk = +s.value; logChanged();
+});
 function drawActual() {
   if (!$('#pane-actual').classList.contains('on') || !ACT.rows) return;
-  draw2D('apPlan'); draw3D('cvAp3d'); drawApDist();
+  draw2D('apPlan'); draw3D('cvAp3d'); drawLogs(); drawApDist();
 }
 function renderActual() {
   if (!$('#pane-actual').classList.contains('on')) return;
+  renderLogs();
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
   if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; }
@@ -2402,7 +2488,7 @@ $('#slotSel').onchange = e => {
 function createWellAtSlot(c, r) {
   const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r);
   const dn = p.n - src.surface.n, de = p.e - src.surface.e;
-  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; w.api = ''; w.actual = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
+  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
   w.surface = { n: p.n, e: p.e };
   w.targets.forEach(t => { t.n += dn; t.e += de; });      // same geometry, moved with the surface location
   project.wells.push(w);

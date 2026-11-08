@@ -750,7 +750,75 @@
     return rows;
   }
 
-  const api = { ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+
+  /* ---- well logs (LAS 2.0 / 3.0) ---- */
+  function parseLAS(text) {
+    const lines = String(text).replace(/\r/g, '').split('\n');
+    const out = { ok: false, error: '', version: '', wrap: false, nullVal: -999.25, well: '', depthUnit: '', toFeet: 1, curves: [], depth: [], cols: [] };
+    let sec = '', dataLines = [], curves = [];
+    const hdr = ln => { const m = /^\s*([^.:]+?)\s*\.(\S*)\s*(.*?)\s*:(.*)$/.exec(ln); return m ? { mnem: m[1].trim(), unit: m[2].trim(), val: m[3].trim(), desc: m[4].trim() } : null; };
+    for (const raw of lines) {
+      const ln = raw.trim(); if (!ln || ln[0] === '#') continue;
+      if (ln[0] === '~') {
+        const nm = ln.slice(1).trim().toLowerCase();
+        sec = /^log_def|^c/.test(nm) ? 'C' : /^log_data|^a/.test(nm) ? 'A' : /^v/.test(nm) ? 'V' : /^w|^well/.test(nm) ? 'W' : 'X';
+        continue;
+      }
+      if (sec === 'A') { dataLines.push(ln); continue; }
+      const h = hdr(ln); if (!h) continue;
+      const k = h.mnem.toUpperCase();
+      if (sec === 'V') { if (k === 'VERS') out.version = h.val; if (k === 'WRAP') out.wrap = /^y/i.test(h.val); }
+      else if (sec === 'W') { if (k === 'NULL') { const v = parseFloat(h.val); if (isFinite(v)) out.nullVal = v; } if (k === 'WELL') out.well = h.val; if (k === 'STRT' && !out.depthUnit) out.depthUnit = h.unit; }
+      else if (sec === 'C') curves.push({ mnem: h.mnem, unit: h.unit, desc: h.desc });
+    }
+    if (!curves.length) { out.error = 'No curve information (~C section) found. Is this a LAS file?'; return out; }
+    if (!dataLines.length) { out.error = 'No data (~A section) found.'; return out; }
+    const nc = curves.length, tok = dataLines.join(' ').split(/[\s,]+/).filter(Boolean);
+    const n = Math.floor(tok.length / nc);
+    if (n < 2) { out.error = 'Fewer than two data rows found.'; return out; }
+    const cols = curves.map(() => new Array(n));
+    for (let i = 0; i < n; i++) for (let j = 0; j < nc; j++) {
+      const v = parseFloat(tok[i * nc + j]);
+      cols[j][i] = isFinite(v) && Math.abs(v - out.nullVal) > 1e-6 ? v : null;
+    }
+    const du = (curves[0].unit || out.depthUnit || '').toLowerCase();
+    if (/^(m|meter|meters|metre|metres)$/.test(du)) out.toFeet = 3.280839895;
+    out.depthUnit = out.toFeet === 1 ? 'ft' : 'm';
+    const idx = []; for (let i = 0; i < n; i++) if (cols[0][i] !== null) idx.push(i);
+    if (idx.length < 2) { out.error = 'The depth column is empty.'; return out; }
+    if (cols[0][idx[0]] > cols[0][idx[idx.length - 1]]) idx.reverse();
+    out.depth = idx.map(i => cols[0][i] * out.toFeet);
+    out.curves = curves.slice(1);
+    out.cols = cols.slice(1).map(c => idx.map(i => c[i]));
+    out.ok = true; return out;
+  }
+  /* compact stored form: uniform depth -> {d0, dstep}, else {md:[...]}; values rounded, null kept */
+  function packLogCurve(meta, depth, vals) {
+    const n = depth.length, step = (depth[n - 1] - depth[0]) / (n - 1);
+    let uni = step > 0; for (let i = 0; i < n && uni; i++) if (Math.abs(depth[i] - (depth[0] + i * step)) > 0.005) uni = false;
+    const v = vals.map(x => x === null ? null : Math.round(x * 1000) / 1000);
+    const c = Object.assign({}, meta);
+    if (uni) { c.d0 = Math.round(depth[0] * 1000) / 1000; c.dstep = Math.round(step * 10000) / 10000; } else c.md = depth.map(x => Math.round(x * 100) / 100);
+    c.v = v; return c;
+  }
+  const logDepth = (c, i) => c.md ? c.md[i] : c.d0 + i * c.dstep;
+  const logRange = c => c && c.v && c.v.length ? [logDepth(c, 0), logDepth(c, c.v.length - 1)] : null;
+  /* points inside [lo, hi], thinned to about maxPts keeping each bucket's min and max so peaks survive */
+  function logSeries(c, lo, hi, maxPts) {
+    const n = c.v.length, idx = [];
+    for (let i = 0; i < n; i++) { if (c.v[i] === null) continue; const d = logDepth(c, i); if (d >= lo && d <= hi) idx.push(i); }
+    const cap = maxPts || 1500;
+    if (idx.length <= cap) return idx.map(i => [logDepth(c, i), c.v[i]]);
+    const B = Math.ceil(idx.length / (cap / 2)), res = [];
+    for (let b = 0; b < idx.length; b += B) {
+      let mn = idx[b], mx = idx[b];
+      for (let k = b; k < Math.min(b + B, idx.length); k++) { if (c.v[idx[k]] < c.v[mn]) mn = idx[k]; if (c.v[idx[k]] > c.v[mx]) mx = idx[k]; }
+      (mn < mx ? [mn, mx] : mn > mx ? [mx, mn] : [mn]).forEach(i => res.push([logDepth(c, i), c.v[i]]));
+    }
+    return res;
+  }
+
+  const api = { parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };
