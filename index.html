@@ -97,12 +97,15 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .msg.err{background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:1px solid var(--warn)}
 .msg.note{background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .msg ul{margin:0;padding-left:18px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:8px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px}
 .stat .k{font-size:12px;font-weight:500;color:var(--muted)}
 .stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
 .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
 .stat.bad .v{color:var(--warn)}
+.stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -16px 10px;padding:12px 16px 2px;border-bottom:1px solid var(--line)}
+.stickytop .tabs{margin-bottom:8px}
+@media print{.stickytop{position:static;border:0}}
 .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
 .tab{border:1.5px solid var(--edge);background:transparent;padding:5px 16px;border-radius:var(--r-pill);color:var(--ink)}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
@@ -294,7 +297,7 @@ td.bad{color:var(--warn);font-weight:700}
 <main>
   <div id="printId" class="printonly"></div>
   <div id="banner"></div>
-  <div class="stats" id="stats"></div>
+  <div class="stickytop">
   <div class="tabs">
     <button class="tab on" data-tab="plots">Plots</button>
     <button class="tab" data-tab="survey">Survey</button>
@@ -302,6 +305,8 @@ td.bad{color:var(--warn);font-weight:700}
     <button class="tab" data-tab="offsets">Offsets &amp; clearance</button>
     <button class="tab" data-tab="actual">Plan vs actual</button>
     <button class="tab" data-tab="wall">Wall plot</button>
+  </div>
+  <div class="stats" id="stats"></div>
   </div>
 
   <div class="pane on" id="pane-plots">
