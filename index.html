@@ -419,7 +419,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
-        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span><span class="grow"></span><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
+        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
@@ -1770,22 +1770,32 @@ function lineChart(canvasId, o) {
   const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
   const m = { l: 52, r: o.right ? 46 : 14, t: o.cursorTop ? 24 : 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
   const ext = ax => {
+    const ss = o.series.filter(s => (s.axis || 'left') === ax), sg = (ss.find(s => s.scale) || {}).scale || {}, num = v => v !== '' && v != null && isFinite(+v);
     let lo = Infinity, hi = -Infinity;
-    o.series.filter(s => (s.axis || 'left') === ax).forEach(s => s.pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
+    ss.forEach(s => s.pts.forEach(p => { if (sg.log && !(p[1] > 0)) return; lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
     (o.hlines || []).filter(l => (l.axis || 'left') === ax).forEach(l => { lo = Math.min(lo, l.y); hi = Math.max(hi, l.y); });
-    if (!isFinite(lo)) return [0, 1];
-    lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; return [lo, hi + pad];
+    let r;
+    if (sg.log) {                              // whole decades unless min / max are given
+      r = isFinite(lo) ? [Math.floor(Math.log10(lo)), Math.ceil(Math.log10(hi))] : [0, 1];
+      if (num(sg.min) && +sg.min > 0) r[0] = Math.log10(+sg.min); if (num(sg.max) && +sg.max > 0) r[1] = Math.log10(+sg.max); if (r[1] <= r[0]) r[1] = r[0] + 1;
+    } else {
+      if (!isFinite(lo)) r = [0, 1]; else { lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; r = [lo, hi + pad]; }
+      if (num(sg.min)) r[0] = +sg.min; if (num(sg.max)) r[1] = +sg.max; if (r[1] <= r[0]) r[1] = r[0] + 1;
+    }
+    r.log = !!sg.log; r.rev = !!sg.rev; return r;
   };
   const xs = o.xrange ? o.xrange : o.series.flatMap(s => s.pts.map(p => p[0])); const xlo = Math.min(...xs), xhi = Math.max(...xs, xlo + 1);
   const L = ext('left'), R = o.right ? ext('right') : null;
   const X = x => m.l + (x - xlo) / (xhi - xlo) * iw;
-  const Yf = (r, y) => m.t + ih - (y - r[0]) / (r[1] - r[0]) * ih;
+  const Yf = (r, y) => { const v = r.log ? Math.log10(Math.max(y, Math.pow(10, r[0]) * 0.5)) : y; let f = (v - r[0]) / (r[1] - r[0]); if (r.rev) f = 1 - f; return m.t + ih - f * ih; };
+  const ticksOf = (r, step) => { const t = []; if (r.log) { for (let k = Math.ceil(r[0] - 1e-9); k <= r[1] + 1e-9; k++) t.push(Math.pow(10, k)); } else for (let y = Math.ceil(r[0] / step) * step; y <= r[1]; y += step) t.push(y); return t; };
+  const tickTx = (r, y, step) => r.log ? (y >= 1 ? fmt(y, 0) : String(+y.toPrecision(2))) : fmt(y, step < 1 ? 1 : 0);
   const sx = niceStep(xhi - xlo, 6), sl = niceStep(L[1] - L[0], 5);
   g.lineWidth = 1; g.strokeStyle = grid; g.fillStyle = muted; g.textAlign = 'right'; g.beginPath();
-  for (let y = Math.ceil(L[0] / sl) * sl; y <= L[1]; y += sl) { g.moveTo(m.l, Math.round(Yf(L, y)) + .5); g.lineTo(m.l + iw, Math.round(Yf(L, y)) + .5); }
+  ticksOf(L, sl).forEach(y => { g.moveTo(m.l, Math.round(Yf(L, y)) + .5); g.lineTo(m.l + iw, Math.round(Yf(L, y)) + .5); });
   g.stroke();
-  for (let y = Math.ceil(L[0] / sl) * sl; y <= L[1]; y += sl) g.fillText(fmt(y, sl < 1 ? 1 : 0), m.l - 6, Yf(L, y) + 4);
-  if (R) { const sr = niceStep(R[1] - R[0], 5); g.textAlign = 'left'; for (let y = Math.ceil(R[0] / sr) * sr; y <= R[1]; y += sr) g.fillText(fmt(y, sr < 1 ? 1 : 0), m.l + iw + 6, Yf(R, y) + 4); }
+  ticksOf(L, sl).forEach(y => g.fillText(tickTx(L, y, sl), m.l - 6, Yf(L, y) + 4));
+  if (R) { const sr = niceStep(R[1] - R[0], 5); g.textAlign = 'left'; ticksOf(R, sr).forEach(y => g.fillText(tickTx(R, y, sr), m.l + iw + 6, Yf(R, y) + 4)); }
   g.textAlign = 'center';
   if (!o.hideX) { for (let x = Math.ceil(xlo / sx) * sx; x <= xhi; x += sx) g.fillText(fmt(x, 0), X(x), m.t + ih + 14);
     g.fillText(o.xl, m.l + iw / 2, h - 4); }
@@ -1803,6 +1813,11 @@ function lineChart(canvasId, o) {
   o.series.forEach(s => {
     const r = (s.axis || 'left') === 'right' ? R : L; g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
     s.pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Yf(r, p[1])) : g.moveTo(X(p[0]), Yf(r, p[1]))); g.stroke();
+  });
+  (o.tops || []).forEach(t => {                // formation tops: dashed line on every track, name on the top one
+    if (t.x < xlo || t.x > xhi) return; const x = X(t.x);
+    g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, m.t); g.lineTo(x, m.t + ih); g.stroke(); g.setLineDash([]);
+    if (o.topLabels) { g.save(); g.translate(x + 3, m.t + 4); g.rotate(Math.PI / 2); g.textAlign = 'left'; g.font = '10px -apple-system,Segoe UI,system-ui,sans-serif'; const tw = g.measureText(t.name).width; g.fillStyle = css('--panel'); g.globalAlpha = 0.75; g.fillRect(-2, -11, tw + 4, 12); g.globalAlpha = 1; g.fillStyle = ink; g.fillText(t.name, 0, -2); g.restore(); }
   });
   (o.vlines || []).forEach(v => { if (v.x < xlo || v.x > xhi) return; g.strokeStyle = v.color; g.lineWidth = 1.5; g.setLineDash([6, 3]); g.beginPath(); g.moveTo(X(v.x), m.t); g.lineTo(X(v.x), m.t + ih); g.stroke(); g.setLineDash([]); });
   c._lc = { m, iw, xlo, xhi };
@@ -1919,6 +1934,8 @@ attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas
 /* ================= well logs ================= */
 /* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
 const LOG = { pending: null };
+const LOGT = { on: true };
+try { LOGT.on = localStorage.getItem('wellplanner.logTops') !== '0'; } catch (e) {}
 const LOGZ = { mode: 0, start: null, lo: null, hi: null };   // zoom: mode 0 off, 1 waiting for the start click, 2 waiting for the end click
 const LOG_DEF = [[/^(gr|gamma|gamma_?ray|gam|gr_?[a-z0-9]*)$/i, 1], [/^(tg|total_?gas|tgas|gas_?total)$/i, 2], [/^rop[a-z0-9_]*$/i, 3]];
 const GR_STOPS = () => [{ v: 55, c: '#ffe94d' }, { v: 65, c: '#ffe94d' }, { v: 90, c: '#a8e6a1' }, { v: 105, c: '#8e44ad' }];
@@ -1929,7 +1946,8 @@ function defaultFill(c, g) {                  // gamma ray gets the lithology ra
 }
 const logGroup = name => LOG_DEF.findIndex(d => d[0].test(String(name).trim()));
 const LOG_RED = '#e53935';
-function logColor(c, i) {                     // GR follows the theme ink (black in light mode, white in dark), TG is red, the rest use the palette
+function logColor(c, i) {                     // own colour if set; else GR follows the theme ink (black in light mode, white in dark), TG is red, the rest use the palette
+  if (c.color) return c.color;
   const g = logGroup(c.name); if (g === 0) return css('--ink'); if (g === 1) return LOG_RED;
   const p = logColors(); return p[i % p.length];
 }
@@ -1950,10 +1968,10 @@ function renderLogs() {
   $('#bLogClear').hidden = !cs.length;
   const opts = t => ['<option value="0">Hidden</option>'].concat([1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${k === t ? ' selected' : ''}>Track ${k}</option>`)).join('').replace('<option value="0">', `<option value="0"${t === 0 ? ' selected' : ''}>`);
   const col = logColors();
-  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
+  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
     cs.map((c, i) => { const r = WP.logRange(c);
       return `<span style="display:inline-block;width:14px;height:3px;background:${logColor(c, i)}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
-        `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select>` +
+        `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select><button class="small" data-ls="${i}" title="Axis range, direction, log scale and line colour">Scale…</button>` +
         `<button class="small" data-lf="${i}" title="Colour fill under the curve" style="display:flex;gap:6px;align-items:center">Fill…${c.fill && c.fill.on ? `<span style="display:inline-block;width:34px;height:10px;border-radius:2px;background:${fillCss(c.fill, 34)}"></span>` : ''}</button><button class="small ghost" data-ld="${i}" title="Remove this curve">×</button>`; }).join('') + `</div>` : '';
 }
 function drawLogs() {
@@ -1964,16 +1982,40 @@ function drawLogs() {
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
   const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : Math.max(...rg.map(r => r[1])), col = logColors();
   logZoomUi();   // x axis spans the displayed log data
+  const topMarks = LOGT.on && state.tops ? WP.formationMds(state.tops, ACT.rows, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
-    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
-      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: logColor(c, L.curves.indexOf(c)), axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
+    lineChart('cvLog' + i, { tops: topMarks, topLabels: i === 0, xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
+      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: logColor(c, L.curves.indexOf(c)), axis: k === 1 ? 'right' : 'left', scale: c.scale, fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
 }
 function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, spanning lo..hi (default: the stops, padded)
   const st = f.stops; if (!st.length) return 'none';
   const a = lo == null ? st[0].v : lo, b = hi == null ? st[st.length - 1].v : hi, sp = b - a || 1;
   return 'linear-gradient(to right,' + st.map(s => `${s.c} ${Math.max(0, Math.min(100, (s.v - a) / sp * 100)).toFixed(1)}%`).join(',') + ')';
+}
+function openScaleEditor(idx) {
+  const cv = state.logs.curves[idx], snap = JSON.stringify([cv.scale || null, cv.color || null]), sc = cv.scale || (cv.scale = {});
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.4)">
+    <h3 style="margin:0 0 4px">Scale · ${esc(cv.name)}${cv.unit ? ' (' + esc(cv.unit) + ')' : ''}</h3>
+    <div class="hint" style="margin:0 0 8px">Leave a limit blank for automatic. If two curves share a track, the first sets the left axis and the second the right axis.</div>
+    <div class="g2"><label class="f">Axis minimum<input type="number" step="any" id="scMin"></label><label class="f">Axis maximum<input type="number" step="any" id="scMax"></label></div>
+    <div class="chkcol" style="margin-top:8px"><label class="chk"><input type="checkbox" id="scLog"><span>Logarithmic scale (values of zero or less sit at the bottom)</span></label><label class="chk"><input type="checkbox" id="scRev"><span>Reverse the axis (larger values lower down)</span></label></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px"><span>Line colour</span><input type="color" id="scCol" style="width:44px;height:30px;padding:0"><button class="small" id="scColDef">Use default</button></div>
+    <div class="toolbar" style="margin-top:12px"><span class="grow"></span><button id="scCancel">Cancel</button><button class="primary" id="scDone">Done</button></div></div>`;
+  document.body.appendChild(ov);
+  const $e = q => ov.querySelector(q), live = () => { autosave(); renderLogs(); drawActual(); };
+  $e('#scMin').value = sc.min != null ? sc.min : ''; $e('#scMax').value = sc.max != null ? sc.max : ''; $e('#scLog').checked = !!sc.log; $e('#scRev').checked = !!sc.rev;
+  const curCol = () => { const c = logColor(cv, idx); return /^#[0-9a-f]{6}$/i.test(c) ? c : '#' + (c.match(/\d+/g) || [128, 128, 128]).slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join(''); };
+  $e('#scCol').value = curCol();
+  const read = () => { const n = id => { const v = parseFloat($e(id).value); return isFinite(v) ? v : null; }; sc.min = n('#scMin'); sc.max = n('#scMax'); sc.log = $e('#scLog').checked; sc.rev = $e('#scRev').checked; live(); };
+  ['#scMin', '#scMax'].forEach(q => $e(q).oninput = read); ['#scLog', '#scRev'].forEach(q => $e(q).onchange = read);
+  $e('#scCol').oninput = e => { cv.color = e.target.value; live(); };
+  $e('#scColDef').onclick = () => { delete cv.color; $e('#scCol').value = curCol(); live(); };
+  $e('#scCancel').onclick = () => { const o = JSON.parse(snap); if (o[0]) cv.scale = o[0]; else delete cv.scale; if (o[1]) cv.color = o[1]; else delete cv.color; ov.remove(); live(); };
+  $e('#scDone').onclick = () => { if (sc.min == null && sc.max == null && !sc.log && !sc.rev) delete cv.scale; ov.remove(); live(); };
 }
 function openFillEditor(idx) {
   const cv = state.logs.curves[idx], snap = JSON.stringify(cv.fill || null);
@@ -2034,6 +2076,8 @@ $('#logTracks').addEventListener('click', e => {
   const a = Math.min(LOGZ.start, md), b = Math.max(LOGZ.start, md);
   LOGZ.mode = 0; LOGZ.start = null; if (b - a >= 2) { LOGZ.lo = a; LOGZ.hi = b; } drawLogs();
 });
+$('#logTopsOn').checked = LOGT.on;
+$('#logTopsOn').onchange = e => { LOGT.on = e.target.checked; try { localStorage.setItem('wellplanner.logTops', LOGT.on ? '1' : '0'); } catch (x) {} drawLogs(); };
 function logChanged() { autosave(); renderLogs(); drawActual(); }
 $('#bLogFile').onclick = () => $('#logFile').click();
 $('#logFile').onchange = async e => {
@@ -2047,6 +2091,7 @@ $('#logCard').addEventListener('click', e => {
   if (b.id === 'bLogCancel') { LOG.pending = null; renderLogPick(); return; }
   if (b.id === 'bLogAll' || b.id === 'bLogNone') { $$('#logPick [data-lp]').forEach(c => { c.checked = b.id === 'bLogAll'; }); return; }
   if (b.id === 'bLogClear') { if (confirm('Remove all well logs from this well?')) { state.logs = null; logChanged(); logMsg(''); } return; }
+  if (b.dataset.ls !== undefined) { openScaleEditor(+b.dataset.ls); return; }
   if (b.dataset.lf !== undefined) { openFillEditor(+b.dataset.lf); return; }
   if (b.dataset.ld !== undefined) { state.logs.curves.splice(+b.dataset.ld, 1); if (!state.logs.curves.length) state.logs = null; logChanged(); return; }
   if (b.id === 'bLogGo') {
