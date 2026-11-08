@@ -101,9 +101,10 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px}
 .stat .k{font-size:12px;font-weight:500;color:var(--muted)}
 .stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
-#stats{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin-bottom:6px}
-#stats .stat{padding:3px 8px;min-width:0;overflow:hidden}
-#stats .stat .k,#stats .stat .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stats{display:flex;gap:6px;margin-bottom:6px;overflow-x:auto;scrollbar-width:none}
+#stats::-webkit-scrollbar{display:none}
+#stats .stat{padding:3px 8px;flex:1 0 auto}
+#stats .stat .k,#stats .stat .v{white-space:nowrap}
 #stats .stat .k{font-size:11px;line-height:1.25}
 #stats .stat .v{font-size:15px;line-height:1.25}
 #stats .stat .v small{font-size:10px}
@@ -895,14 +896,14 @@ function recalc() {
 
   const st = (k, v, sub, bad) => `<div class="stat${bad ? ' bad' : ''}"><div class="k">${k}</div><div class="v">${v}${sub ? ` <small>${sub}</small>` : ''}</div></div>`;
   let html = st('Total MD', fmt(last.md, 0), 'ft') + st('TVD at TD', fmt(last.tvd, 0), 'ft');
-  if (isFinite(mm.kopMd)) html += st('Vertical section', fmt(mm.kopMd, 0), 'ft to KOP');
-  html += st('Max inclination', fmt(maxInc, 1), '°') + st('Max DLS', fmt(maxDls, 2), '°/100', maxDls > s.maxDls + 1e-6) +
+  if (isFinite(mm.kopMd)) html += st('Vert. section', fmt(mm.kopMd, 0), 'ft to KOP');
+  html += st('Max inc', fmt(maxInc, 1), '°') + st('Max DLS', fmt(maxDls, 2), '°/100', maxDls > s.maxDls + 1e-6) +
     st('VS at TD', fmt(last.vs, 0), 'ft');
   if (plan && plan.theta) html += st('Tangent inc', fmt(plan.theta, 2), '°');
   if (latLenOut) html += st('Lateral MD', fmt(latLenOut, 0), 'ft');
   if (misses.length) {
     const w = misses.reduce((a, b) => (b.d - b.tol > a.d - a.tol ? b : a));
-    html += st('Worst target miss', fmt(w.d, 1), 'ft · ' + esc(w.label), w.d > w.tol);
+    html += st('Target miss', fmt(w.d, 1), 'ft · ' + esc(w.label), w.d > w.tol);
   }
   $('#stats').innerHTML = html;
 
