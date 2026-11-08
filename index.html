@@ -1755,6 +1755,15 @@ const draw3DAll = () => { draw3D('cv3d'); draw3D('cvAp3d'); };
 });
 
 /* ---- line charts ---- */
+/* colour ramp: stops [{v, c:'#rrggbb'}] sorted by v; values outside the first/last stop take that stop's colour */
+function colorAt(stops, v) {
+  const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  if (!stops.length) return '#888888';
+  if (v <= stops[0].v) return stops[0].c; if (v >= stops[stops.length - 1].v) return stops[stops.length - 1].c;
+  let k = 1; while (stops[k].v < v) k++;
+  const a = stops[k - 1], b = stops[k], t = b.v === a.v ? 0 : (v - a.v) / (b.v - a.v), A = hex(a.c), B = hex(b.c);
+  return 'rgb(' + A.map((x, i) => Math.round(x + t * (B[i] - x))).join(',') + ')';
+}
 function lineChart(canvasId, o) {
   const c = $('#' + canvasId); if (!c.offsetParent) return;
   const { g, w, h } = setupCanvas(c);
@@ -1782,6 +1791,15 @@ function lineChart(canvasId, o) {
     g.fillText(o.xl, m.l + iw / 2, h - 4); }
   g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
   (o.hlines || []).forEach(l => { const r = (l.axis || 'left') === 'right' ? R : L, y = Yf(r, l.y); g.strokeStyle = l.color; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.color; g.textAlign = 'left'; g.fillText(l.label, m.l + 6, y - 4); });
+  o.series.forEach(s => {                      // fill under the curve, coloured by value
+    if (!s.fill || s.pts.length < 2) return;
+    const r = (s.axis || 'left') === 'right' ? R : L, yb = m.t + ih; g.save(); g.globalAlpha = s.fill.alpha == null ? 0.85 : s.fill.alpha;
+    for (let i = 0; i + 1 < s.pts.length; i++) {
+      const p0 = s.pts[i], p1 = s.pts[i + 1], x0 = X(p0[0]), x1 = X(p1[0]); if (x1 < m.l || x0 > m.l + iw) continue;
+      g.fillStyle = colorAt(s.fill.stops, (p0[1] + p1[1]) / 2); g.beginPath(); g.moveTo(x0, yb); g.lineTo(x0, Yf(r, p0[1])); g.lineTo(x1 + 0.6, Yf(r, p1[1])); g.lineTo(x1 + 0.6, yb); g.fill();
+    }
+    g.restore();
+  });
   o.series.forEach(s => {
     const r = (s.axis || 'left') === 'right' ? R : L; g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
     s.pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Yf(r, p[1])) : g.moveTo(X(p[0]), Yf(r, p[1]))); g.stroke();
@@ -1892,6 +1910,12 @@ attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas
 /* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
 const LOG = { pending: null };
 const LOG_DEF = [[/^(gr|gamma|gamma_?ray|gam|gr_?[a-z0-9]*)$/i, 1], [/^(tg|total_?gas|tgas|gas_?total)$/i, 2], [/^rop[a-z0-9_]*$/i, 3]];
+const GR_STOPS = () => [{ v: 55, c: '#ffe94d' }, { v: 65, c: '#ffe94d' }, { v: 90, c: '#a8e6a1' }, { v: 105, c: '#8e44ad' }];
+function defaultFill(c, g) {                  // gamma ray gets the lithology ramp; other curves a plain two-colour ramp across their own range
+  if (g === 0) return { on: true, alpha: 0.85, stops: GR_STOPS() };
+  const v = c.v.filter(x => x !== null).sort((a, b) => a - b), lo = v[Math.floor(v.length * 0.05)] || 0, hi = v[Math.floor(v.length * 0.95)] || lo + 1;
+  return { on: true, alpha: 0.85, stops: [{ v: +lo.toFixed(2), c: '#ffe94d' }, { v: +(hi > lo ? hi : lo + 1).toFixed(2), c: '#8e44ad' }] };
+}
 const logGroup = name => LOG_DEF.findIndex(d => d[0].test(String(name).trim()));
 const logColors = () => [css('--good'), css('--accent'), css('--blue'), css('--ink'), css('--amber'), css('--warn')];
 const logMsg = t => { $('#logMsg').textContent = t || ''; };
@@ -1910,10 +1934,11 @@ function renderLogs() {
   $('#bLogClear').hidden = !cs.length;
   const opts = t => ['<option value="0">Hidden</option>'].concat([1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${k === t ? ' selected' : ''}>Track ${k}</option>`)).join('').replace('<option value="0">', `<option value="0"${t === 0 ? ' selected' : ''}>`);
   const col = logColors();
-  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
+  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
     cs.map((c, i) => { const r = WP.logRange(c);
       return `<span style="display:inline-block;width:14px;height:3px;background:${col[i % col.length]}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
-        `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select><button class="small ghost" data-ld="${i}" title="Remove this curve">×</button>`; }).join('') + `</div>` : '';
+        `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select>` +
+        `<button class="small" data-lf="${i}" title="Colour fill under the curve" style="display:flex;gap:6px;align-items:center">Fill…${c.fill && c.fill.on ? `<span style="display:inline-block;width:34px;height:10px;border-radius:2px;background:${fillCss(c.fill, 34)}"></span>` : ''}</button><button class="small ghost" data-ld="${i}" title="Remove this curve">×</button>`; }).join('') + `</div>` : '';
 }
 function drawLogs() {
   const wrap = $('#logPlot'), box = $('#logTracks'), L = state.logs, cs = L ? L.curves.filter(c => c.trk > 0) : [];
@@ -1925,8 +1950,57 @@ function drawLogs() {
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
     lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], dropLines: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
-      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', pts: WP.logSeries(c, lo, hi, 1500) })) });
+      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
+}
+function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, spanning lo..hi (default: the stops, padded)
+  const st = f.stops; if (!st.length) return 'none';
+  const a = lo == null ? st[0].v : lo, b = hi == null ? st[st.length - 1].v : hi, sp = b - a || 1;
+  return 'linear-gradient(to right,' + st.map(s => `${s.c} ${Math.max(0, Math.min(100, (s.v - a) / sp * 100)).toFixed(1)}%`).join(',') + ')';
+}
+function openFillEditor(idx) {
+  const cv = state.logs.curves[idx], snap = JSON.stringify(cv.fill || null);
+  if (!cv.fill) cv.fill = Object.assign(defaultFill(cv, logGroup(cv.name) === 0 ? 0 : -1), { on: false });
+  const f = cv.fill, g = logGroup(cv.name) === 0 ? 0 : -1;
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.4)">
+    <h3 style="margin:0 0 8px">Colour fill · ${esc(cv.name)}${cv.unit ? ' (' + esc(cv.unit) + ')' : ''}</h3>
+    <label class="chk"><input type="checkbox" id="feOn"><span>Fill under the curve</span></label>
+    <div style="margin:10px 0 2px;font-size:12px;color:var(--muted)">Colour bar · click it to add a marker at that value</div>
+    <div id="feBar" style="position:relative;height:30px;border-radius:6px;border:1px solid var(--line);cursor:copy"></div>
+    <div id="feMarks" style="position:relative;height:16px"></div>
+    <div id="feRows" style="display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:center;margin-top:6px;font-size:12px"></div>
+    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;font-size:12px"><span>Opacity</span><input type="range" id="feAlpha" min="0.2" max="1" step="0.05" style="flex:1"><span id="feAlphaV" style="width:34px;text-align:right"></span></div>
+    <div class="toolbar" style="margin-top:12px"><button class="small" id="feAdd">Add marker</button><button class="small" id="feReset">Reset to default</button><span class="grow"></span><button id="feCancel">Cancel</button><button class="primary" id="feDone">Done</button></div></div>`;
+  document.body.appendChild(ov);
+  const $e = q => ov.querySelector(q), span = () => { const a = f.stops[0].v, b = f.stops[f.stops.length - 1].v, p = (b - a) * 0.12 || 5; return [a - p, b + p]; };
+  const live = () => { autosave(); renderLogs(); drawActual(); };
+  function bar() {
+    const [lo, hi] = span(); $e('#feBar').style.background = fillCss(f, 0, lo, hi);
+    $e('#feMarks').innerHTML = f.stops.map(s => `<div title="${s.v}" style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${s.c};filter:drop-shadow(0 0 1px #000)"></div><div style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);font-size:10px;color:var(--muted);padding-top:9px">${s.v}</div>`).join('');
+  }
+  function rows() {
+    f.stops.sort((a, b) => a.v - b.v);
+    $e('#feRows').innerHTML = f.stops.map((s, i) => `<label class="f" style="margin:0;font-size:11px">${i === 0 ? 'Start value (and below)' : i === f.stops.length - 1 ? 'End value (and above)' : 'Marker value'}<input type="number" step="any" data-sv="${i}" value="${s.v}"></label><input type="color" data-sc="${i}" value="${s.c}" style="width:44px;height:30px;padding:0;margin-top:14px"><button class="small ghost" data-sd="${i}" style="margin-top:14px"${f.stops.length < 2 ? ' disabled' : ''}>×</button>`).join('');
+    bar();
+  }
+  const sync = () => { $e('#feOn').checked = !!f.on; $e('#feAlpha').value = f.alpha == null ? 0.85 : f.alpha; $e('#feAlphaV').textContent = Math.round((f.alpha == null ? 0.85 : f.alpha) * 100) + '%'; rows(); live(); };
+  $e('#feOn').onchange = e => { f.on = e.target.checked; live(); };
+  $e('#feAlpha').oninput = e => { f.alpha = +e.target.value; $e('#feAlphaV').textContent = Math.round(f.alpha * 100) + '%'; live(); };
+  $e('#feRows').addEventListener('input', e => { const c = e.target.closest('[data-sc]'); if (c) { f.stops[+c.dataset.sc].c = c.value; f.on = true; $e('#feOn').checked = true; bar(); live(); } });
+  $e('#feRows').addEventListener('change', e => { const v = e.target.closest('[data-sv]'); if (v && isFinite(parseFloat(v.value))) { f.stops[+v.dataset.sv].v = parseFloat(v.value); f.on = true; sync(); } });
+  $e('#feRows').addEventListener('click', e => { const d = e.target.closest('[data-sd]'); if (d && f.stops.length > 1) { f.stops.splice(+d.dataset.sd, 1); sync(); } });
+  $e('#feBar').onclick = e => {
+    const r = e.currentTarget.getBoundingClientRect(), [lo, hi] = span(), v = +(lo + (e.clientX - r.left) / r.width * (hi - lo)).toFixed(1);
+    const c = colorAt(f.stops, v), hx = c[0] === '#' ? c : '#' + c.match(/\d+/g).slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('');
+    f.stops.push({ v, c: hx }); f.on = true; sync();
+  };
+  $e('#feAdd').onclick = () => { const a = f.stops[f.stops.length - 1]; f.stops.push({ v: +(a.v + 10).toFixed(1), c: a.c }); sync(); };
+  $e('#feReset').onclick = () => { const d = defaultFill(cv, g); f.stops = d.stops; f.alpha = d.alpha; f.on = true; sync(); };
+  $e('#feCancel').onclick = () => { const o = JSON.parse(snap); if (o) cv.fill = o; else delete cv.fill; ov.remove(); live(); };
+  $e('#feDone').onclick = () => ov.remove();
+  sync();
 }
 function logChanged() { autosave(); renderLogs(); drawActual(); }
 $('#bLogFile').onclick = () => $('#logFile').click();
@@ -1941,6 +2015,7 @@ $('#logCard').addEventListener('click', e => {
   if (b.id === 'bLogCancel') { LOG.pending = null; renderLogPick(); return; }
   if (b.id === 'bLogAll' || b.id === 'bLogNone') { $$('#logPick [data-lp]').forEach(c => { c.checked = b.id === 'bLogAll'; }); return; }
   if (b.id === 'bLogClear') { if (confirm('Remove all well logs from this well?')) { state.logs = null; logChanged(); logMsg(''); } return; }
+  if (b.dataset.lf !== undefined) { openFillEditor(+b.dataset.lf); return; }
   if (b.dataset.ld !== undefined) { state.logs.curves.splice(+b.dataset.ld, 1); if (!state.logs.curves.length) state.logs = null; logChanged(); return; }
   if (b.id === 'bLogGo') {
     const p = LOG.pending, picks = $$('#logPick [data-lp]').filter(c => c.checked).map(c => +c.dataset.lp);
@@ -1949,8 +2024,8 @@ $('#logCard').addEventListener('click', e => {
     picks.forEach(i => {
       const m = p.r.curves[i], c = WP.packLogCurve({ name: m.mnem, unit: m.unit, desc: m.desc, src: p.src, trk: 0 }, p.r.depth, p.r.cols[i]);
       const k = L.curves.findIndex(x => nm(x.name) === nm(c.name));
-      if (k >= 0) { c.trk = L.curves[k].trk; L.curves[k] = c; repl++; }
-      else { const g = logGroup(c.name), t = g >= 0 ? LOG_DEF[g][1] : 0; c.trk = t && !L.curves.some(x => x.trk === t) ? t : 0; L.curves.push(c); added++; }
+      if (k >= 0) { c.trk = L.curves[k].trk; c.fill = L.curves[k].fill; L.curves[k] = c; repl++; }
+      else { const g = logGroup(c.name), t = g >= 0 ? LOG_DEF[g][1] : 0; c.trk = t && !L.curves.some(x => x.trk === t) ? t : 0; if (g === 0) c.fill = defaultFill(c, 0); L.curves.push(c); added++; }
     });
     LOG.pending = null; logChanged();
     logMsg(`Imported ${picks.length} curve${picks.length === 1 ? '' : 's'}${repl ? ` (${repl} replaced)` : ''}. Use the Track menus to choose what is shown and where.`);
