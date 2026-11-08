@@ -167,16 +167,16 @@ td.bad{color:var(--warn);font-weight:700}
   <h1>Well Path Planner</h1><span class="sub" id="wellTitle"></span>
   <span style="display:flex;gap:6px;align-items:center;margin-left:8px"><span style="color:var(--muted)">Well</span>
     <select id="wellSel" style="width:auto;max-width:260px"></select>
-    <button id="bWellDel" class="small" title="Delete the selected well">Delete well</button></span>
+</span>
   <span class="grow"></span>
   <span class="btns" style="display:flex;gap:6px;flex-wrap:wrap">
     <button id="bNew">New</button>
-    <button id="bOpen">Open…</button>
+    <button id="bOpen" title="Open one or more saved plans (.wellplan.json). Select several files at once to bring all their wells into this project.">Open…</button>
     <button id="bSave">Save</button>
     <button id="bCsv" class="primary">Export survey CSV</button>
     <button id="bPrint">Print</button>
   </span>
-  <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+  <input type="file" id="fileOpen" accept=".json,application/json" multiple hidden>
 </header>
 
 <div class="app">
@@ -2342,13 +2342,34 @@ function renderWellBar() {
   $('#wellSel').innerHTML = project.wells.map((w, i) => `<option value="${i}"${i === project.active ? ' selected' : ''}>${esc(w.name || 'Unnamed')}${w.slot ? ' (' + slotId(w.slot.c, w.slot.r) + ')' : ''}</option>`).join('');
 }
 function selectWell(i) { project.active = i; state = project.wells[i]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init(); }
-$('#wellSel').onchange = e => selectWell(+e.target.value);
-$('#bWellDel').onclick = () => {
-  if (project.wells.length < 2) { alert('A project needs at least one well.'); return; }
-  if (!confirm('Delete "' + state.name + '"? This cannot be undone.')) return;
-  project.wells.splice(project.active, 1);
-  selectWell(Math.max(0, project.active - 1));
-};
+/* ---- unsaved-work tracking and dialog ---- */
+const projSig = () => JSON.stringify(project);
+let savedSig = null, snoozeSig = null;
+function dlg(msg, buttons) {                 // buttons: [{label, value, primary}] -> Promise of the clicked value
+  return new Promise(res => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML = `<div style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:18px 20px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.4)"><div style="white-space:pre-line;margin-bottom:14px">${esc(msg)}</div><div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${buttons.map((b, k) => `<button data-k="${k}"${b.primary ? ' class="primary"' : ''}>${esc(b.label)}</button>`).join('')}</div></div>`;
+    ov.onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; ov.remove(); res(buttons[+b.dataset.k].value); };
+    document.body.appendChild(ov); const f = ov.querySelector('.primary') || ov.querySelector('button'); if (f) f.focus();
+  });
+}
+const doSave = () => { download((project.wells.length > 1 ? 'pad_project' : safeName()) + '.wellplan.json', JSON.stringify(project, null, 2), 'application/json'); savedSig = projSig(); };
+/* true when it is fine to carry on (saved, or user chose not to); forNew: New always asks, switching asks once per set of edits */
+async function confirmLeave(what, forNew) {
+  const sig = projSig();
+  if (sig === savedSig || (!forNew && sig === snoozeSig)) return true;
+  const r = await dlg('You have unsaved changes to "' + (state.name || 'this well') + '".\nDo you want to save before ' + what + '?', [{ label: 'Cancel', value: 'cancel' }, { label: "Don't save", value: 'discard' }, { label: 'Save', value: 'save', primary: true }]);
+  if (r === 'cancel') return false;
+  if (r === 'save') doSave(); else if (!forNew) snoozeSig = sig;
+  return true;
+}
+async function trySelectWell(i) {
+  if (i === project.active) return;
+  if (!(await confirmLeave('switching wells', false))) { wellSig = ''; renderWellBar(); return; }
+  selectWell(i);
+}
+$('#wellSel').onchange = e => trySelectWell(+e.target.value);
 
 function renderSlotSel() {
   const P = project.pad, have = new Set(), opts = ['<option value="custom">Custom location (type coordinates)</option>'];
@@ -2466,27 +2487,45 @@ $('#cvPad').addEventListener('click', e => {
   (c._slots || []).forEach(s => { const d = (s.x - mx) ** 2 + (s.y - my) ** 2; if (d < bd) { bd = d; best = s; } });
   if (!best) return;
   const w = wellAtSlot(best.c, best.r);
-  if (w) { if (w !== state) selectWell(project.wells.indexOf(w)); } else createWellAtSlot(best.c, best.r);
+  if (w) { if (w !== state) trySelectWell(project.wells.indexOf(w)); } else createWellAtSlot(best.c, best.r);
 });
 
 /* ================= file actions ================= */
-$('#bSave').onclick = () => download((project.wells.length > 1 ? 'pad_project' : safeName()) + '.wellplan.json', JSON.stringify(project, null, 2), 'application/json');
+$('#bSave').onclick = doSave;
 $('#bOpen').onclick = () => $('#fileOpen').click();
-$('#fileOpen').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const rd = new FileReader();
-  rd.onload = () => {
-    try {
-      const p = migrateProject(JSON.parse(rd.result)); if (!p) throw new Error('not a project');
-      project = p; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
-    } catch (err) { showBanner('That file is not a valid well plan: ' + err.message); }
-  };
-  rd.readAsText(f); e.target.value = '';
-};
-$('#bNew').onclick = () => {
-  if (confirm('Start a new project? Unsaved changes, including all wells on this pad, will be lost.')) {
-    project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
+const normName = x => String(x || '').trim().toLowerCase();
+$('#fileOpen').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  const items = [], bad = [];
+  for (const f of files) {
+    try { const p = migrateProject(JSON.parse(await f.text())); if (!p) throw new Error('not a project'); items.push({ name: f.name, p }); }
+    catch (err) { bad.push(f.name + ' (' + err.message + ')'); }
   }
+  if (!items.length) { await dlg('None of the selected files is a valid well plan:\n' + bad.join('\n'), [{ label: 'OK', value: 1, primary: true }]); return; }
+  const pristine = project.wells.length === 1 && !project.refs.length && JSON.stringify(project.wells[0]) === JSON.stringify(DEFAULT());
+  let base, queue = items.slice();
+  if (pristine) { const f = queue.shift(); base = JSON.parse(JSON.stringify(f.p)); } else base = project;
+  const incoming = [];
+  queue.forEach(it => it.p.wells.forEach(w => incoming.push({ w: JSON.parse(JSON.stringify(w)), samePad: JSON.stringify(it.p.pad) === JSON.stringify(base.pad) })));
+  const replaced = incoming.filter(x => base.wells.some(b => normName(b.name) === normName(x.w.name))).map(x => x.w.name);
+  if (replaced.length && !(await dlg('These wells are already in the project and will be replaced by the file versions:\n' + replaced.join('\n'), [{ label: 'Cancel', value: false }, { label: 'Replace', value: true, primary: true }]))) return;
+  let added = 0, repl = 0, firstIdx = pristine ? base.active : -1;
+  incoming.forEach(x => {
+    const k = base.wells.findIndex(b => normName(b.name) === normName(x.w.name));
+    const taken = x.w.slot && base.wells.some((b, bi) => bi !== k && b.slot && b.slot.c === x.w.slot.c && b.slot.r === x.w.slot.r);
+    if (!x.samePad || taken) x.w.slot = null;
+    if (k >= 0) { base.wells[k] = x.w; repl++; } else { base.wells.push(x.w); added++; if (firstIdx < 0) firstIdx = base.wells.length - 1; }
+  });
+  queue.flatMap(it => it.p.refs).forEach(r => { const k = base.refs.findIndex(b => normName(b.name) === normName(r.name)); if (k >= 0) base.refs[k] = r; else base.refs.push(r); });
+  if (firstIdx >= 0) base.active = firstIdx;
+  project = base; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
+  savedSig = projSig(); snoozeSig = null;
+  if (items.length > 1 || bad.length || repl) await dlg('Opened ' + items.length + ' file' + (items.length === 1 ? '' : 's') + '. The project now has ' + project.wells.length + ' wells' + (repl ? ' (' + repl + ' replaced)' : '') + '.' + (bad.length ? '\n\nSkipped:\n' + bad.join('\n') : ''), [{ label: 'OK', value: 1, primary: true }]);
+};
+$('#bNew').onclick = async () => {
+  if (!(await confirmLeave('starting a new project', true))) return;
+  project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
+  savedSig = projSig(); snoozeSig = null;
 };
 
 function init() {
@@ -2500,6 +2539,7 @@ function init() {
   recalc();
 }
 init();
+savedSig = projSig();
 </script>
 </body>
 </html>
