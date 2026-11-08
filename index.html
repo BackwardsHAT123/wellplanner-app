@@ -1870,7 +1870,7 @@ function renderActual() {
   const st = (k, v, u, cls) => `<div class="stat ${cls || ''}"><div class="k">${k}</div><div class="v">${v}${u ? ` <small>${u}</small>` : ''}</div></div>`;
   $('#actStats').innerHTML =
     st('Last actual MD', fmt(last.md, 0), 'ft') + st('Last actual TVD', fmt(last.tvd, 0), 'ft') +
-    st('Distance to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
+    st('Δ to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
     st('Right (+) / left (−)', fmt(ld.right, 1), 'ft') + st('High (+) / low (−)', fmt(ld.high, 1), 'ft') +
     st('Largest distance', fmt(mx.dist, 1), `ft at MD ${fmt(mx.md, 0)}`);
   let h = '<thead><tr><th>MD (ft)</th><th>Inc (°)</th><th>Azi (°, grid)</th><th>TVD (ft)</th><th>VS (ft)</th><th>Distance to plan (ft)</th><th>Right + / left − (ft)</th><th>High + / low − (ft)</th><th>Plan MD at closest (ft)</th></tr></thead><tbody>';
