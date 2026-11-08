@@ -419,7 +419,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
-        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs actual MD · hover to mark the same spot on the plan, 3D and distance charts</span></h4><div id="logTracks"></div></div>
+        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span></h4><div id="logTracks"></div></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
@@ -1906,7 +1906,7 @@ function drawLogs() {
   wrap.hidden = false;
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
-  const lo = ACT.rows[0].md, hi = ACT.rows[ACT.rows.length - 1].md, col = logColors();
+  const rg = cs.map(c => WP.logRange(c)), lo = Math.min(...rg.map(r => r[0])), hi = Math.max(...rg.map(r => r[1])), col = logColors();   // x axis spans the displayed log data
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
     lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], cursor: ACT.hov ? ACT.hov.md : null,
