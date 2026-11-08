@@ -1759,7 +1759,7 @@ function lineChart(canvasId, o) {
   const c = $('#' + canvasId); if (!c.offsetParent) return;
   const { g, w, h } = setupCanvas(c);
   const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
-  const m = { l: 52, r: o.right ? 46 : 14, t: 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const m = { l: 52, r: o.right ? 46 : 14, t: o.cursorTop ? 24 : 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
   const ext = ax => {
     let lo = Infinity, hi = -Infinity;
     o.series.filter(s => (s.axis || 'left') === ax).forEach(s => s.pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }));
@@ -1789,9 +1789,20 @@ function lineChart(canvasId, o) {
   c._lc = { m, iw, xlo, xhi };
   if (o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {
     const cx = X(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(cx, m.t); g.lineTo(cx, m.t + ih); g.stroke(); g.setLineDash([]);
-    o.series.forEach(s => { const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; if (!best) return; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill(); });
+    o.series.forEach(s => { const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; if (!best) return; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill();
+      if (o.dropLines) {                       // dashed line out to the Y axis with the value at each end
+        const y = Yf(r, best[1]), tx = fmt(best[1], Math.abs(best[1]) < 10 ? 2 : 1);
+        g.strokeStyle = s.color; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]);
+        const tw = g.measureText(tx).width + 8, ty = Math.min(Math.max(y, m.t + 9), m.t + ih - 9);
+        g.fillStyle = css('--panel'); g.fillRect(m.l + 2, ty - 8, tw, 16); g.fillRect(m.l + iw - 2 - tw, ty - 8, tw, 16);
+        g.fillStyle = s.color; g.textAlign = 'left'; g.fillText(tx, m.l + 6, ty + 4); g.textAlign = 'right'; g.fillText(tx, m.l + iw - 6, ty + 4);
+      } });
   }
   g.restore(); g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
+  if (o.cursorTop && o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {      // MD of the marker, above the plot
+    const tx = 'MD ' + fmt(o.cursor, 1) + ' ft', tw = g.measureText(tx).width + 12, cx = Math.min(Math.max(X(o.cursor), m.l + tw / 2), m.l + iw - tw / 2);
+    g.fillStyle = css('--ink'); g.fillRect(cx - tw / 2, 3, tw, 17); g.fillStyle = css('--bg'); g.textAlign = 'center'; g.fillText(tx, cx, 15);
+  }
   // legend
   let lx = m.l + 8; g.textAlign = 'left';
   o.series.forEach(s => { g.fillStyle = s.color; g.fillRect(lx, m.t + ih - 16, 14, 3); g.fillStyle = ink; g.fillText(s.name, lx + 19, m.t + ih - 11); lx += g.measureText(s.name).width + 36; });
@@ -1909,7 +1920,7 @@ function drawLogs() {
   const rg = cs.map(c => WP.logRange(c)), lo = Math.min(...rg.map(r => r[0])), hi = Math.max(...rg.map(r => r[1])), col = logColors();   // x axis spans the displayed log data
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
-    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], cursor: ACT.hov ? ACT.hov.md : null,
+    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], dropLines: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
       series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
 }
