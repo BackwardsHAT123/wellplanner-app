@@ -396,9 +396,8 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="stats" id="actStats"></div>
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
-        <div class="plot"><h4>Section view <span id="apSecLbl"></span></h4><canvas id="cvApSec"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
-        <div class="plot"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
+        <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
       <div class="tblwrap" style="max-height:none"><table id="actTbl"></table></div>
@@ -1470,8 +1469,7 @@ function offPlanTvd(r) { return r.tvdss + state.kb; }
 const P2 = {
   plan: { id: 'cvPlan', ydown: false, view: null, mouse: null, xl: 'East of surface (ft)', yl: 'North of surface (ft)' },
   sec: { id: 'cvSec', ydown: true, view: null, mouse: null, xl: 'Vertical section (ft)', yl: 'TVD (ft)' },
-  apPlan: { id: 'cvApPlan', base: 'plan', ydown: false, view: null, mouse: null, xl: 'East of surface (ft)', yl: 'North of surface (ft)' },
-  apSec: { id: 'cvApSec', base: 'sec', ydown: true, view: null, mouse: null, xl: 'Vertical section (ft)', yl: 'TVD (ft)' }
+  apPlan: { id: 'cvApPlan', base: 'plan', ydown: false, view: null, mouse: null, xl: 'East of surface (ft)', yl: 'North of surface (ft)' }
 };
 function pts2D(kind) {
   const sv = M.survey, a = Math.cos(M.vsAzi * D2R), b = Math.sin(M.vsAzi * D2R);
@@ -1567,6 +1565,10 @@ function draw2D(key) {
     g.strokeStyle = css('--blue'); g.lineWidth = 3.4; g.lineJoin = 'round'; g.beginPath();
     act.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
     const e = act[act.length - 1]; g.fillStyle = css('--blue'); g.beginPath(); g.arc(X(e.x), Y(e.y), 4, 0, 7); g.fill();
+    if (ACT.hov) {
+      const A = ACT.hov.a, Pp = ACT.hov.p; g.strokeStyle = css('--ink'); g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(X(Pp.x), Y(Pp.y)); g.lineTo(X(A.x), Y(A.y)); g.stroke(); g.setLineDash([]);
+      [[Pp, css('--accent')], [A, css('--blue')]].forEach(([q, col]) => { g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(X(q.x), Y(q.y), 6, 0, 7); g.fill(); g.stroke(); });
+    }
   }
   // targets
   const diamond = (q, label) => {
@@ -1677,6 +1679,10 @@ function draw3D(id = 'cv3d') {
   offs.forEach((o, i) => { poly(o, M.offs[i].color, 1.6); });
   poly(plan, acc, 2.6);
   if (actP.length) { poly(actP, css('--blue'), 3.4); const e = actP[actP.length - 1], A = P(e); g.fillStyle = css('--blue'); g.beginPath(); g.arc(A[0], A[1], 4, 0, 7); g.fill(); apLegend(g, 12, 18); }
+  if (AP && ACT.hov) {
+    const A = [ACT.hov.a.x, ACT.hov.a.y, ACT.hov.a.z], Pp = [ACT.hov.p.x, ACT.hov.p.y, ACT.hov.p.z];
+    seg(Pp, A, ink, 1.2, [3, 2]); [[Pp, acc], [A, css('--blue')]].forEach(([q, col]) => { const B = P(q); g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(B[0], B[1], 6, 0, 7); g.fill(); g.stroke(); });
+  }
   // survey error ellipses: cross-section of the position uncertainty perpendicular to the hole, every 1,000 ft, 2.79 sigma
   if (ERR.ell && !AP) {
     const ring = (rows, cov, col, lw) => {
@@ -1757,6 +1763,11 @@ function lineChart(canvasId, o) {
     const r = (s.axis || 'left') === 'right' ? R : L; g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
     s.pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Yf(r, p[1])) : g.moveTo(X(p[0]), Yf(r, p[1]))); g.stroke();
   });
+  c._lc = { m, iw, xlo, xhi };
+  if (o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {
+    const cx = X(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(cx, m.t); g.lineTo(cx, m.t + ih); g.stroke(); g.setLineDash([]);
+    o.series.forEach(s => { const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill(); });
+  }
   g.restore(); g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
   // legend
   let lx = m.l + 8; g.textAlign = 'left';
@@ -1804,26 +1815,47 @@ function computeActual() {
   else if (mode === 'surface' && first > 0) { tie = { n: 0, e: 0, tvd: first }; ACT.tieHow = `tied to the surface, vertical to MD ${fmt(first, 0)}`; }
   else ACT.tieHow = 'starts at the surface';
   ACT.rows = WP.actualSurvey(st, { n0: state.surface.n, e0: state.surface.e, kb: state.kb, vsAzi: M.vsAzi, tie });
-  ACT.dev = WP.planVsActual(ACT.rows, M.survey);
+  ACT.dev = WP.planVsActual(ACT.rows, M.survey); ACT.hov = null;
 }
 function drawApDist() {
   if (!ACT.dev) return;
   lineChart('cvApDist', {
-    xl: 'Actual measured depth (ft)',
+    xl: 'Actual measured depth (ft)', cursor: ACT.hov ? ACT.hov.md : null,
     series: [{ name: 'Distance to plan', color: css('--ink'), pts: ACT.dev.map(d => [d.md, d.dist]) },
              { name: 'Right (+) / left (−)', color: css('--accent'), pts: ACT.dev.map(d => [d.md, d.right]) },
              { name: 'High (+) / low (−)', color: css('--blue'), pts: ACT.dev.map(d => [d.md, d.high]) }]
   });
 }
+/* Hovering the distance chart marks the same station on the plan view and the 3D view: the actual position and the closest plan point. */
+function setApHover(i) {
+  if (i === null || !ACT.rows || !ACT.dev || !ACT.dev[i]) { if (ACT.hov) { ACT.hov = null; drawActual(); } return; }
+  if (ACT.hov && ACT.hov.i === i) return;
+  const a = ACT.rows[i], d = ACT.dev[i], p = WP.planAtMd(M.survey, d.planMd), sf = state.surface;
+  ACT.hov = { i, md: a.md, a: { x: a.easting - sf.e, y: a.northing - sf.n, z: -offPlanTvd(a) }, p: { x: p.easting - sf.e, y: p.northing - sf.n, z: -p.tvd } };
+  drawActual();
+}
+(() => {
+  const c = $('#cvApDist'); let raf = 0;
+  c.addEventListener('mousemove', e => {
+    if (!c._lc || !ACT.dev || raf) return; const cx = e.clientX, rect = c.getBoundingClientRect();
+    raf = requestAnimationFrame(() => {
+      raf = 0; const L = c._lc, f = (cx - rect.left - L.m.l) / L.iw;
+      if (f < 0 || f > 1) return setApHover(null);
+      const md = L.xlo + f * (L.xhi - L.xlo); let bi = 0;
+      ACT.dev.forEach((d, i) => { if (Math.abs(d.md - md) < Math.abs(ACT.dev[bi].md - md)) bi = i; });
+      setApHover(bi);
+    });
+  });
+  c.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); raf = 0; setApHover(null); });
+})();
 function drawActual() {
   if (!$('#pane-actual').classList.contains('on') || !ACT.rows) return;
-  draw2D('apPlan'); draw2D('apSec'); draw3D('cvAp3d'); drawApDist();
+  draw2D('apPlan'); draw3D('cvAp3d'); drawApDist();
 }
 function renderActual() {
   if (!$('#pane-actual').classList.contains('on')) return;
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
-  $('#apSecLbl').textContent = M.survey ? `VS azimuth ${fmt(M.vsAzi, 1)}°` : '';
   if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; }
   if (!a) { if (!$('#actMsg').dataset.keep) $('#actMsg').textContent = 'Import the as-drilled survey (MD, inclination, azimuth), full or partial, to compare it with this well’s plan.'; return; }
   if (!M.survey) { $('#actMsg').textContent = 'The plan does not build right now, so there is nothing to compare with.'; return; }
@@ -1857,7 +1889,7 @@ function loadActualText(text, src) {
   if (r.rows.length < 2) { renderActual(); actualMsg(`Found ${r.rows.length} usable station${r.rows.length === 1 ? '' : 's'} in ${src || 'the pasted text'}. Each line needs MD, inclination and azimuth (a header line that names them is fine).` + (state.actual ? ' The existing actual survey was kept.' : '')); return; }
   const prev = state.actual;
   state.actual = { src: src || 'pasted survey', added: new Date().toISOString().slice(0, 10), trueNorth: prev ? !!prev.trueNorth : false, tie: prev ? prev.tie : 'auto', rows: r.rows };
-  P2.apPlan.view = P2.apSec.view = null;
+  P2.apPlan.view = null;
   recalc();
   actAddMsg(prev ? `Replaced the previous survey (${prev.rows.length} stations) with ${r.rows.length}.` : '');
   const extra = [r.skipped ? `${r.skipped} line${r.skipped === 1 ? '' : 's'} skipped` : '', r.dropped ? `${r.dropped} repeated MD dropped` : ''].filter(Boolean).join(', ');
@@ -2304,7 +2336,7 @@ function renderWellBar() {
   if (sig === wellSig) return; wellSig = sig;
   $('#wellSel').innerHTML = project.wells.map((w, i) => `<option value="${i}"${i === project.active ? ' selected' : ''}>${esc(w.name || 'Unnamed')}${w.slot ? ' (' + slotId(w.slot.c, w.slot.r) + ')' : ''}</option>`).join('');
 }
-function selectWell(i) { project.active = i; state = project.wells[i]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init(); }
+function selectWell(i) { project.active = i; state = project.wells[i]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init(); }
 $('#wellSel').onchange = e => selectWell(+e.target.value);
 $('#bWellDel').onclick = () => {
   if (project.wells.length < 2) { alert('A project needs at least one well.'); return; }
@@ -2441,14 +2473,14 @@ $('#fileOpen').onchange = e => {
   rd.onload = () => {
     try {
       const p = migrateProject(JSON.parse(rd.result)); if (!p) throw new Error('not a project');
-      project = p; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init();
+      project = p; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
     } catch (err) { showBanner('That file is not a valid well plan: ' + err.message); }
   };
   rd.readAsText(f); e.target.value = '';
 };
 $('#bNew').onclick = () => {
   if (confirm('Start a new project? Unsaved changes, including all wells on this pad, will be lost.')) {
-    project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = P2.apSec.view = null; init();
+    project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
   }
 };
 
