@@ -1822,6 +1822,15 @@ function lineChart(canvasId, o) {
     g.fillStyle = css('--ink'); g.fillRect(cx - tw / 2, 3, tw, 17); g.fillStyle = css('--bg'); g.textAlign = 'center'; g.fillText(tx, cx, 15);
   }
   // legend
+  if (o.axisLabels) {                          // curve names beside the Y axes, rotated 90 degrees left
+    ['left', 'right'].forEach(ax => {
+      const ss = o.series.filter(s => (s.axis || 'left') === ax); if (!ss.length || (ax === 'right' && !R)) return;
+      const ws = ss.map(s => g.measureText(s.label || s.name).width), tot = ws.reduce((x, y) => x + y, 0) + 16 * (ss.length - 1);
+      let pos = m.t + ih / 2 + tot / 2;
+      ss.forEach((s, i) => { g.save(); g.translate(ax === 'left' ? 11 : w - 6, pos - ws[i] / 2); g.rotate(-Math.PI / 2); g.fillStyle = s.color; g.textAlign = 'center'; g.font = '600 11px -apple-system,Segoe UI,system-ui,sans-serif'; g.fillText(s.label || s.name, 0, 0); g.restore(); pos -= ws[i] + 16; });
+    });
+    return;
+  }
   let lx = m.l + 8; g.textAlign = 'left';
   o.series.forEach(s => { g.fillStyle = s.color; g.fillRect(lx, m.t + ih - 16, 14, 3); g.fillStyle = ink; g.fillText(s.name, lx + 19, m.t + ih - 11); lx += g.measureText(s.name).width + 36; });
 }
@@ -1949,8 +1958,8 @@ function drawLogs() {
   const rg = cs.map(c => WP.logRange(c)), lo = Math.min(...rg.map(r => r[0])), hi = Math.max(...rg.map(r => r[1])), col = logColors();   // x axis spans the displayed log data
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
-    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], dropLines: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
-      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
+    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
+      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
 }
 function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, spanning lo..hi (default: the stops, padded)
