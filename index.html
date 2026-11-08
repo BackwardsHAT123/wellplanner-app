@@ -419,7 +419,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
-        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span></h4><div id="logTracks"></div></div>
+        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span><span class="grow"></span><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
@@ -1804,6 +1804,7 @@ function lineChart(canvasId, o) {
     const r = (s.axis || 'left') === 'right' ? R : L; g.strokeStyle = s.color; g.lineWidth = 2; g.beginPath();
     s.pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Yf(r, p[1])) : g.moveTo(X(p[0]), Yf(r, p[1]))); g.stroke();
   });
+  (o.vlines || []).forEach(v => { if (v.x < xlo || v.x > xhi) return; g.strokeStyle = v.color; g.lineWidth = 1.5; g.setLineDash([6, 3]); g.beginPath(); g.moveTo(X(v.x), m.t); g.lineTo(X(v.x), m.t + ih); g.stroke(); g.setLineDash([]); });
   c._lc = { m, iw, xlo, xhi };
   if (o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {
     const cx = X(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(cx, m.t); g.lineTo(cx, m.t + ih); g.stroke(); g.setLineDash([]);
@@ -1918,6 +1919,7 @@ attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas
 /* ================= well logs ================= */
 /* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
 const LOG = { pending: null };
+const LOGZ = { mode: 0, start: null, lo: null, hi: null };   // zoom: mode 0 off, 1 waiting for the start click, 2 waiting for the end click
 const LOG_DEF = [[/^(gr|gamma|gamma_?ray|gam|gr_?[a-z0-9]*)$/i, 1], [/^(tg|total_?gas|tgas|gas_?total)$/i, 2], [/^rop[a-z0-9_]*$/i, 3]];
 const GR_STOPS = () => [{ v: 55, c: '#ffe94d' }, { v: 65, c: '#ffe94d' }, { v: 90, c: '#a8e6a1' }, { v: 105, c: '#8e44ad' }];
 function defaultFill(c, g) {                  // gamma ray gets the lithology ramp; other curves a plain two-colour ramp across their own range
@@ -1955,10 +1957,11 @@ function drawLogs() {
   wrap.hidden = false;
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
-  const rg = cs.map(c => WP.logRange(c)), lo = Math.min(...rg.map(r => r[0])), hi = Math.max(...rg.map(r => r[1])), col = logColors();   // x axis spans the displayed log data
+  const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : Math.max(...rg.map(r => r[1])), col = logColors();
+  logZoomUi();   // x axis spans the displayed log data
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
-    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
+    lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
       series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
 }
@@ -2011,6 +2014,21 @@ function openFillEditor(idx) {
   $e('#feDone').onclick = () => ov.remove();
   sync();
 }
+function logZoomUi() {
+  const b = $('#bLogZoom'); if (!b) return;
+  b.textContent = LOGZ.mode === 1 ? 'Click the start point…' : LOGZ.mode === 2 ? 'Click the end point…' : 'Zoom to interval';
+  b.classList.toggle('primary', LOGZ.mode > 0); $('#bLogZoomReset').hidden = LOGZ.lo == null;
+}
+$('#bLogZoom').onclick = () => { LOGZ.mode = LOGZ.mode ? 0 : 1; LOGZ.start = null; drawLogs(); };
+$('#bLogZoomReset').onclick = () => { LOGZ.lo = LOGZ.hi = null; LOGZ.mode = 0; drawLogs(); };
+$('#logTracks').addEventListener('click', e => {
+  const c = e.target.closest('canvas'); if (!LOGZ.mode || !c || !c._lc) return;
+  const L = c._lc, f = (e.clientX - c.getBoundingClientRect().left - L.m.l) / L.iw; if (f < 0 || f > 1) return;
+  const md = L.xlo + f * (L.xhi - L.xlo);
+  if (LOGZ.mode === 1) { LOGZ.start = md; LOGZ.mode = 2; drawLogs(); return; }
+  const a = Math.min(LOGZ.start, md), b = Math.max(LOGZ.start, md);
+  LOGZ.mode = 0; LOGZ.start = null; if (b - a >= 2) { LOGZ.lo = a; LOGZ.hi = b; } drawLogs();
+});
 function logChanged() { autosave(); renderLogs(); drawActual(); }
 $('#bLogFile').onclick = () => $('#logFile').click();
 $('#logFile').onchange = async e => {
@@ -2721,6 +2739,7 @@ $('#bNew').onclick = async () => {
 };
 
 function init() {
+  LOGZ.mode = 0; LOGZ.start = null; LOGZ.lo = LOGZ.hi = null;
   writeInputs();
   $('#surfCoord').innerHTML = cwHtml('surface'); $('#padRef').innerHTML = cwHtml('pad');
   applyAllSlots();
