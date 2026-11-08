@@ -1928,6 +1928,11 @@ function defaultFill(c, g) {                  // gamma ray gets the lithology ra
   return { on: true, alpha: 0.85, stops: [{ v: +lo.toFixed(2), c: '#ffe94d' }, { v: +(hi > lo ? hi : lo + 1).toFixed(2), c: '#8e44ad' }] };
 }
 const logGroup = name => LOG_DEF.findIndex(d => d[0].test(String(name).trim()));
+const LOG_RED = '#e53935';
+function logColor(c, i) {                     // GR follows the theme ink (black in light mode, white in dark), TG is red, the rest use the palette
+  const g = logGroup(c.name); if (g === 0) return css('--ink'); if (g === 1) return LOG_RED;
+  const p = logColors(); return p[i % p.length];
+}
 const logColors = () => [css('--good'), css('--accent'), css('--blue'), css('--ink'), css('--amber'), css('--warn')];
 const logMsg = t => { $('#logMsg').textContent = t || ''; };
 function renderLogPick() {
@@ -1947,7 +1952,7 @@ function renderLogs() {
   const col = logColors();
   $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
     cs.map((c, i) => { const r = WP.logRange(c);
-      return `<span style="display:inline-block;width:14px;height:3px;background:${col[i % col.length]}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
+      return `<span style="display:inline-block;width:14px;height:3px;background:${logColor(c, i)}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
         `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select>` +
         `<button class="small" data-lf="${i}" title="Colour fill under the curve" style="display:flex;gap:6px;align-items:center">Fill…${c.fill && c.fill.on ? `<span style="display:inline-block;width:34px;height:10px;border-radius:2px;background:${fillCss(c.fill, 34)}"></span>` : ''}</button><button class="small ghost" data-ld="${i}" title="Remove this curve">×</button>`; }).join('') + `</div>` : '';
 }
@@ -1962,7 +1967,7 @@ function drawLogs() {
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
     lineChart('cvLog' + i, { xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
-      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: col[L.curves.indexOf(c) % col.length], axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
+      series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: logColor(c, L.curves.indexOf(c)), axis: k === 1 ? 'right' : 'left', fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
 }
 function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, spanning lo..hi (default: the stops, padded)
