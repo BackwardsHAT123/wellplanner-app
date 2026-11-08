@@ -1826,8 +1826,8 @@ function lineChart(canvasId, o) {
     ['left', 'right'].forEach(ax => {
       const ss = o.series.filter(s => (s.axis || 'left') === ax); if (!ss.length || (ax === 'right' && !R)) return;
       const ws = ss.map(s => g.measureText(s.label || s.name).width), tot = ws.reduce((x, y) => x + y, 0) + 16 * (ss.length - 1);
-      let pos = m.t + ih / 2 + tot / 2;
-      ss.forEach((s, i) => { g.save(); g.translate(ax === 'left' ? 11 : w - 6, pos - ws[i] / 2); g.rotate(-Math.PI / 2); g.fillStyle = s.color; g.textAlign = 'center'; g.font = '600 11px -apple-system,Segoe UI,system-ui,sans-serif'; g.fillText(s.label || s.name, 0, 0); g.restore(); pos -= ws[i] + 16; });
+      const L = ax === 'left'; let pos = m.t + ih / 2 + (L ? tot / 2 : -tot / 2);       // right-hand names read top to bottom
+      ss.forEach((s, i) => { g.save(); g.translate(L ? 11 : w - 6, pos + (L ? -1 : 1) * ws[i] / 2); g.rotate(L ? -Math.PI / 2 : Math.PI / 2); g.fillStyle = s.color; g.textAlign = 'center'; g.font = '600 11px -apple-system,Segoe UI,system-ui,sans-serif'; g.fillText(s.label || s.name, 0, 0); g.restore(); pos += (L ? -1 : 1) * (ws[i] + 16); });
     });
     return;
   }
