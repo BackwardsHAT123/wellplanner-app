@@ -1588,7 +1588,7 @@ function draw2D(key) {
     g.strokeStyle = css('--blue'); g.lineWidth = 3.4; g.lineJoin = 'round'; g.beginPath();
     act.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
     const e = act[act.length - 1]; g.fillStyle = css('--blue'); g.beginPath(); g.arc(X(e.x), Y(e.y), 4, 0, 7); g.fill();
-    if (ACT.hov) {
+    if (ACT.hov && ACT.hov.a) {
       const A = ACT.hov.a, Pp = ACT.hov.p; g.strokeStyle = css('--ink'); g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(X(Pp.x), Y(Pp.y)); g.lineTo(X(A.x), Y(A.y)); g.stroke(); g.setLineDash([]);
       [[Pp, css('--accent')], [A, css('--blue')]].forEach(([q, col]) => { g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(X(q.x), Y(q.y), 6, 0, 7); g.fill(); g.stroke(); });
     }
@@ -1702,7 +1702,7 @@ function draw3D(id = 'cv3d') {
   offs.forEach((o, i) => { poly(o, M.offs[i].color, 1.6); });
   poly(plan, acc, 2.6);
   if (actP.length) { poly(actP, css('--blue'), 3.4); const e = actP[actP.length - 1], A = P(e); g.fillStyle = css('--blue'); g.beginPath(); g.arc(A[0], A[1], 4, 0, 7); g.fill(); apLegend(g, 12, 18); }
-  if (AP && ACT.hov) {
+  if (AP && ACT.hov && ACT.hov.a) {
     const A = [ACT.hov.a.x, ACT.hov.a.y, ACT.hov.a.z], Pp = [ACT.hov.p.x, ACT.hov.p.y, ACT.hov.p.z];
     seg(Pp, A, ink, 1.2, [3, 2]); [[Pp, acc], [A, css('--blue')]].forEach(([q, col]) => { const B = P(q); g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(B[0], B[1], 6, 0, 7); g.fill(); g.stroke(); });
   }
@@ -1861,11 +1861,17 @@ function drawApDist() {
   });
 }
 /* Hovering the distance chart marks the same station on the plan view and the 3D view: the actual position and the closest plan point. */
-function setApHover(i) {
-  if (i === null || !ACT.rows || !ACT.dev || !ACT.dev[i]) { if (ACT.hov) { ACT.hov = null; drawActual(); } return; }
-  if (ACT.hov && ACT.hov.i === i) return;
-  const a = ACT.rows[i], d = ACT.dev[i], p = WP.planAtMd(M.survey, d.planMd), sf = state.surface;
-  ACT.hov = { i, md: a.md, a: { x: a.easting - sf.e, y: a.northing - sf.n, z: -offPlanTvd(a) }, p: { x: p.easting - sf.e, y: p.northing - sf.n, z: -p.tvd } };
+function setApHover(md) {                    // md: any measured depth (finer than the survey stations), or null to clear
+  if (md === null || !ACT.rows || !ACT.dev) { if (ACT.hov) { ACT.hov = null; drawActual(); } return; }
+  md = Math.round(md * 2) / 2;                // half-foot steps, the usual log sample spacing
+  if (ACT.hov && ACT.hov.md === md) return;
+  const rows = ACT.rows, n = rows.length;
+  if (md < rows[0].md || md > rows[n - 1].md) { ACT.hov = { md, a: null, p: null }; drawActual(); return; }   // inside the logs but outside the actual survey
+  const a = WP.planAtMd(rows, md); let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (rows[m].md <= md) lo = m; else hi = m; }
+  const t = hi === lo || rows[hi].md === rows[lo].md ? 0 : (md - rows[lo].md) / (rows[hi].md - rows[lo].md);
+  const pm = ACT.dev[lo].planMd + t * (ACT.dev[hi].planMd - ACT.dev[lo].planMd), p = WP.planAtMd(M.survey, pm), sf = state.surface;
+  ACT.hov = { md, a: { x: a.easting - sf.e, y: a.northing - sf.n, z: -(a.tvdss + state.kb) }, p: { x: p.easting - sf.e, y: p.northing - sf.n, z: -p.tvd } };
   drawActual();
 }
 function attachApHover(box, pick) {          // pick(e) -> the canvas under the pointer, or null
@@ -1875,9 +1881,7 @@ function attachApHover(box, pick) {          // pick(e) -> the canvas under the 
     raf = requestAnimationFrame(() => {
       raf = 0; const L = c._lc, f = (cx - rect.left - L.m.l) / L.iw;
       if (f < 0 || f > 1) return setApHover(null);
-      const md = L.xlo + f * (L.xhi - L.xlo); let bi = 0;
-      ACT.dev.forEach((d, i) => { if (Math.abs(d.md - md) < Math.abs(ACT.dev[bi].md - md)) bi = i; });
-      setApHover(bi);
+      setApHover(L.xlo + f * (L.xhi - L.xlo));
     });
   });
   box.addEventListener('mouseleave', () => { cancelAnimationFrame(raf); raf = 0; setApHover(null); });
