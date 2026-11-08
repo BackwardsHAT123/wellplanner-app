@@ -101,9 +101,15 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px}
 .stat .k{font-size:12px;font-weight:500;color:var(--muted)}
 .stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+#stats{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin-bottom:6px}
+#stats .stat{padding:3px 8px;min-width:0;overflow:hidden}
+#stats .stat .k,#stats .stat .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stats .stat .k{font-size:11px;line-height:1.25}
+#stats .stat .v{font-size:15px;line-height:1.25}
+#stats .stat .v small{font-size:10px}
 .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
 .stat.bad .v{color:var(--warn)}
-.stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -16px 10px;padding:12px 16px 2px;border-bottom:1px solid var(--line)}
+.stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -16px 10px;padding:12px 16px 0;border-bottom:1px solid var(--line)}
 .stickytop .tabs{margin-bottom:8px}
 @media print{.stickytop{position:static;border:0}}
 .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
