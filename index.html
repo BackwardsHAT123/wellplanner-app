@@ -52,13 +52,13 @@ button.small{padding:2px 10px;font-size:12px}
 button.ghost{border-color:transparent;background:transparent;color:var(--accent-text)}
 .app{display:grid;grid-template-columns:350px minmax(0,1fr);height:calc(100vh - 50px)}
 aside{overflow:auto;padding:12px;border-right:1px solid var(--line)}
-main{overflow:auto;padding:12px 16px 40px}
-.card{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:10px;background:var(--panel)}
+main{overflow:auto;padding:12px 12px 20px}
+.card{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:5px;background:var(--panel)}
 .card h3{margin:0 0 8px;font-size:14px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:8px}
 .card h3 .grow{flex:1}
 #secWrap .secRow label.chk{flex-wrap:wrap}
 #secWrap .secRow input[type=number]{width:76px}
-.geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:10px;margin-bottom:10px;align-items:start}
+.geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:5px 10px;margin-bottom:5px;align-items:start}
 .geo .card{margin:0}
 @media (max-width:1100px){.geo{grid-template-columns:1fr}}
 #secWrap{font-size:12px;display:flex;flex-direction:column;gap:7px}
@@ -93,7 +93,7 @@ input[type=number]{font-variant-numeric:tabular-nums}
 textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .hint{font-size:11.5px;color:var(--muted);margin-top:6px}
 .derived{font-size:12px;margin-top:8px;padding:6px 8px;background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
-.msg{border-radius:var(--r-md);padding:8px 12px;margin-bottom:10px;font-size:12.5px}
+.msg{border-radius:var(--r-md);padding:8px 12px;margin-bottom:5px;font-size:12.5px}
 .msg.err{background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:1px solid var(--warn)}
 .msg.note{background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .msg ul{margin:0;padding-left:18px}
@@ -110,7 +110,7 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #stats .stat .v small{font-size:10px}
 .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
 .stat.bad .v{color:var(--warn)}
-.stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -16px 10px;padding:12px 16px 0;border-bottom:1px solid var(--line)}
+.stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -12px 5px;padding:12px 12px 0;border-bottom:1px solid var(--line)}
 .stickytop .tabs{margin-bottom:8px}
 @media print{.stickytop{position:static;border:0}}
 .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
@@ -118,10 +118,9 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
 .pane{display:none}.pane.on{display:block}
 #pane-geo.on{display:flex;flex-direction:column}
-#pane-geo{margin:-5px -4px -20px}                /* tighter than the other tabs: half the vertical gaps, three quarters of the side padding */
-#pane-geo > *{margin:0 0 5px}
-#pane-geo > :last-child{margin-bottom:0}
-.plots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#pane-geo{gap:5px}
+#pane-geo > *{margin:0}
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
 .plot h4 span{font-weight:400;color:var(--muted);font-size:11px}
@@ -146,7 +145,7 @@ td.bad{color:var(--warn);font-weight:700}
 .row input:first-child{flex:1}
 .row input.num{width:78px;flex:none}
 .row input.num2{width:58px;flex:none}
-.offcard{border:1px solid var(--line);border-radius:var(--r-md);padding:8px 10px;margin-bottom:10px;background:var(--panel)}
+.offcard{border:1px solid var(--line);border-radius:var(--r-md);padding:8px 10px;margin-bottom:5px;background:var(--panel)}
 .offcard .top{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .offcard .top input{flex:1}
 .pill{display:inline-block;padding:1px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--tab);color:var(--muted)}
@@ -349,7 +348,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
       <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
     </div>
-    <div class="card" id="notesCard" style="margin-top:10px">
+    <div class="card" id="notesCard" style="margin-top:5px">
       <h3>Notes</h3>
       <div id="planNotes"></div>
       <div id="secInfo"></div>
@@ -487,19 +486,19 @@ td.bad{color:var(--warn);font-weight:700}
       <label>Alert when closer than <input id="minSep" type="number" step="any" min="0" style="width:80px"> ft</label>
       <span class="hint" style="margin:0">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</span>
     </div>
-    <div class="card" id="refCard" style="margin-bottom:10px">
+    <div class="card" id="refCard" style="margin-bottom:5px">
       <h3>Wells from this tool as offsets</h3>
       <div class="hint" style="margin:0 0 6px">Wells in this project are always compared with each other. Add wells from another saved plan (for example, ones not on the state’s layer yet) as reference copies: they are drawn on the plots and checked for clearance like any other offset. A reference is a frozen copy, so adding the same well again replaces it.</div>
       <div id="refList"></div>
       <div class="toolbar" style="margin-top:6px"><button class="small" id="bRefAdd">+ Add wells from a saved plan…</button><input type="file" id="refFile" accept=".json,application/json" hidden></div>
       <div id="refPick"></div>
     </div>
-    <div class="card" id="stoListCard" style="margin-bottom:10px">
+    <div class="card" id="stoListCard" style="margin-bottom:5px">
       <h3>Drilled wells from state records</h3>
       <div id="stoInfo" class="derived" style="margin-top:0"></div>
       <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; at the top of the Plots tab to list them here.</div>
     </div>
-    <div class="card" id="errCard" style="margin-bottom:10px">
+    <div class="card" id="errCard" style="margin-bottom:5px">
       <h3>Survey uncertainty (screening)</h3>
       <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
       <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
@@ -507,7 +506,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="derived" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
     </div>
     <div id="offList"></div>
-    <div class="plot" style="margin-bottom:10px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>
+    <div class="plot" style="margin-bottom:5px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>
     <div class="tblwrap" style="max-height:none"><table id="sepTbl"></table></div>
   </div>
 </main>
