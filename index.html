@@ -127,6 +127,8 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .plot canvas{width:100%;height:340px;display:block;touch-action:none;cursor:grab}
 .plot canvas:active{cursor:grabbing}
 #logPlot h4,#geoTvd h4{flex-wrap:nowrap;white-space:nowrap}#logPlot h4>span:first-of-type,#geoTvd h4>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+#pane-plots .plots .plot{height:300px;box-sizing:border-box;display:flex;flex-direction:column}   /* the four plot cards on the Plots tab are 300px high */
+#pane-plots .plots .plot canvas{flex:1;min-height:0;height:auto}
 #cvApPlan,#cvAp3d{height:306px}                /* Plan vs actual: 10% shorter than the other plots */
 .tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel);max-height:calc(100vh - 230px)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
