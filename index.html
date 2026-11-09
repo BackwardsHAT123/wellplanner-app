@@ -345,7 +345,7 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
   </div>
     <div class="plots">
-      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvPlan"></canvas></div>
+      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn" style="width:15px;height:15px;margin:0"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
       <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
       <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
@@ -1517,6 +1517,10 @@ function pts2D(kind) {
     : { x: (t.n - state.surface.n) * a + (t.e - state.surface.e) * b, y: t.tvd };
   return { map, tg };
 }
+const NAMES = { on: true };
+try { NAMES.on = localStorage.getItem('wellplanner.names') !== '0'; } catch (e) {}
+$('#namesOn').checked = NAMES.on;
+$('#namesOn').onchange = e => { NAMES.on = e.target.checked; try { localStorage.setItem('wellplanner.names', NAMES.on ? '1' : '0'); } catch (x) {} drawAll(); };
 function draw2D(key) {
   const p = P2[key], kind = p.base || key, AP = !!p.base, c = $('#' + p.id);
   if (!c.offsetParent || !M.survey) return;
@@ -1576,7 +1580,6 @@ function draw2D(key) {
   offs.forEach((o, i) => {
     g.strokeStyle = M.offs[i].color; g.lineWidth = 1.6; g.beginPath();
     o.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
-    const q = o[o.length - 1]; g.fillStyle = g.strokeStyle; g.textAlign = 'left'; g.fillText(M.offs[i].name, X(q.x) + 5, Y(q.y) + 4);
   });
   // plan path
   g.strokeStyle = acc; g.lineWidth = 2.4; g.lineJoin = 'round'; g.beginPath();
@@ -1624,6 +1627,27 @@ function draw2D(key) {
     g.fillStyle = mk.label === 'TD' ? ink : acc; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill();
     g.fillStyle = ink; g.textAlign = 'left'; g.fillText(mk.label, x + 7, y + 12);
   });
+  // offset well names: each goes to the nearest free spot around the end of its path, with a thin leader line if it had to move away
+  if (NAMES.on && offs.length) {
+    const obst = [], box = (x, y, w) => ({ x0: x, y0: y - 10, x1: x + w, y1: y + 3 }), hit = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+    tgs.forEach((q, i) => obst.push(box(X(q.x) + 9, Y(q.y) - 6, g.measureText(ut[i].name).width)));
+    M.markers.forEach(mk => { const q = map.row(mk.row); obst.push(box(X(q.x) + 7, Y(q.y) + 12, g.measureText(mk.label).width)); });
+    const area = { x0: m.l + 2, y0: m.t + 2, x1: m.l + iw - 2, y1: m.t + ih - 2 }, inside = b => b.x0 >= area.x0 && b.x1 <= area.x1 && b.y0 >= area.y0 && b.y1 <= area.y1;
+    const dirs = [[1, 0], [1, -1], [1, 1], [0, -1], [0, 1], [-1, 0], [-1, -1], [-1, 1]];
+    offs.forEach((o, i) => {
+      const q = o[o.length - 1], ax = X(q.x), ay = Y(q.y), nm = M.offs[i].name, w = g.measureText(nm).width; let best = null;
+      search: for (const r of [5, 20, 36, 54]) for (const d of dirs) {
+        const lx = d[0] > 0 ? ax + r : d[0] < 0 ? ax - r - w : ax - w / 2, ly = d[1] > 0 ? ay + r + 10 : d[1] < 0 ? ay - r : ay + 4, b = box(lx, ly, w);
+        if (!inside(b)) continue;
+        if (!obst.some(ob => hit(ob, b))) { best = { lx, ly, b, r }; break search; }
+      }
+      if (!best) { const lx = ax + 5, ly = ay + 4; best = { lx, ly, b: box(lx, ly, w), r: 5 }; }          // nowhere is free: keep it beside its well
+      obst.push(best.b);
+      g.strokeStyle = g.fillStyle = M.offs[i].color; g.textAlign = 'left';
+      if (best.r > 5) { g.lineWidth = 0.8; g.globalAlpha = .6; g.beginPath(); g.moveTo(ax, ay); g.lineTo(Math.min(Math.max(ax, best.b.x0), best.b.x1), (best.b.y0 + best.b.y1) / 2); g.stroke(); g.globalAlpha = 1; }
+      g.fillText(nm, best.lx, best.ly);
+    });
+  }
   // hover
   let hv = null;
   if (p.mouse && !AP) {
