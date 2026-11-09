@@ -312,6 +312,7 @@ td.bad{color:var(--warn);font-weight:700}
     <button class="tab" data-tab="sections">Sections</button>
     <button class="tab" data-tab="offsets">Offsets &amp; clearance</button>
     <button class="tab" data-tab="actual">Plan vs actual</button>
+    <button class="tab" data-tab="geo">Geosteering</button>
     <button class="tab" data-tab="wall">Wall plot</button>
   </div>
   <div class="stats" id="stats"></div>
@@ -405,6 +406,19 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
       <div id="actMsg" class="derived"></div>
     </div>
+    <div id="actBody">
+      <div class="stats" id="actStats"></div>
+      <div class="plots">
+        <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
+        <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
+        <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
+      </div>
+      <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
+      <div class="tblwrap" style="max-height:none"><table id="actTbl"></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-geo">
     <div class="card" id="logCard">
       <h3>Well logs</h3>
       <div class="toolbar">
@@ -415,17 +429,8 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="logMsg" class="hint" style="margin:6px 0 0"></div>
       <div id="logCurves"></div>
     </div>
-    <div id="actBody">
-      <div class="stats" id="actStats"></div>
-      <div class="plots">
-        <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
-        <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
-        <div class="plot" id="logPlot" style="grid-column:1/-1" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the plan, 3D and distance charts</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
-        <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
-      </div>
-      <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
-      <div class="tblwrap" style="max-height:none"><table id="actTbl"></table></div>
-    </div>
+    <div class="plot" id="logPlot" style="margin-top:10px" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
+    <div class="plot" id="geoTvd" style="margin-top:10px" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="height:260px;cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">
@@ -921,7 +926,7 @@ function recalc() {
 
   renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
-  computeActual(); renderRef(); renderSto(); renderActual();
+  computeActual(); renderRef(); renderSto(); renderActual(); renderGeo();
   if (SEC.on || STO.on || WALL.on) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
 }
 
@@ -1769,7 +1774,7 @@ function lineChart(canvasId, o) {
   const c = $('#' + canvasId); if (!c.offsetParent) return;
   const { g, w, h } = setupCanvas(c);
   const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
-  const m = { l: 52, r: o.right ? 46 : 14, t: o.cursorTop ? 24 : 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const m = { l: 52, r: o.right || o.padRight ? 46 : 14, t: o.cursorTop ? 24 : 12, b: o.hideX ? 8 : 32 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
   const ext = ax => {
     const ss = o.series.filter(s => (s.axis || 'left') === ax), sg = (ss.find(s => s.scale) || {}).scale || {}, num = v => v !== '' && v != null && isFinite(+v);
     let lo = Infinity, hi = -Infinity;
@@ -1780,7 +1785,7 @@ function lineChart(canvasId, o) {
       r = isFinite(lo) ? [Math.floor(Math.log10(lo)), Math.ceil(Math.log10(hi))] : [0, 1];
       if (num(sg.min) && +sg.min > 0) r[0] = Math.log10(+sg.min); if (num(sg.max) && +sg.max > 0) r[1] = Math.log10(+sg.max); if (r[1] <= r[0]) r[1] = r[0] + 1;
     } else {
-      if (!isFinite(lo)) r = [0, 1]; else { lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; r = [lo, hi + pad]; }
+      if (!isFinite(lo)) r = [0, 1]; else if (sg.fit) { const pad = (hi - lo) * 0.06 || 1; r = [lo - pad, hi + pad]; } else { lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; r = [lo, hi + pad]; }
       if (num(sg.min)) r[0] = +sg.min; if (num(sg.max)) r[1] = +sg.max; if (r[1] <= r[0]) r[1] = r[0] + 1;
     }
     r.log = !!sg.log; r.rev = !!sg.rev; return r;
@@ -1906,9 +1911,10 @@ function drawApDist() {
 }
 /* Hovering the distance chart marks the same station on the plan view and the 3D view: the actual position and the closest plan point. */
 function setApHover(md) {                    // md: any measured depth (finer than the survey stations), or null to clear
-  if (md === null || !ACT.rows || !ACT.dev) { if (ACT.hov) { ACT.hov = null; drawActual(); } return; }
+  if (md === null) { if (ACT.hov) { ACT.hov = null; drawActual(); } return; }
   md = Math.round(md * 2) / 2;                // half-foot steps, the usual log sample spacing
   if (ACT.hov && ACT.hov.md === md) return;
+  if (!ACT.rows || !ACT.dev) { ACT.hov = { md, a: null, p: null }; drawActual(); return; }     // logs only, no actual survey to place it on
   const rows = ACT.rows, n = rows.length;
   if (md < rows[0].md || md > rows[n - 1].md) { ACT.hov = { md, a: null, p: null }; drawActual(); return; }   // inside the logs but outside the actual survey
   const a = WP.planAtMd(rows, md); let lo = 0, hi = n - 1;
@@ -1921,7 +1927,7 @@ function setApHover(md) {                    // md: any measured depth (finer th
 function attachApHover(box, pick) {          // pick(e) -> the canvas under the pointer, or null
   let raf = 0;
   box.addEventListener('mousemove', e => {
-    const c = pick(e); if (!c || !c._lc || !ACT.dev || raf) return; const cx = e.clientX, rect = c.getBoundingClientRect();
+    const c = pick(e); if (!c || !c._lc || raf) return; const cx = e.clientX, rect = c.getBoundingClientRect();
     raf = requestAnimationFrame(() => {
       raf = 0; const L = c._lc, f = (cx - rect.left - L.m.l) / L.iw;
       if (f < 0 || f > 1) return setApHover(null);
@@ -1932,6 +1938,7 @@ function attachApHover(box, pick) {          // pick(e) -> the canvas under the 
 }
 attachApHover($('#cvApDist'), e => e.currentTarget);
 attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas'));
+attachApHover($('#cvGeoTvd'), e => e.currentTarget);
 /* ================= well logs ================= */
 /* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
 const LOG = { pending: null };
@@ -1977,18 +1984,20 @@ function renderLogs() {
 }
 function drawLogs() {
   const wrap = $('#logPlot'), box = $('#logTracks'), L = state.logs, cs = L ? L.curves.filter(c => c.trk > 0) : [];
-  if (!ACT.rows || !cs.length) { wrap.hidden = true; return; }
+  if (!cs.length) { wrap.hidden = true; $('#geoTvd').hidden = true; return; }
   wrap.hidden = false;
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
   const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : Math.max(...rg.map(r => r[1])), col = logColors();
   logZoomUi();   // x axis spans the displayed log data
-  const topMarks = LOGT.on && state.tops ? WP.formationMds(state.tops, ACT.rows, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
+  const topMarks = LOGT.on && state.tops ? WP.formationMds(state.tops, ACT.rows || M.survey, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
+  const anyRight = tr.some(t => cs.filter(c => c.trk === t).length > 1);
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
-    lineChart('cvLog' + i, { tops: topMarks, topLabels: i === 0, xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
+    lineChart('cvLog' + i, { padRight: anyRight, tops: topMarks, topLabels: i === 0, xl: 'Measured depth (ft)', hideX: i < tr.length - 1, right: own.length > 1, xrange: [lo, hi], vlines: LOGZ.mode === 2 ? [{ x: LOGZ.start, color: css('--accent') }] : [], dropLines: true, axisLabels: true, cursorTop: i === 0, cursor: ACT.hov ? ACT.hov.md : null,
       series: own.map((c, k) => ({ name: c.name + (c.unit ? ' (' + c.unit + ')' : ''), label: c.name, color: logColor(c, L.curves.indexOf(c)), axis: k === 1 ? 'right' : 'left', scale: c.scale, fill: c.fill && c.fill.on ? c.fill : null, pts: WP.logSeries(c, lo, hi, 1500) })) });
   });
+  drawGeoTvd(lo, hi, anyRight);
 }
 function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, spanning lo..hi (default: the stops, padded)
   const st = f.stops; if (!st.length) return 'none';
@@ -2007,7 +2016,7 @@ function openScaleEditor(idx) {
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px"><span>Line colour</span><input type="color" id="scCol" style="width:44px;height:30px;padding:0"><button class="small" id="scColDef">Use default</button></div>
     <div class="toolbar" style="margin-top:12px"><span class="grow"></span><button id="scCancel">Cancel</button><button class="primary" id="scDone">Done</button></div></div>`;
   document.body.appendChild(ov);
-  const $e = q => ov.querySelector(q), live = () => { autosave(); renderLogs(); drawActual(); };
+  const $e = q => ov.querySelector(q), live = () => { autosave(); renderLogs(); drawGeo(); };
   $e('#scMin').value = sc.min != null ? sc.min : ''; $e('#scMax').value = sc.max != null ? sc.max : ''; $e('#scLog').checked = !!sc.log; $e('#scRev').checked = !!sc.rev;
   const curCol = () => { const c = logColor(cv, idx); return /^#[0-9a-f]{6}$/i.test(c) ? c : '#' + (c.match(/\d+/g) || [128, 128, 128]).slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join(''); };
   $e('#scCol').value = curCol();
@@ -2035,7 +2044,7 @@ function openFillEditor(idx) {
     <div class="toolbar" style="margin-top:12px"><button class="small" id="feAdd">Add marker</button><button class="small" id="feReset">Reset to default</button><span class="grow"></span><button id="feCancel">Cancel</button><button class="primary" id="feDone">Done</button></div></div>`;
   document.body.appendChild(ov);
   const $e = q => ov.querySelector(q), span = () => { const a = f.stops[0].v, b = f.stops[f.stops.length - 1].v, p = (b - a) * 0.12 || 5; return [a - p, b + p]; };
-  const live = () => { autosave(); renderLogs(); drawActual(); };
+  const live = () => { autosave(); renderLogs(); drawGeo(); };
   function bar() {
     const [lo, hi] = span(); $e('#feBar').style.background = fillCss(f, 0, lo, hi);
     $e('#feMarks').innerHTML = f.stops.map(s => `<div title="${s.v}" style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${s.c};filter:drop-shadow(0 0 1px #000)"></div><div style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);font-size:10px;color:var(--muted);padding-top:9px">${s.v}</div>`).join('');
@@ -2062,6 +2071,26 @@ function openFillEditor(idx) {
   $e('#feDone').onclick = () => ov.remove();
   sync();
 }
+/* TVD (Y, increasing downward) against MD, on the same MD axis and margins as the log tracks */
+function drawGeoTvd(lo, hi, anyRight) {
+  const box = $('#geoTvd'), sv = ACT.rows, pl = M.survey;
+  if (!sv && !pl) { box.hidden = true; return; }
+  box.hidden = false;
+  const clip = rows => { const k = rows.filter(r => r.md >= lo && r.md <= hi), i0 = rows.findIndex(r => r.md >= lo), i1 = rows.length - 1 - [...rows].reverse().findIndex(r => r.md <= hi);
+    return (i0 > 0 ? [rows[i0 - 1]] : []).concat(k, i1 >= 0 && i1 < rows.length - 1 ? [rows[i1 + 1]] : []).map(r => [r.md, r.tvd]); };
+  const series = [];
+  if (sv) series.push({ name: 'Actual TVD', color: css('--ink'), scale: { rev: true, fit: true }, pts: clip(sv) });
+  if (pl) series.push({ name: 'Plan TVD', color: css('--accent'), scale: sv ? null : { rev: true, fit: true }, pts: clip(pl) });
+  lineChart('cvGeoTvd', { xl: 'Measured depth (ft)', xrange: [lo, hi], padRight: anyRight, dropLines: true, cursor: ACT.hov ? ACT.hov.md : null, series });
+}
+function drawGeo() {
+  if (!$('#pane-geo').classList.contains('on')) return;
+  drawLogs();
+}
+function renderGeo() {
+  if (!$('#pane-geo').classList.contains('on')) return;
+  renderLogs(); drawLogs();
+}
 function logZoomUi() {
   const b = $('#bLogZoom'); if (!b) return;
   b.textContent = LOGZ.mode === 1 ? 'Click the start point…' : LOGZ.mode === 2 ? 'Click the end point…' : 'Zoom to interval';
@@ -2079,7 +2108,7 @@ $('#logTracks').addEventListener('click', e => {
 });
 $('#logTopsOn').checked = LOGT.on;
 $('#logTopsOn').onchange = e => { LOGT.on = e.target.checked; try { localStorage.setItem('wellplanner.logTops', LOGT.on ? '1' : '0'); } catch (x) {} drawLogs(); };
-function logChanged() { autosave(); renderLogs(); drawActual(); }
+function logChanged() { autosave(); renderLogs(); drawGeo(); }
 $('#bLogFile').onclick = () => $('#logFile').click();
 $('#logFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -2114,12 +2143,12 @@ $('#logCard').addEventListener('change', e => {
   state.logs.curves[+s.dataset.lt].trk = +s.value; logChanged();
 });
 function drawActual() {
+  if ($('#pane-geo').classList.contains('on')) drawGeo();
   if (!$('#pane-actual').classList.contains('on') || !ACT.rows) return;
-  draw2D('apPlan'); draw3D('cvAp3d'); drawLogs(); drawApDist();
+  draw2D('apPlan'); draw3D('cvAp3d'); drawApDist();
 }
 function renderActual() {
   if (!$('#pane-actual').classList.contains('on')) return;
-  renderLogs();
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
   if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; }
@@ -2551,6 +2580,7 @@ $$('.tab').forEach(b => b.onclick = () => {
   $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
   if (b.dataset.tab === 'offsets') renderOffsetResults();
   if (b.dataset.tab === 'actual') renderActual();
+  if (b.dataset.tab === 'geo') renderGeo();
   WALL.on = b.dataset.tab === 'wall';
   if (WALL.on) { syncWallInputs(); if (typeof ensureSections === 'function') ensureSections(); }
   drawAll();
