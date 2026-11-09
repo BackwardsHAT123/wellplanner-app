@@ -720,6 +720,79 @@
       return { name: t.name, tvd, tvd0: t.tvd, md, dip: parseFloat(t.dip) || 0, azi: parseFloat(t.azi) || 0, top: t };
     }).sort((a, b) => a.tvd - b.tvd);
   }
+  /* Share of a survey inside one formation zone: between the top named `zone` and the next deeper top (open below when it
+   * is the deepest). Dipping tops are evaluated at every point. Only the MD range [lo, hi] counts (default: all).
+   * Returns { above, inside, below, total } in feet of measured depth, or null when the zone or survey is unusable. */
+  function inZone(survey, tops, ref, zone, lo, hi) {
+    const ts = tops.filter(t => isFinite(t.tvd)).sort((a, b) => a.tvd - b.tvd), i = ts.findIndex(t => t.name === zone);
+    if (i < 0 || !survey || survey.length < 2) return null;
+    const up = ts[i], dn = ts[i + 1] || null, out = { above: 0, inside: 0, below: 0, total: 0 };
+    const L = (x, y, k) => x + k * (y - x);
+    const g = (t, a, b, k) => L(a.tvd, b.tvd, k) - topTvdAt(t, L(a.northing, b.northing, k), L(a.easting, b.easting, k), ref);   // linear in k: >= 0 once at or below the top
+    const lo0 = lo == null ? -Infinity : lo, hi0 = hi == null ? Infinity : hi;
+    for (let j = 1; j < survey.length; j++) {
+      const a = survey[j - 1], b = survey[j], len = b.md - a.md; if (!(len > 0)) continue;
+      const ks = [0, 1];                                            // split where the path crosses either top
+      [up, dn].forEach(t => { if (!t) return; const g0 = g(t, a, b, 0), g1 = g(t, a, b, 1); if (g0 * g1 < 0) ks.push(g0 / (g0 - g1)); });
+      ks.sort((x, y) => x - y);
+      for (let q = 1; q < ks.length; q++) {
+        const m0 = a.md + ks[q - 1] * len, m1 = a.md + ks[q] * len, ov = Math.min(m1, hi0) - Math.max(m0, lo0); if (ov <= 0) continue;
+        const km = (ks[q - 1] + ks[q]) / 2;
+        out[g(up, a, b, km) < 0 ? 'above' : dn && g(dn, a, b, km) >= 0 ? 'below' : 'inside'] += ov; out.total += ov;
+      }
+    }
+    return out;
+  }
+
+  /* Carry the last two actual stations forward at their own build and turn rates (per foot of MD), `len` ft in `step` ft
+   * stations. rows: actual survey rows (md, inc, azi, n, e, tvd, tvdss, northing, easting). Returns { br, tr, rows } with
+   * br / tr in deg per 100 ft; rows are the projected stations after the last one, in the same shape as the survey. */
+  function projectAhead(rows, len, step, vsAzi) {
+    if (!rows || rows.length < 2 || !(len > 0)) return null;
+    const a = rows[rows.length - 2], b = rows[rows.length - 1], dmd = b.md - a.md; if (!(dmd > 1e-9)) return null;
+    let da = b.azi - a.azi; if (da > 180) da -= 360; if (da < -180) da += 360;
+    const bpf = (b.inc - a.inc) / dmd, tpf = (b.inc < 0.5 && a.inc < 0.5) ? 0 : da / dmd;
+    const st = [{ md: b.md, inc: b.inc, azi: b.azi }], h = step > 0 ? step : 30, nst = Math.max(1, Math.ceil(len / h - 1e-9));
+    for (let k = 1; k <= nst; k++) { const d = Math.min(k * h, len); st.push({ md: b.md + d, inc: clamp(b.inc + bpf * d, 0, 180), azi: norm360(b.azi + tpf * d) }); }
+    const vA = (vsAzi || 0) * D2R;
+    const out = computeSurvey(st, { n0: b.northing - b.n, e0: b.easting - b.e }).slice(1);
+    out.forEach(r => { r.n += b.n; r.e += b.e; r.tvd += b.tvd; r.tvdss += b.tvdss; r.northing += b.n; r.easting += b.e;
+      r.vs = r.n * Math.cos(vA) + r.e * Math.sin(vA); r.cd = Math.hypot(r.n, r.e); r.ca = norm360(Math.atan2(r.e, r.n) * R2D); });
+    return { br: bpf * 100, tr: tpf * 100, rows: out };
+  }
+  /* Constant-curvature arc from station `from` (inc, azi, tvd, northing, easting) that meets the plan `dist` ft of plan MD
+   * further along than the plan point closest to it. Returns { dls, tf (deg from the high side, -180..180), arc (ft of hole),
+   * inc, azi (direction on arrival), target (plan station), plan (plan direction there) }, or { error }. */
+  function rejoinPlan(from, plan, planMd, dist) {
+    const tg = planAtMd(plan, planMd + dist), i0 = from.inc * D2R, a0 = from.azi * D2R;
+    const t0 = [Math.sin(i0) * Math.cos(a0), Math.sin(i0) * Math.sin(a0), Math.cos(i0)];
+    const c = [tg.northing - from.northing, tg.easting - from.easting, tg.tvd - from.tvd], C = Math.hypot(c[0], c[1], c[2]);
+    if (C < 1e-6) return { error: 'The bit is already at that plan point.' };
+    const u = c.map(x => x / C), dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2], cp = clamp(dot(t0, u), -1, 1), phi = Math.acos(cp);
+    if (phi > 85 * D2R) return { error: 'That plan point is behind or beside the bit; use a longer distance.' };
+    const arc = phi < 1e-9 ? C : C * phi / Math.sin(phi), dls = phi < 1e-9 ? 0 : 2 * phi * R2D / arc * 100;
+    const t1 = u.map((x, i) => 2 * cp * x - t0[i]);
+    const n = u.map((x, i) => x - cp * t0[i]), nl = Math.hypot(n[0], n[1], n[2]);
+    const e1 = [Math.cos(i0) * Math.cos(a0), Math.cos(i0) * Math.sin(a0), -Math.sin(i0)], e2 = [-Math.sin(a0), Math.cos(a0), 0];
+    const tf = nl < 1e-12 ? 0 : Math.atan2(dot(n, e2), dot(n, e1)) * R2D;
+    return { dls, tf, arc, inc: Math.acos(clamp(t1[2], -1, 1)) * R2D, azi: norm360(Math.atan2(t1[1], t1[0]) * R2D), target: tg, plan: { inc: tg.inc, azi: tg.azi } };
+  }
+
+  /* JSON.stringify with indent, but arrays of plain numbers (log curves, survey columns) stay on one line so a saved well
+   * is a few hundred lines and diffs stay readable. Parses back to exactly the same value. */
+  function compactJson(v) {
+    const s = JSON.stringify(v, null, 2), num = '(?:-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|null)';
+    return s.replace(new RegExp('\\[\\s*(' + num + '(?:,\\s*' + num + ')*)\\s*\\]', 'g'), (m, body) => '[' + body.replace(/,\s*/g, ', ') + ']');
+  }
+
+  /* CSV of an actual survey against the plan: one line per station (rows from actualSurvey, dev from planVsActual). */
+  function actualCsv(rows, dev) {
+    const f = (v, d) => isFinite(v) ? (+v).toFixed(d) : '', L = ['MD_ft,Inc_deg,Azi_deg,TVD_ft,TVDSS_ft,VS_ft,DLS_deg_per_100ft,Northing_ft,Easting_ft,Dist_to_plan_ft,Right_ft,High_ft,Plan_MD_ft'];
+    rows.forEach((r, i) => { const d = dev && dev[i] || {};
+      L.push([f(r.md, 2), f(r.inc, 2), f(r.azi, 2), f(r.tvd, 2), f(r.tvdss, 2), f(r.vs, 2), f(r.dls, 2), f(r.northing, 2), f(r.easting, 2), f(d.dist, 2), f(d.right, 2), f(d.high, 2), f(d.planMd, 2)].join(',')); });
+    return L.join('\n') + '\n';
+  }
+
   /* Toolface (deg) of the curve from (inc1, azi1) to (inc2, azi2). From (near) vertical it is the target azimuth, 0..360;
    * otherwise -180..180 from the high side. */
   function toolFace(i1, a1, i2, a2) {
@@ -818,7 +891,17 @@
     return res;
   }
 
-  const api = { parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+  /* colour ramp: stops [{v, c:'#rrggbb'}] sorted by v; values outside the first/last stop take that stop's colour */
+  function colorAt(stops, v) {
+    const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+    if (!stops.length) return '#888888';
+    if (v <= stops[0].v) return stops[0].c; if (v >= stops[stops.length - 1].v) return stops[stops.length - 1].c;
+    let k = 1; while (stops[k].v < v) k++;
+    const a = stops[k - 1], b = stops[k], t = b.v === a.v ? 0 : (v - a.v) / (b.v - a.v), A = hex(a.c), B = hex(b.c);
+    return 'rgb(' + A.map((x, i) => Math.round(x + t * (B[i] - x))).join(',') + ')';
+  }
+
+  const api = { actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };
