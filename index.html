@@ -117,12 +117,14 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .tab{border:1.5px solid var(--edge);background:transparent;padding:5px 16px;border-radius:var(--r-pill);color:var(--ink)}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
 .pane{display:none}.pane.on{display:block}
+#pane-geo.on{display:flex;flex-direction:column}
 .plots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
 .plot h4 span{font-weight:400;color:var(--muted);font-size:11px}
 .plot canvas{width:100%;height:340px;display:block;touch-action:none;cursor:grab}
 .plot canvas:active{cursor:grabbing}
+#logPlot h4,#geoTvd h4{flex-wrap:nowrap;white-space:nowrap}#logPlot h4>span:first-of-type,#geoTvd h4>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 #cvApPlan,#cvAp3d{height:306px}                /* Plan vs actual: 10% shorter than the other plots */
 .tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel);max-height:calc(100vh - 230px)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
@@ -430,7 +432,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="logCurves"></div>
     </div>
     <div class="plot" id="logPlot" style="margin-top:10px" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
-    <div class="plot" id="geoTvd" style="margin-top:10px" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="height:260px;cursor:crosshair"></canvas></div>
+    <div class="plot" id="geoTvd" style="margin-top:10px" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">
@@ -1984,10 +1986,10 @@ function renderLogs() {
 }
 function drawLogs() {
   const wrap = $('#logPlot'), box = $('#logTracks'), L = state.logs, cs = L ? L.curves.filter(c => c.trk > 0) : [];
-  if (!cs.length) { wrap.hidden = true; $('#geoTvd').hidden = true; return; }
-  wrap.hidden = false;
+  if (!cs.length) return;
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
-  if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${i === tr.length - 1 ? 150 : 104}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
+  if (box.dataset.key === key) tr.forEach((t, i) => { box.children[i].style.height = GEO.trackH(i, tr.length) + 'px'; });
+  if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${GEO.trackH(i, tr.length)}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
   const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : Math.max(...rg.map(r => r[1])), col = logColors();
   logZoomUi();   // x axis spans the displayed log data
   const topMarks = LOGT.on && state.tops ? WP.formationMds(state.tops, ACT.rows || M.survey, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
@@ -2073,9 +2075,9 @@ function openFillEditor(idx) {
 }
 /* TVD (Y, increasing downward) against MD, on the same MD axis and margins as the log tracks */
 function drawGeoTvd(lo, hi, anyRight) {
-  const box = $('#geoTvd'), sv = ACT.rows, pl = M.survey;
-  if (!sv && !pl) { box.hidden = true; return; }
-  box.hidden = false;
+  const sv = ACT.rows, pl = M.survey;
+  if (!sv && !pl) return;
+  $('#cvGeoTvd').style.height = GEO.tvdH + 'px';
   const clip = rows => { const k = rows.filter(r => r.md >= lo && r.md <= hi), i0 = rows.findIndex(r => r.md >= lo), i1 = rows.length - 1 - [...rows].reverse().findIndex(r => r.md <= hi);
     return (i0 > 0 ? [rows[i0 - 1]] : []).concat(k, i1 >= 0 && i1 < rows.length - 1 ? [rows[i1 + 1]] : []).map(r => [r.md, r.tvd]); };
   const series = [];
@@ -2083,10 +2085,26 @@ function drawGeoTvd(lo, hi, anyRight) {
   if (pl) series.push({ name: 'Plan TVD', color: css('--accent'), scale: sv ? null : { rev: true, fit: true }, pts: clip(pl) });
   lineChart('cvGeoTvd', { xl: 'Measured depth (ft)', xrange: [lo, hi], padRight: anyRight, dropLines: true, cursor: ACT.hov ? ACT.hov.md : null, series });
 }
+/* The Geosteering tab fills the window: whatever is left under the Well logs card is split evenly between the logs and the TVD chart. */
+const GEO = { logH: 300, tvdH: 300, trackH: (i, n) => { const u = Math.max(44, (GEO.logH - 30) / n); return Math.round(i === n - 1 ? u + 30 : u); } };
+function layoutGeo(hasLogs, hasTvd) {
+  const main = $('main'), pane = $('#pane-geo'); pane.style.height = '';
+  const top = pane.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop;
+  const avail = Math.max(420, main.clientHeight - top - 44);       // main keeps 40px of padding at the bottom
+  pane.style.height = avail + 'px';
+  const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); if (!n) return;
+  const sec = Math.max(150, (avail - $('#logCard').getBoundingClientRect().height - 10 * n) / n), inner = sec - 40;    // 40px for each section's title and padding
+  GEO.logH = inner; GEO.tvdH = inner;
+}
 function drawGeo() {
   if (!$('#pane-geo').classList.contains('on')) return;
-  drawLogs();
+  const L = state.logs, hasLogs = !!(L && L.curves.some(c => c.trk > 0)), hasTvd = !!(ACT.rows || M.survey);
+  $('#logPlot').hidden = !hasLogs; $('#geoTvd').hidden = !hasTvd;
+  layoutGeo(hasLogs, hasTvd);
+  if (hasLogs) drawLogs();
+  else if (hasTvd) { const rows = ACT.rows || M.survey; drawGeoTvd(rows[0].md, rows[rows.length - 1].md, false); }
 }
+new ResizeObserver(() => drawGeo()).observe($('#logCard'));
 function renderGeo() {
   if (!$('#pane-geo').classList.contains('on')) return;
   renderLogs(); drawLogs();
