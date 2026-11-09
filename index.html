@@ -422,7 +422,8 @@ td.bad{color:var(--warn);font-weight:700}
 
   <div class="pane" id="pane-geo">
     <div class="card" id="logCard">
-      <h3>Well logs</h3>
+      <h3 id="logHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="logArrow" style="display:inline-block;width:10px">▾</span>Well logs <span class="grow"></span><span id="logCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="logBody" style="margin-top:8px">
       <div class="toolbar">
         <button id="bLogFile">Import LAS…</button><input type="file" id="logFile" accept=".las,.LAS,.txt,text/*" hidden>
         <button id="bLogClear" class="ghost">Remove all logs</button>
@@ -430,6 +431,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="logPick" hidden></div>
       <div id="logMsg" class="hint" style="margin:6px 0 0"></div>
       <div id="logCurves"></div>
+      </div>
     </div>
     <div class="plot" id="logPlot" style="margin-top:10px" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
     <div class="plot" id="geoTvd" style="margin-top:10px" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
@@ -1972,7 +1974,15 @@ function renderLogPick() {
       return `<label class="chk"><input type="checkbox" data-lp="${i}"${on ? ' checked' : ''}><span><b>${esc(c.mnem)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''}${c.desc ? ' <span class="mut">' + esc(c.desc) + '</span>' : ''}</span></label>`; }).join('') +
     `</div><div class="toolbar" style="margin-top:8px"><button class="small primary" id="bLogGo">Import selected</button><button class="small" id="bLogAll">All</button><button class="small" id="bLogNone">None</button><button class="small" id="bLogCancel">Cancel</button></div>`;
 }
+function setLogOpen(open, save) {
+  $('#logBody').hidden = !open; $('#logArrow').textContent = open ? '▾' : '▸'; $('#logHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (save) { try { localStorage.setItem('wellplanner.logOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#logHead').onclick = () => setLogOpen($('#logBody').hidden, true);
+$('#logHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLogOpen($('#logBody').hidden, true); } };
+{ let o = true; try { o = localStorage.getItem('wellplanner.logOpen') !== '0'; } catch (e) {} setLogOpen(o, false); }
 function renderLogs() {
+  { const n = state.logs ? state.logs.curves.length : 0; $('#logCount').textContent = n ? n + ' curve' + (n === 1 ? '' : 's') : 'no logs'; }
   renderLogPick();
   const L = state.logs, cs = L ? L.curves : [];
   $('#bLogClear').hidden = !cs.length;
@@ -2132,7 +2142,7 @@ $('#logFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   const r = WP.parseLAS(await f.text());
   if (!r.ok) { LOG.pending = null; renderLogPick(); logMsg('Could not read ' + f.name + ': ' + r.error); return; }
-  LOG.pending = { src: f.name, r }; logMsg(''); renderLogPick();
+  LOG.pending = { src: f.name, r }; logMsg(''); setLogOpen(true, false); renderLogPick();
 };
 $('#logCard').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
