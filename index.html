@@ -118,6 +118,9 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
 .pane{display:none}.pane.on{display:block}
 #pane-geo.on{display:flex;flex-direction:column}
+#pane-geo{margin:-5px -4px -20px}                /* tighter than the other tabs: half the vertical gaps, three quarters of the side padding */
+#pane-geo > *{margin:0 0 5px}
+#pane-geo > :last-child{margin-bottom:0}
 .plots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
@@ -433,8 +436,8 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="logCurves"></div>
       </div>
     </div>
-    <div class="plot" id="logPlot" style="margin-top:10px" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
-    <div class="plot" id="geoTvd" style="margin-top:10px" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
+    <div class="plot" id="logPlot" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
+    <div class="plot" id="geoTvd" hidden><h4>TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">
@@ -2100,10 +2103,10 @@ const GEO = { logH: 300, tvdH: 300, trackH: (i, n) => { const u = Math.max(44, (
 function layoutGeo(hasLogs, hasTvd) {
   const main = $('main'), pane = $('#pane-geo'); pane.style.height = '';
   const top = pane.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop;
-  const avail = Math.max(420, main.clientHeight - top - 44);       // main keeps 40px of padding at the bottom
+  const avail = Math.max(420, main.clientHeight - top - 24);       // main keeps 40px of padding at the bottom, less the pane's -20px margin, less a little slack
   pane.style.height = avail + 'px';
   const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); if (!n) return;
-  const sec = Math.max(150, (avail - $('#logCard').getBoundingClientRect().height - 10 * n) / n), inner = sec - 40;    // 40px for each section's title and padding
+  const sec = Math.max(150, (avail - $('#logCard').getBoundingClientRect().height - 5 * n) / n), inner = sec - 40;    // 40px for each section's title and padding
   GEO.logH = inner; GEO.tvdH = inner;
 }
 function drawGeo() {
