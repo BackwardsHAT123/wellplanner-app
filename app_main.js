@@ -416,7 +416,7 @@ function recalc() {
   renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
   computeActual(); renderRef(); renderSto(); renderActual(); renderGeo();
-  if (SEC.on || STO.on || WALL.on) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
+  if (SEC.on || STO.on || WALL.on || ACT.rows) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
 }
 
 /* ================= survey table ================= */

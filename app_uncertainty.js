@@ -143,7 +143,7 @@ async function tileSections(b) {
   return got.flat().map(r => ({ id: r[0], sec: String(r[1]), dup: '0', ll: r[2] }));
 }
 async function ensureSections() {
-  if (!(SEC.on || STO.on || WALL.on) || !M.survey || SEC.loading) return;
+  if (!(SEC.on || STO.on || WALL.on || ACT.rows) || !M.survey || SEC.loading) return;
   if (!isLL()) { SEC.msg = 'needs a State Plane zone (a local grid has no lat/long)'; updateSecInfo(); return; }
   const need = secBox(MILE * 1.2); if (!need) return;
   if (SEC.covered.some(c => need.w >= c.w && need.e <= c.e && need.s >= c.s && need.n <= c.n)) { updateSecInfo(); return; }
@@ -204,10 +204,21 @@ function updateSecInfo() {
   if (!SEC.only) { const ot = nr.filter(x => !(x.foot > 0)); h += `<br><span style="color:var(--muted)">Also within 1 mile of the lateral: ${ot.length ? ot.map(nm).join(', ') : 'none'}</span>`; }
   info.innerHTML = h;
 }
-function drawSections(g, X, Y, v, ink, acc, muted) {
-  if (!SEC.on) return;
+/* The section the bit is in now (the last actual station) for the Plan vs actual map. If that spot has no section loaded, the
+ * most recent station that is inside a loaded section decides, so the section it left is still shown. */
+function curSections() {
+  if (!ACT.rows) return [];
+  const near = secNear();
+  for (let i = ACT.rows.length - 1; i >= 0; i--) {
+    const p = { n: ACT.rows[i].northing, e: ACT.rows[i].easting }, hit = near.find(x => WP.ptInRing(p, x.ring));
+    if (hit) return [hit];
+  }
+  return [];
+}
+function drawSections(g, X, Y, v, ink, acc, muted, only) {
+  if (!SEC.on && !only) return;
   const sx = state.surface.e, sn = state.surface.n;
-  const list = secShown();
+  const list = only || secShown();
   list.forEach(x => {
     g.beginPath(); x.ring.forEach((q, k) => k ? g.lineTo(X(q.e - sx), Y(q.n - sn)) : g.moveTo(X(q.e - sx), Y(q.n - sn))); g.closePath();
     g.globalAlpha = x.crossed ? .14 : .05; g.fillStyle = acc; g.fill();
@@ -441,7 +452,7 @@ function draw2D(key) {
   const ut = usedTargets(), tgs = ut.map(tg);
   const all = [...pl, ...offs.flat(), ...(act || []), ...tgs];
   if (kind === 'sec') all.push({ x: 0, y: 0 });
-  if (kind === 'plan' && !AP && SEC.on) secShown().forEach(s => s.ring.forEach(q => all.push({ x: q.e - state.surface.e, y: q.n - state.surface.n })));
+  if (kind === 'plan' && (SEC.on || AP)) (AP ? curSections() : secShown()).forEach(s => s.ring.forEach(q => all.push({ x: q.e - state.surface.e, y: q.n - state.surface.n })));
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   all.forEach(q => { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); });
   const fit = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, s: Math.min(iw / Math.max(x1 - x0, 50) , ih / Math.max(y1 - y0, 50)) * 0.88 };
@@ -460,7 +471,7 @@ function draw2D(key) {
   for (let y = gy0; y <= yb; y += step) { g.moveTo(m.l, Math.round(Y(y)) + .5); g.lineTo(m.l + iw, Math.round(Y(y)) + .5); }
   g.stroke();
 
-  if (kind === 'plan' && !AP) drawSections(g, X, Y, v, ink, acc, muted);
+  if (kind === 'plan') drawSections(g, X, Y, v, ink, acc, muted, AP ? curSections() : null);
   // tops (section only)
   if (kind === 'sec') {
     g.setLineDash([5, 4]); g.lineWidth = 1; g.fillStyle = muted; g.textAlign = 'left';
