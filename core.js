@@ -706,6 +706,13 @@
     const az = (isFinite(parseFloat(t.azi)) ? parseFloat(t.azi) : 0) * D2R;
     return t.tvd + Math.tan(dip * D2R) * ((n - ref.n) * Math.cos(az) + (e - ref.e) * Math.sin(az));
   }
+  /* Tops with a blank dip or dip direction take the first value entered on any top of the well (dip and direction separately),
+   * so entering them once covers the rest. Returns copies; the stored tops are not changed. */
+  function resolveTops(tops) {
+    const first = k => { const t = (tops || []).find(x => x[k] !== undefined && x[k] !== null && x[k] !== '' && isFinite(parseFloat(x[k]))); return t ? parseFloat(t[k]) : undefined; };
+    const dip = first('dip'), azi = first('azi'), has = (t, k) => t[k] !== undefined && t[k] !== null && t[k] !== '' && isFinite(parseFloat(t[k]));
+    return (tops || []).map(t => { const o = Object.assign({}, t); if (!has(t, 'dip') && dip !== undefined) o.dip = dip; if (!has(t, 'azi') && azi !== undefined) o.azi = azi; return o; });
+  }
   /* Where each top meets the wellbore: first point of the path at or below the surface. Returns name, tvd (path TVD there),
    * tvd0 (surface depth at the reference point), md (null if never reached), dip, azi; sorted by tvd. */
   function formationMds(tops, survey, ref) {
@@ -901,7 +908,7 @@
     return 'rgb(' + A.map((x, i) => Math.round(x + t * (B[i] - x))).join(',') + ')';
   }
 
-  const api = { actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+  const api = { resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };

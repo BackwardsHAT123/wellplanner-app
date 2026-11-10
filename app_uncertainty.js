@@ -508,7 +508,7 @@ function draw2D(key) {
   // tops (section only)
   if (kind === 'sec') {
     g.setLineDash([5, 4]); g.lineWidth = 1; g.fillStyle = muted; g.textAlign = 'left';
-    state.tops.forEach(t => {
+    topsEff().forEach(t => {
       g.strokeStyle = muted; g.beginPath();
       if (parseFloat(t.dip)) {      // a dipping surface: its depth under each point of the wellbore, so it crosses the path where the top really is
         M.survey.forEach((r, i) => { const px = X(r.vs), py = Y(WP.topTvdAt(t, r.northing, r.easting, state.surface)); if (i) g.lineTo(px, py); else g.moveTo(px, py); });

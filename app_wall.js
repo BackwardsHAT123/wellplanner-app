@@ -37,7 +37,7 @@ function wallSvg() {
   if (wallLogo) { const lw = 150, lh = lw * wallLogo.h / wallLogo.w; o += `<image href="${wallLogo.src}" x="14" y="10" width="${lw}" height="${r2(lh)}"/>`; }
 
   /* ---- formation tops (left) ---- */
-  const tops = WP.formationMds(s.tops, sv, surf).filter(t => t.md !== null);
+  const tops = WP.formationMds(WP.resolveTops(s.tops), sv, surf).filter(t => t.md !== null);
   let yL = 152; T(88, yL, 'FORMATION TOP DETAILS', 8.3, { anchor: 'middle' }); yL += 19;
   T(49, yL, 'TVDPath', 8.3, { anchor: 'end' }); T(86, yL, 'MDPath', 8.3, { anchor: 'end' }); T(138, yL, 'Formation', 8.3, { anchor: 'middle' }); yL += 9;
   tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(138, yL, t.name, 8.3, { anchor: 'middle' }); yL += 9.2; });
@@ -250,7 +250,7 @@ function drillPlanPages() {
   for (let m = 0; m <= tdMd + 1e-6; m += step) addMd(m); addMd(tdMd);
   const note = (md, txt) => { addMd(md); const k = key(md); notes.set(k, (notes.get(k) ? notes.get(k) + ' - ' : '') + txt); };
   secRows.forEach((r, k) => { if (k) { addMd(r.md); const h = hit(r); notes.set(key(r.md), r.note + (h ? ' - ' + h : '')); } });
-  const tops = WP.formationMds(s.tops, sv, surf).filter(t => t.md !== null);
+  const tops = WP.formationMds(WP.resolveTops(s.tops), sv, surf).filter(t => t.md !== null);
   tops.forEach(t => note(t.md, t.name));
   tg.forEach(t => { if (secRows.some(r => hit(r) === tname(t))) return; const b = sv.reduce((q, r) => Math.hypot(r.n - (t.n - surf.n), r.e - (t.e - surf.e), r.tvd - t.tvd) < Math.hypot(q.n - (t.n - surf.n), q.e - (t.e - surf.e), q.tvd - t.tvd) ? r : q, sv[0]); note(b.md, tname(t)); });
   const mds = [...mdMap.values()].sort((a, b) => a - b), pts = mds.map(m => WP.planAtMd(sv, m));

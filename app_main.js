@@ -222,10 +222,17 @@ $('#bAddTgt').onclick = () => {
 $('#bExtend').onclick = () => addTargetFrom(state.lat.az, state.lat.len, state.lat.dip);
 
 /* ================= tops ================= */
+const topsEff = () => WP.resolveTops(state.tops);      // tops with blank dip / direction filled from the ones entered on this well
+/* blank dip and direction boxes show the value they are inheriting */
+function refreshTopHints() {
+  const eff = topsEff();
+  $$('#topsList [data-f=dip],#topsList [data-f=azi]').forEach(el => { const t = eff[+el.dataset.top], k = el.dataset.f; el.placeholder = el.value === '' && t && t[k] !== undefined ? String(+(+t[k]).toFixed(2)) : (k === 'dip' ? 'Dip°' : 'Dir°'); });
+}
 function renderTops() {
   $('#topsList').innerHTML = state.tops.map((t, i) =>
-    `<div class="row"><input data-top="${i}" data-f="name" value="${esc(t.name)}" placeholder="Name"><input class="num" type="number" step="any" data-top="${i}" data-f="tvd" value="${t.tvd}" title="TVD at the surface location (ft)"><input class="num2" type="number" step="any" data-top="${i}" data-f="dip" value="${t.dip ?? ''}" placeholder="Dip°" title="Dip of the surface, degrees (blank = flat)"><input class="num2" type="number" step="any" data-top="${i}" data-f="azi" value="${t.azi ?? ''}" placeholder="Dir°" title="Dip direction, grid azimuth (degrees)"><button class="small ghost" data-deltop="${i}">✕</button></div>`).join('')
+    `<div class="row"><input data-top="${i}" data-f="name" value="${esc(t.name)}" placeholder="Name"><input class="num" type="number" step="any" data-top="${i}" data-f="tvd" value="${t.tvd}" title="TVD at the surface location (ft)"><input class="num2" type="number" step="any" data-top="${i}" data-f="dip" value="${t.dip ?? ''}" placeholder="Dip°" title="Dip of the surface, degrees. Blank = the dip entered on another top of this well, or flat if none"><input class="num2" type="number" step="any" data-top="${i}" data-f="azi" value="${t.azi ?? ''}" placeholder="Dir°" title="Dip direction, grid azimuth (degrees). Blank = the direction entered on another top of this well"><button class="small ghost" data-deltop="${i}">✕</button></div>`).join('')
     || '<div class="hint" style="margin:0">None yet.</div>';
+  refreshTopHints();
 }
 $('#bAddTop').onclick = () => { state.tops.push({ name: 'Top ' + (state.tops.length + 1), tvd: Math.round((state.targets[0] || { tvd: 0 }).tvd) }); renderTops(); recalc(); };
 $('#topsList').addEventListener('input', e => {
@@ -235,7 +242,7 @@ $('#topsList').addEventListener('input', e => {
   if (f === 'name') t.name = el.value;
   else if (f === 'dip' || f === 'azi') { const v = parseFloat(el.value); if (isFinite(v)) t[f] = v; else delete t[f]; }
   else { const v = parseFloat(el.value); if (!isFinite(v)) return; t.tvd = v; }
-  recalc();
+  refreshTopHints(); recalc();
 });
 $('#topsList').addEventListener('click', e => {
   const b = e.target.closest('[data-deltop]'); if (!b) return;

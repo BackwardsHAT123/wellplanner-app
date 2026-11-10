@@ -65,7 +65,7 @@ function drawLogs() {
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${GEO.trackH(i, tr.length)}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
   const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : geoHi(Math.max(...rg.map(r => r[1])), Math.min(...rg.map(r => r[0]))), col = logColors();
   logZoomUi();   // x axis spans the displayed log data
-  const topMarks = LOGT.on && state.tops ? WP.formationMds(state.tops, ACT.rows || M.survey, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
+  const topMarks = LOGT.on && state.tops ? WP.formationMds(topsEff(), ACT.rows || M.survey, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
   const anyRight = tr.some(t => cs.filter(c => c.trk === t).length > 1);
   tr.forEach((t, i) => {
     const own = cs.filter(c => c.trk === t);
@@ -157,7 +157,7 @@ function drawGeoTvd(lo, hi, anyRight) {
   if (sv) series.push({ name: 'Actual TVD', color: css('--ink'), scale: { rev: true, fit: true }, pts: clip(sv) });
   const pj = sv && aheadOf(); if (pj) series.push({ name: 'Projected TVD', color: css('--ink'), dash: [5, 3], scale: null, pts: [[sv[sv.length - 1].md, sv[sv.length - 1].tvd]].concat(pj.proj.rows.map(r => [r.md, r.tvd])) });
   if (pl) series.push({ name: 'Plan TVD', color: css('--accent'), scale: sv ? null : { rev: true, fit: true }, pts: clip(pl) });
-  const tops = (state.tops || []).filter(t => isFinite(t.tvd)).sort((x, y) => x.tvd - y.tvd), path = sv || pl;
+  const tops = topsEff().filter(t => isFinite(t.tvd)).sort((x, y) => x.tvd - y.tvd), path = sv || pl;
   const zs = $('#geoZone'), want = state.geoZone && tops.some(t => t.name === state.geoZone) ? state.geoZone : '';
   if (zs.dataset.sig !== tops.map(t => t.name).join('|')) { zs.dataset.sig = tops.map(t => t.name).join('|'); zs.innerHTML = '<option value="">none</option>' + tops.map(t => `<option>${t.name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`).join(''); }
   zs.value = want; zs.disabled = !tops.length;
