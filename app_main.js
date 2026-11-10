@@ -340,7 +340,7 @@ function failPlan(err) {
   ['surveyTbl', 'secTbl', 'sepTbl'].forEach(id => { const t = $('#' + id); if (t) t.innerHTML = ''; });
   state.targets.forEach((t, i) => { const el = $('#tmiss' + i); if (el) el.innerHTML = ''; });
   showBanner(err);
-  renderWellBar(); renderPad();
+  renderWellBar(); renderPad(); drawPad();
 }
 
 function recalc() {
