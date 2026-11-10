@@ -233,6 +233,18 @@ function adoptPadTops() {                                  // a pad well with no
   const src = project.wells.find(w => w !== state && w.slot && w.tops && w.tops.length);
   if (src) state.tops = JSON.parse(JSON.stringify(src.tops));
 }
+/* "Use pad tops": replace this well's tops with those of the other wells in the pad (the first one that has any) */
+function padTopsSource() { return project.wells.find(w => w !== state && w.slot && w.tops && w.tops.length); }
+function refreshPadTopsBtn() {
+  const b = $('#bPadTops'); if (!b) return; const s = padTopsSource();
+  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (and the other pad wells) into this well' : 'No other pad well has tops yet';
+}
+$('#bPadTops').onclick = e => {
+  e.stopPropagation(); const s = padTopsSource(); if (!s) return;
+  state.tops = JSON.parse(JSON.stringify(s.tops));
+  if (state.slot) shareTops();
+  renderTops(); recalc();
+};
 const topsEff = () => WP.resolveTops(state.tops);      // tops with blank dip / direction filled from the ones entered on this well
 /* blank dip and direction boxes show the value they are inheriting */
 function refreshTopHints() {
@@ -243,7 +255,7 @@ function renderTops() {
   $('#topsList').innerHTML = state.tops.map((t, i) =>
     `<div class="row"><input data-top="${i}" data-f="name" value="${esc(t.name)}" placeholder="Name"><input class="num" type="number" step="any" data-top="${i}" data-f="tvd" value="${t.tvd}" title="TVD at the surface location (ft)"><input class="num2" type="number" step="any" data-top="${i}" data-f="dip" value="${t.dip ?? ''}" placeholder="Dip°" title="Dip of the surface, degrees. Blank = the dip entered on another top of this well, or flat if none"><input class="num2" type="number" step="any" data-top="${i}" data-f="azi" value="${t.azi ?? ''}" placeholder="Dir°" title="Dip direction, grid azimuth (degrees). Blank = the direction entered on another top of this well"><button class="small ghost" data-deltop="${i}">✕</button></div>`).join('')
     || '<div class="hint" style="margin:0">None yet.</div>';
-  refreshTopHints();
+  refreshTopHints(); refreshPadTopsBtn();
 }
 $('#bAddTop').onclick = () => { state.tops.push({ name: 'Top ' + (state.tops.length + 1), tvd: Math.round((state.targets[0] || { tvd: 0 }).tvd) }); shareTops(); renderTops(); recalc(); };
 $('#topsList').addEventListener('input', e => {
