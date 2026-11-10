@@ -76,7 +76,7 @@ main{overflow:auto;padding:12px 12px 20px}
 .chkcol input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
 .offrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
 .offrow .card{margin:0!important}
-.offrow.stoopen{grid-template-columns:minmax(0,1fr)}
+.offrow.wide{grid-template-columns:minmax(0,1fr)}
 @media (max-width:1100px){.offrow{grid-template-columns:minmax(0,1fr)}}
 #refCard .refrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
 #refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
@@ -555,20 +555,22 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="refPick"></div>
       </div>
     </div>
+    <div class="card" id="errCard" style="margin-bottom:5px">
+      <h3 id="errHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="errArrow" style="display:inline-block;width:10px">▾</span>Survey uncertainty (screening) <span class="grow"></span><span id="errSum" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="errBody" style="margin-top:8px">
+      <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
+      <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
+      <div class="chkcol"><label class="chk"><input type="checkbox" id="errEll"><span>Draw error ellipses every 1,000 ft at 2.79 standard deviations (plan view: this well; 3D view: this well and the offsets)</span></label></div>
+      <div class="derived" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
+      </div>
+    </div>
+    </div>
     <div class="card" id="stoListCard" style="margin-bottom:5px">
       <h3 id="stoHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="stoArrow" style="display:inline-block;width:10px">▸</span>Drilled wells from state records <span class="grow"></span><span id="stoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
       <div id="stoBody" style="margin-top:8px" hidden>
       <div id="stoInfo" class="derived" style="margin-top:0"></div>
       <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; at the top of the Plots tab to list them here.</div>
       </div>
-    </div>
-    </div>
-    <div class="card" id="errCard" style="margin-bottom:5px">
-      <h3>Survey uncertainty (screening)</h3>
-      <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
-      <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
-      <div class="chkcol"><label class="chk"><input type="checkbox" id="errEll"><span>Draw error ellipses every 1,000 ft at 2.79 standard deviations (plan view: this well; 3D view: this well and the offsets)</span></label></div>
-      <div class="derived" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
     </div>
     <div id="offList"></div>
     <div class="plot" style="margin-bottom:5px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>

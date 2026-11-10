@@ -4,7 +4,7 @@
 const ERR = { tool: 'mwd', sf: 1.5, ell: false };
 try { const t = localStorage.getItem('wellplanner.errTool'), s = parseFloat(localStorage.getItem('wellplanner.errSf')); if (t === 'mwd' || t === 'gyro' || t === 'off') ERR.tool = t; if (s > 0) ERR.sf = s; ERR.ell = localStorage.getItem('wellplanner.errEll') === '1'; } catch (e) {}
 $('#errTool').value = ERR.tool; $('#errSf').value = ERR.sf; $('#errEll').checked = ERR.ell;
-const errSave = () => { try { localStorage.setItem('wellplanner.errTool', ERR.tool); localStorage.setItem('wellplanner.errSf', String(ERR.sf)); localStorage.setItem('wellplanner.errEll', ERR.ell ? '1' : '0'); } catch (x) {} };
+const errSave = () => { if (typeof errSummary === 'function') errSummary(); try { localStorage.setItem('wellplanner.errTool', ERR.tool); localStorage.setItem('wellplanner.errSf', String(ERR.sf)); localStorage.setItem('wellplanner.errEll', ERR.ell ? '1' : '0'); } catch (x) {} };
 $('#errTool').onchange = e => { ERR.tool = e.target.value; errSave(); renderOffsetResults(); drawAll(); };
 $('#errSf').oninput = e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; ERR.sf = v; errSave(); renderOffsetResults(); };
 $('#errEll').onchange = e => { ERR.ell = e.target.checked; errSave(); drawAll(); };
@@ -401,14 +401,24 @@ function stoOffs() {
   STO.list.forEach(x => { if (!x.path || STO.skip.has(x.w.api)) return; out.push({ name: x.w.name, rows: x.path.rows, kind: 'state', color: OFF_COLORS[k++ % OFF_COLORS.length], kopMd: 0, api: x.w.api }); });
   return out;
 }
-/* The state records card starts folded and shares a row with the offsets card; opened, both take the full width. */
+/* The state records card starts folded and has its own row. */
 function setStoOpen(open, save) {
-  $('#stoBody').hidden = !open; $('#stoArrow').textContent = open ? '▾' : '▸'; $('#stoHead').setAttribute('aria-expanded', open ? 'true' : 'false'); $('#offRow').classList.toggle('stoopen', open);
+  $('#stoBody').hidden = !open; $('#stoArrow').textContent = open ? '▾' : '▸'; $('#stoHead').setAttribute('aria-expanded', open ? 'true' : 'false');
   if (save) { try { localStorage.setItem('wellplanner.stoOpen', open ? '1' : '0'); } catch (e) {} }
 }
 $('#stoHead').onclick = () => setStoOpen($('#stoBody').hidden, true);
 $('#stoHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStoOpen($('#stoBody').hidden, true); } };
 { let o = false; try { o = localStorage.getItem('wellplanner.stoOpen') === '1'; } catch (e) {} setStoOpen(o, false); }
+/* The survey uncertainty card shares a row with the offsets card while folded; opened, both take the full width. */
+function setErrOpen(open, save) {
+  $('#errBody').hidden = !open; $('#errArrow').textContent = open ? '▾' : '▸'; $('#errHead').setAttribute('aria-expanded', open ? 'true' : 'false'); $('#offRow').classList.toggle('wide', open);
+  if (save) { try { localStorage.setItem('wellplanner.errOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#errHead').onclick = () => setErrOpen($('#errBody').hidden, true);
+$('#errHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setErrOpen($('#errBody').hidden, true); } };
+{ let o = true; try { o = localStorage.getItem('wellplanner.errOpen') !== '0'; } catch (e) {} setErrOpen(o, false); }
+const errSummary = () => { $('#errSum').textContent = ERR.tool === 'off' ? 'off' : (ERR.tool === 'gyro' ? 'Gyro' : 'MWD') + ', alert below SF ' + ERR.sf; };
+errSummary();
 function renderSto() {
   const el = $('#stoInfo'); if (!el) return;
   { const c = $('#stoCount'); const l = STO.on && STO.list ? STO.list : null; c.textContent = !STO.on ? 'off' : l ? `${l.length} well${l.length === 1 ? '' : 's'}, ${l.filter(x => x.path).length} with surveys` : 'loading…'; }
