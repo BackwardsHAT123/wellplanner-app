@@ -147,7 +147,7 @@ function cwFill(root) {
   const lock = root.dataset.cw === 'surface' && !!state.slot;      // surface is set by the pad slot
   root.querySelectorAll('input').forEach(i => { i.disabled = lock; });
   root.querySelectorAll('.ll').forEach(l => l.classList.toggle('off', !isLL()));
-  if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(7); q('lon').value = ll.lon.toFixed(7); }
+  if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(6); q('lon').value = ll.lon.toFixed(6); }
 }
 const cwFillAll = () => $$('[data-cw]').forEach(cwFill);
 document.addEventListener('input', e => {
@@ -157,7 +157,7 @@ document.addEventListener('input', e => {
   if (f === 'e' || f === 'n') {
     const v = parseFloat(el.value); if (!isFinite(v)) return;
     o[f] = v;
-    if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(7); q('lon').value = ll.lon.toFixed(7); }
+    if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(6); q('lon').value = ll.lon.toFixed(6); }
   } else {
     const la = parseFloat(q('lat').value), lo = parseFloat(q('lon').value);
     if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) return;
