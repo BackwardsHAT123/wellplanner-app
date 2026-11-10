@@ -12,7 +12,21 @@ $$('.tab').forEach(b => b.onclick = () => {
   drawAll();
 });
 new ResizeObserver(() => later(drawAll)).observe($('main'));
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => drawAll());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { updateThemeBtn(); drawAll(); });
+function isDarkTheme() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function updateThemeBtn() {
+  const b = $('#bTheme'); if (b) b.textContent = isDarkTheme() ? '☀ Light' : '☾ Dark';
+}
+$('#bTheme').onclick = () => {
+  const t = isDarkTheme() ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('theme', t); } catch (e) {}
+  updateThemeBtn(); drawAll();
+};
+updateThemeBtn();
 
 /* ================= project: wells and pad ================= */
 const slotId = (c, r) => 'C' + c + 'R' + r;
