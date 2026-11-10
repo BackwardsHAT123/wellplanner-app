@@ -114,7 +114,10 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .wallcards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
 .wallcards .card{margin:0}
 .wallcards .g3{grid-template-columns:1fr 1fr}
-.wallcards .g3.w3{grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}
+.wallcards .g3.w3{grid-template-columns:repeat(12,minmax(0,1fr));align-items:end}
+.wallcards .g3.w3>label:nth-child(-n+3){grid-column:span 4}
+.wallcards .g3.w3>label:nth-child(n+4){grid-column:span 3}
+@media (max-width:640px){.wallcards .g3.w3>label:nth-child(n){grid-column:span 6}}
 @media (max-width:1100px){.wallcards{grid-template-columns:minmax(0,1fr)}}
 #actStats,#actAhead{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 #actStats .stat,#actAhead .stat{padding:3px 8px;flex:1 0 auto}
@@ -489,11 +492,11 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="g3 w3">
         <label class="f">Plan name<input data-w="plan" placeholder="Design #1"></label>
         <label class="f">Footage reference<select data-w="foot"><option value="fnlfel">FNL / FEL</option><option value="fnlfwl">FNL / FWL</option><option value="fslfel">FSL / FEL</option><option value="fslfwl">FSL / FWL</option><option value="auto">Nearest lines</option></select></label>
-        <label class="f">Footage text (blank = from section lines)<input data-w="footText" placeholder="547.0 FNL   2668.0 FEL"></label>
-        <label class="f">Plan view scale (usft/in, blank = auto)<input type="number" step="any" min="1" data-w="scale"></label>
-        <label class="f">Sections in the plan view<select data-w="secs"><option value="crossed">Crossed by the wellbore</option><option value="near">Within 1 mile</option><option value="none">None</option></select></label>
-        <label class="f">Section view TVD from (ft, blank = auto)<input type="number" step="any" data-w="tvdMin"></label>
-        <label class="f">Section view TVD to (ft, blank = auto)<input type="number" step="any" data-w="tvdMax"></label>
+        <label class="f" title="Blank = taken from the section lines">Footage text<input data-w="footText" placeholder="547.0 FNL   2668.0 FEL"></label>
+        <label class="f" title="Blank = automatic">Plan scale (usft/in)<input type="number" step="any" min="1" data-w="scale" placeholder="auto"></label>
+        <label class="f">Plan view sections<select data-w="secs"><option value="crossed">Crossed</option><option value="near">Within 1 mile</option><option value="none">None</option></select></label>
+        <label class="f" title="Section view TVD range; blank = automatic">Section TVD from (ft)<input type="number" step="any" data-w="tvdMin" placeholder="auto"></label>
+        <label class="f" title="Section view TVD range; blank = automatic">Section TVD to (ft)<input type="number" step="any" data-w="tvdMax" placeholder="auto"></label>
       </div>
       <div class="chkcol" style="margin-top:8px">
         <label class="chk"><input type="checkbox" data-w="setback"><span>Draw setback lines (uses the setback on the Plots tab)</span></label>
