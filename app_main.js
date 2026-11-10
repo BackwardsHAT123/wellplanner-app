@@ -224,25 +224,31 @@ $('#bExtend').onclick = () => addTargetFrom(state.lat.az, state.lat.len, state.l
 /* ================= tops ================= */
 /* tops are shared by every well on the pad (they are TVD below the surface location, which barely changes across a pad):
  * an edit on a pad-slot well is copied to the other pad-slot wells */
-function shareTops() {
-  if (!state.slot) return;
-  project.wells.forEach(w => { if (w !== state && w.slot) w.tops = JSON.parse(JSON.stringify(state.tops)); });
+/* a well is on the pad if it sits in a pad slot or its surface location is within PAD_NEAR ft of a slot position
+ * (the known point is often an existing well that was never assigned a slot) */
+const PAD_NEAR = 150;
+function onPad(w) {
+  if (w.slot) return true;
+  const crs = w.crs || state.crs, P = project.pad;
+  return WP.padSlots(P, P.cols, P.rows, crs).some(s => Math.hypot(s.n - w.surface.n, s.e - w.surface.e) <= PAD_NEAR);
 }
+const padMates = () => onPad(state) ? project.wells.filter(w => w !== state && onPad(w)) : [];
+function shareTops() { padMates().forEach(w => { w.tops = JSON.parse(JSON.stringify(state.tops)); }); }
 function adoptPadTops() {                                  // a pad well with no tops of its own takes them from the pad
-  if (!state.slot || (state.tops && state.tops.length)) return;
-  const src = project.wells.find(w => w !== state && w.slot && w.tops && w.tops.length);
+  if (state.tops && state.tops.length) return;
+  const src = padMates().find(w => w.tops && w.tops.length);
   if (src) state.tops = JSON.parse(JSON.stringify(src.tops));
 }
-/* "Use pad tops": replace this well's tops with those of the other wells in the pad (the first one that has any) */
-function padTopsSource() { const has = w => w !== state && w.tops && w.tops.length; return project.wells.find(w => has(w) && w.slot) || project.wells.find(has); }   // any other well of the project (= the pad); slot wells first
+/* "Use pad tops": replace this well's tops with those of the other wells on the same pad (the first one that has any) */
+function padTopsSource() { return padMates().find(w => w.tops && w.tops.length); }
 function refreshPadTopsBtn() {
   const b = $('#bPadTops'); if (!b) return; const s = padTopsSource();
-  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (and the other pad wells) into this well' : 'No other well in this project has tops yet';
+  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (same pad) into this well' : onPad(state) ? 'No other well on this pad has tops yet' : 'This well is not on the pad template (no slot, not at a slot position)';
 }
 $('#bPadTops').onclick = e => {
   e.stopPropagation(); const s = padTopsSource(); if (!s) return;
   state.tops = JSON.parse(JSON.stringify(s.tops));
-  if (state.slot) shareTops();
+  shareTops();
   renderTops(); recalc();
 };
 const topsEff = () => WP.resolveTops(state.tops);      // tops with blank dip / direction filled from the ones entered on this well
@@ -377,6 +383,7 @@ function failPlan(err) {
 }
 
 function recalc() {
+  if (typeof refreshPadTopsBtn === 'function') refreshPadTopsBtn();
   applyAllSlots();
   const s = state;
   if (isFinite(s.gl) && isFinite(s.kbOff)) s.kb = +(s.gl + s.kbOff).toFixed(2);           // KB elevation = ground + rig height
