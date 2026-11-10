@@ -147,6 +147,14 @@ async function trySelectWell(i) {
   selectWell(i);
 }
 $('#wellSel').onchange = e => trySelectWell(+e.target.value);
+$('#bDelWell').onclick = async () => {
+  if (project.wells.length < 2) { await dlg('A project needs at least one well, so the only well cannot be deleted. Use New to start a different plan.', [{ label: 'OK', value: 'ok', primary: true }]); return; }
+  const name = state.name || 'Unnamed';
+  const r = await dlg('Delete "' + name + '" from this project?\nThis cannot be undone. Save it to a file first if you might want it back.', [{ label: 'Cancel', value: 'cancel' }, { label: 'Delete well', value: 'del', primary: true }]);
+  if (r !== 'del') return;
+  const i = project.active; project.wells.splice(i, 1); lsRef = -1;
+  selectWell(Math.min(i, project.wells.length - 1)); autosave();
+};
 
 function renderSlotSel() {
   const P = project.pad, have = new Set(), opts = ['<option value="custom">Custom location (type coordinates)</option>'];
