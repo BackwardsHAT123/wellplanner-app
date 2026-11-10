@@ -64,6 +64,9 @@ let state = project.wells[project.active];   // the well being edited
 let M = { survey: null };                    // latest model of the active well
 let lastSolved = { theta: null, kop: null };
 let saveTimer = 0;
+/* The pad rotation is stored counter-clockwise from grid east/north (saved files and core.js use that) but shown and typed as
+ * degrees clockwise from north: the azimuth the pad's Y axis points. */
+const padRotShown = () => { const v = +WP.norm360(-(project.pad.rot || 0)).toFixed(6); return v === 360 ? 0 : v; };
 function autosave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} if (typeof histPush === 'function') histPush(); }, 300);
@@ -87,7 +90,7 @@ function writeInputs() {
     const v = getp(state, el.dataset.k);
     el.value = (v === undefined || v === null) ? '' : v;
   });
-  $$('[data-pk]').forEach(el => { el.value = getp(project, el.dataset.pk); });
+  $$('[data-pk]').forEach(el => { el.value = el.dataset.pk === 'pad.rot' ? padRotShown() : getp(project, el.dataset.pk); });
   applyVisibility();
 }
 function applyVisibility() {

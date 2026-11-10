@@ -41,6 +41,7 @@ document.addEventListener('input', e => {                 // pad settings
   if (k === 'pad.cols' || k === 'pad.rows') v = Math.max(1, Math.min(12, Math.round(v)));
   if (k === 'pad.refCol' || k === 'pad.refRow') v = Math.max(1, Math.round(v));
   if (k === 'pad.dx' || k === 'pad.dy') v = Math.max(0, v);
+  if (k === 'pad.rot') v = -v;                                // typed clockwise from north, stored counter-clockwise
   setp(project, k, v); recalc();
 });
 $('#bPadUse').onclick = () => {
@@ -170,7 +171,7 @@ function createWellAtSlot(c, r) {
 function renderPad() {
   const P = project.pad, n = P.cols * P.rows, filled = project.wells.filter(w => w.slot).length;
   $('#padCount').textContent = `${n} slot${n === 1 ? '' : 's'} · ${filled} filled`;
-  let info = `Pad X axis points to azimuth <b>${fmt(WP.norm360(90 - P.rot), 1)}°</b>, Y axis to <b>${fmt(WP.norm360(-P.rot), 1)}°</b> (grid). Rotation is counter-clockwise from grid east/north.`;
+  let info = `Pad Y axis (rows) points to azimuth <b>${fmt(WP.norm360(-P.rot), 1)}°</b>, X axis (columns) to <b>${fmt(WP.norm360(90 - P.rot), 1)}°</b> (grid, clockwise from north).`;
   if (P.refCol > P.cols || P.refRow > P.rows) info += `<br><span style="color:var(--warn)">The known point (${slotId(P.refCol, P.refRow)}) is outside the ${P.cols} × ${P.rows} grid.</span>`;
   $('#padInfo').innerHTML = info;
   renderSlotSel();

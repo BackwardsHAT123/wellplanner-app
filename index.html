@@ -278,7 +278,7 @@ td.bad{color:var(--warn);font-weight:700}
       <span></span>
       <label class="f">X spacing (ft)<input type="number" step="any" min="0" data-pk="pad.dx"></label>
       <label class="f">Y spacing (ft)<input type="number" step="any" min="0" data-pk="pad.dy"></label>
-      <label class="f">Rotation (° CCW)<input type="number" step="any" data-pk="pad.rot"></label>
+      <label class="f" title="Direction the pad’s Y axis (the rows) points, in degrees clockwise from north. 0 = rows run north, columns east.">Rotation (° from N)<input type="number" step="any" data-pk="pad.rot"></label>
     </div>
     <div class="derived" id="padInfo"></div>
     <canvas id="cvPad" style="width:100%;height:230px;display:block;margin-top:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer"></canvas>
