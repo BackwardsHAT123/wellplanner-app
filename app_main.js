@@ -234,10 +234,10 @@ function adoptPadTops() {                                  // a pad well with no
   if (src) state.tops = JSON.parse(JSON.stringify(src.tops));
 }
 /* "Use pad tops": replace this well's tops with those of the other wells in the pad (the first one that has any) */
-function padTopsSource() { return project.wells.find(w => w !== state && w.slot && w.tops && w.tops.length); }
+function padTopsSource() { const has = w => w !== state && w.tops && w.tops.length; return project.wells.find(w => has(w) && w.slot) || project.wells.find(has); }   // any other well of the project (= the pad); slot wells first
 function refreshPadTopsBtn() {
   const b = $('#bPadTops'); if (!b) return; const s = padTopsSource();
-  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (and the other pad wells) into this well' : 'No other pad well has tops yet';
+  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (and the other pad wells) into this well' : 'No other well in this project has tops yet';
 }
 $('#bPadTops').onclick = e => {
   e.stopPropagation(); const s = padTopsSource(); if (!s) return;
