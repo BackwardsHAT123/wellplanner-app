@@ -332,12 +332,18 @@ const STO = { on: false, tn: true, data: null, state: 'idle', list: [], key: '',
 window.WPOFF = d => { STO.data = d; };
 try { STO.on = localStorage.getItem('wellplanner.sto') === '1'; STO.tn = localStorage.getItem('wellplanner.stoTrue') !== '0'; } catch (e) {}
 $('#stoOn').checked = STO.on; $('#stoTrue').checked = STO.tn;
-$('#stoOn').onchange = e => { STO.on = e.target.checked; try { localStorage.setItem('wellplanner.sto', STO.on ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
+$('#stoOn').onchange = e => {
+  STO.on = e.target.checked; try { localStorage.setItem('wellplanner.sto', STO.on ? '1' : '0'); } catch (x) {} STO.key = '';
+  if (STO.on && !STO.data && STO.state === 'missing') $('#stoFile').click();            // the data file is not beside the page and not saved in this browser: ask for it (once)
+  recalc();
+};
+const stoPickLink = '<button class="small" data-stopick>Choose the state wells file…</button>';
+document.addEventListener('click', e => { if (e.target.closest('[data-stopick]')) $('#stoFile').click(); });
 $('#stoTrue').onchange = e => { STO.tn = e.target.checked; try { localStorage.setItem('wellplanner.stoTrue', STO.tn ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
 /* The state-wells file (offsets/prb.js) is not on the public page. It is read from the private copy once with "Load state wells file…"
  * and kept in this browser (IndexedDB), so the public page never serves it. */
 const idb = (mode, fn) => new Promise((res, rej) => { const q = indexedDB.open('wellplanner', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onerror = () => rej(q.error); q.onsuccess = () => { const t = q.result.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }; });
-function useStoText(text) { STO.data = null; (0, eval)(text); if (!STO.data || !STO.data.wells) throw new Error('not a state wells file'); STO.state = 'ready'; STO.msg = ''; STO.key = ''; STO.rows.clear(); }
+function useStoText(text) { STO.data = null; (0, eval)(text); if (!STO.data || !STO.data.wells) throw new Error('not a state wells file'); STO.state = 'ready'; STO.msg = ''; STO.key = ''; STO.rows.clear(); { const m = $('#stoFileMsg'); if (m) m.textContent = ''; } }
 function loadStoData() {
   if (STO.data || STO.state === 'loading') return;
   STO.state = 'loading';
@@ -345,11 +351,10 @@ function loadStoData() {
   s.onload = () => { STO.state = STO.data ? 'ready' : 'missing'; STO.key = ''; recalc(); };
   s.onerror = () => {
     idb('readonly', st => st.get('stoText')).then(t => { if (!t) throw 0; useStoText(t); recalc(); })
-      .catch(() => { STO.state = 'missing'; STO.msg = 'No state wells file here. Use "Load state wells file…" once and pick offsets/prb.js from the private wellplanner folder.'; renderSto(); });
+      .catch(() => { STO.state = 'missing'; STO.msg = 'No state wells file here. Pick offsets/prb.js from the private wellplanner folder once; it is then kept in this browser.'; $('#stoFileMsg').innerHTML = esc(STO.msg) + ' ' + stoPickLink; renderSto(); });
   };
   document.head.appendChild(s);
 }
-$('#bStoFile').onclick = () => $('#stoFile').click();
 $('#stoFile').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   const rd = new FileReader();
@@ -425,7 +430,7 @@ function renderSto() {
   const oh = $('#stoOffHint'); if (oh) oh.style.display = STO.on ? 'none' : '';
   if (!STO.on) { el.innerHTML = ''; return; }
   if (!isLL()) { el.innerHTML = 'Needs a State Plane zone: a local grid has no lat/long to match against the state records.'; return; }
-  if (STO.msg && STO.state === 'missing') { el.innerHTML = `<span style="color:var(--warn)">${esc(STO.msg)}</span>`; return; }
+  if (STO.msg && STO.state === 'missing') { el.innerHTML = `<span style="color:var(--warn)">${esc(STO.msg)}</span> ${stoPickLink}`; return; }
   if (!STO.data) { el.textContent = 'Loading state well records…'; return; }
   if (SEC.loading || !SEC.cache.size) { el.textContent = 'Waiting for section data…'; return; }
   const withSurvey = STO.list.filter(x => x.path), none = STO.list.filter(x => !x.path);
