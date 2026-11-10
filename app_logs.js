@@ -257,7 +257,15 @@ function aheadOf() {
   return { proj, dist: sep ? sep.dist : 0, rej: WP.rejoinPlan(last, M.survey, pm, rd), rejMd: pm + rd };
 }
 $('#actProj').oninput = $('#actRej').oninput = () => { renderActual(); renderOffsetResults(); };
+function setActOpen(open, save) {
+  $('#actCardBody').hidden = !open; $('#actArrow').textContent = open ? '▾' : '▸'; $('#actHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (save) { try { localStorage.setItem('wellplanner.actOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#actHead').onclick = () => setActOpen($('#actCardBody').hidden, true);
+$('#actHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActOpen($('#actCardBody').hidden, true); } };
+{ let o = true; try { o = localStorage.getItem('wellplanner.actOpen') !== '0'; } catch (e) {} setActOpen(o, false); }
 function renderActual() {
+  { const r = state.actual && state.actual.rows; $('#actCount').textContent = r && r.length ? `${r.length} stations, last MD ${fmt(r[r.length - 1].md, 0)}` : 'no survey'; }
   if (!$('#pane-actual').classList.contains('on')) return;
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
@@ -282,10 +290,10 @@ function renderActual() {
   if (pj) {
     const e = pj.proj.rows[pj.proj.rows.length - 1], rj = pj.rej, fm = (v, d) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v), d);
     ah = st('Build / turn rate', `${fm(pj.proj.br, 2)} / ${fm(pj.proj.tr, 2)}`, '°/100 ft') +
-      st(`Projected at MD ${fmt(e.md, 0)}`, `${fmt(e.inc, 1)}° / ${fmt(e.azi, 1)}°`, `TVD ${fmt(e.tvd, 1)}`) +
+      st(`Projected at MD ${fmt(e.md, 0)}`, `${fmt(e.inc, 1)}° / ${fmt(e.azi, 1)}°`, `TVD ${fmt(e.tvd, 0)}`) +
       st('Projected Δ to plan', fmt(pj.dist, 1), 'ft', pj.dist > 50 ? 'bad' : '') +
       (rj.error ? st('To rejoin plan', 'n/a', rj.error) :
-        st(`DLS to rejoin plan at MD ${fmt(pj.rejMd, 0)}`, fmt(rj.dls, 2), `°/100 ft · TF ${fm(rj.tf, 0)}° from high side · ${fmt(rj.arc, 0)} ft of hole`, rj.dls > 6 ? 'bad' : '') +
+        st(`DLS to rejoin plan at MD ${fmt(pj.rejMd, 0)}`, fmt(rj.dls, 2), `°/100 ft · TF ${fm(rj.tf, 0)}° (high side) · ${fmt(rj.arc, 0)} ft`, rj.dls > 6 ? 'bad' : '') +
         st('Arrives heading', `${fmt(rj.inc, 1)}° / ${fmt(rj.azi, 1)}°`, `plan ${fmt(rj.plan.inc, 1)}° / ${fmt(rj.plan.azi, 1)}°`));
   }
   $('#actAhead').innerHTML = ah;
