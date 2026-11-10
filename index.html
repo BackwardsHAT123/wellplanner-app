@@ -74,6 +74,10 @@ main{overflow:auto;padding:12px 12px 20px}
 .chkcol{display:flex;flex-direction:column;gap:7px;font-size:12px}
 .chkcol label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
 .chkcol input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
+.offrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
+.offrow .card{margin:0!important}
+.offrow.stoopen{grid-template-columns:minmax(0,1fr)}
+@media (max-width:1100px){.offrow{grid-template-columns:minmax(0,1fr)}}
 #refCard .refrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
 #refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
 #refCard label.refrow{justify-content:flex-start}
@@ -541,6 +545,7 @@ td.bad{color:var(--warn);font-weight:700}
       <label>Alert when closer than <input id="minSep" type="number" step="any" min="0" style="width:80px"> ft</label>
       <span class="hint" style="margin:0">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</span>
     </div>
+    <div class="offrow" id="offRow">
     <div class="card" id="refCard" style="margin-bottom:5px">
       <h3 id="refHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="refArrow" style="display:inline-block;width:10px">▾</span>Wells from this tool as offsets <span class="grow"></span><span id="refCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
       <div id="refBody" style="margin-top:8px">
@@ -551,9 +556,12 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
     </div>
     <div class="card" id="stoListCard" style="margin-bottom:5px">
-      <h3>Drilled wells from state records</h3>
+      <h3 id="stoHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="stoArrow" style="display:inline-block;width:10px">▸</span>Drilled wells from state records <span class="grow"></span><span id="stoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="stoBody" style="margin-top:8px" hidden>
       <div id="stoInfo" class="derived" style="margin-top:0"></div>
       <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; at the top of the Plots tab to list them here.</div>
+      </div>
+    </div>
     </div>
     <div class="card" id="errCard" style="margin-bottom:5px">
       <h3>Survey uncertainty (screening)</h3>

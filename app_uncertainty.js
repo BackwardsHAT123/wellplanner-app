@@ -401,8 +401,17 @@ function stoOffs() {
   STO.list.forEach(x => { if (!x.path || STO.skip.has(x.w.api)) return; out.push({ name: x.w.name, rows: x.path.rows, kind: 'state', color: OFF_COLORS[k++ % OFF_COLORS.length], kopMd: 0, api: x.w.api }); });
   return out;
 }
+/* The state records card starts folded and shares a row with the offsets card; opened, both take the full width. */
+function setStoOpen(open, save) {
+  $('#stoBody').hidden = !open; $('#stoArrow').textContent = open ? '▾' : '▸'; $('#stoHead').setAttribute('aria-expanded', open ? 'true' : 'false'); $('#offRow').classList.toggle('stoopen', open);
+  if (save) { try { localStorage.setItem('wellplanner.stoOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#stoHead').onclick = () => setStoOpen($('#stoBody').hidden, true);
+$('#stoHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStoOpen($('#stoBody').hidden, true); } };
+{ let o = false; try { o = localStorage.getItem('wellplanner.stoOpen') === '1'; } catch (e) {} setStoOpen(o, false); }
 function renderSto() {
   const el = $('#stoInfo'); if (!el) return;
+  { const c = $('#stoCount'); const l = STO.on && STO.list ? STO.list : null; c.textContent = !STO.on ? 'off' : l ? `${l.length} well${l.length === 1 ? '' : 's'}, ${l.filter(x => x.path).length} with surveys` : 'loading…'; }
   const oh = $('#stoOffHint'); if (oh) oh.style.display = STO.on ? 'none' : '';
   if (!STO.on) { el.innerHTML = ''; return; }
   if (!isLL()) { el.innerHTML = 'Needs a State Plane zone: a local grid has no lat/long to match against the state records.'; return; }
