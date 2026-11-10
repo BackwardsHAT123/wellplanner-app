@@ -303,7 +303,8 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="card">
-    <h3>Targets <span class="grow"></span><button class="small" id="bAddTgt">+ Add target</button></h3>
+    <h3 id="tgtFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tgtFArrow" style="display:inline-block;width:10px">▾</span>Targets <span class="grow"></span><span id="tgtCount" style="font-weight:400;text-transform:none;letter-spacing:0;margin-right:6px"></span><button class="small" id="bAddTgt">+ Add target</button></h3>
+    <div id="tgtFBody" style="margin-top:8px">
     <div id="tgtList"></div>
     <div data-show="hbh" style="margin-top:4px">
       <div class="g3">
@@ -315,10 +316,12 @@ td.bad{color:var(--warn);font-weight:700}
     </div>
     <div class="hint" id="tgtHint"></div>
     <div class="derived" id="derived"></div>
+    </div>
   </div>
 
   <div class="card">
-    <h3>Design <span class="grow"></span><span id="modeBadge" class="pill"></span></h3>
+    <h3 id="dsgFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="dsgFArrow" style="display:inline-block;width:10px">▾</span>Design <span class="grow"></span><span id="modeBadge" class="pill"></span></h3>
+    <div id="dsgFBody" style="margin-top:8px">
     <div class="g2">
       <label class="f full">Well type
         <select data-k="d.type">
@@ -344,12 +347,15 @@ td.bad{color:var(--warn);font-weight:700}
       <label class="f">Max DLS alarm (°/100)<input type="number" step="any" min="0" data-k="maxDls"></label>
     </div>
     <div class="hint" id="designHint"></div>
+    </div>
   </div>
 
   <div class="card">
-    <h3>Formation tops <span class="grow"></span><button class="small" id="bAddTop">+ Add</button></h3>
+    <h3 id="topFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="topFArrow" style="display:inline-block;width:10px">▾</span>Formation tops <span class="grow"></span><span id="topCount" style="font-weight:400;text-transform:none;letter-spacing:0;margin-right:6px"></span><button class="small" id="bAddTop">+ Add</button></h3>
+    <div id="topFBody" style="margin-top:8px">
     <div id="topsList"></div>
     <div class="hint">TVD from KB. Drawn as lines on the section view.</div>
+    </div>
   </div>
 </aside>
 

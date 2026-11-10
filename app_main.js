@@ -413,6 +413,7 @@ function recalc() {
   }
   $('#stats').innerHTML = html;
 
+  if (typeof foldCounts === 'function') foldCounts();
   renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
   computeActual(); renderRef(); renderSto(); renderActual(); renderGeo();

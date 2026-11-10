@@ -306,3 +306,21 @@ function init() {
 }
 init();
 markAllSaved();
+
+/* Targets, Design and Formation tops fold up; each remembers whether it was left open. Buttons in a heading do not toggle it. */
+['tgtF', 'dsgF', 'topF'].forEach(id => {
+  const set = (open, save) => {
+    $('#' + id + 'Body').hidden = !open; $('#' + id + 'Arrow').textContent = open ? '▾' : '▸'; $('#' + id + 'Head').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (save) { try { localStorage.setItem('wellplanner.' + id + 'Open', open ? '1' : '0'); } catch (e) {} }
+  };
+  const head = $('#' + id + 'Head');
+  head.onclick = e => { if (e.target.closest('button')) return; set($('#' + id + 'Body').hidden, true); };
+  head.onkeydown = e => { if (e.target === head && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); set($('#' + id + 'Body').hidden, true); } };
+  let o = true; try { o = localStorage.getItem('wellplanner.' + id + 'Open') !== '0'; } catch (e) {} set(o, false);
+});
+/* short summaries in the folded headings */
+function foldCounts() {
+  const nt = state.targets ? state.targets.length : 0, np = state.tops ? state.tops.length : 0;
+  $('#tgtCount').textContent = nt ? nt + ' target' + (nt === 1 ? '' : 's') : '';
+  $('#topCount').textContent = np ? np + ' top' + (np === 1 ? '' : 's') : '';
+}
