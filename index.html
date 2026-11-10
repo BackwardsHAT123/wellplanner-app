@@ -330,21 +330,21 @@ td.bad{color:var(--warn);font-weight:700}
           <option value="scurve">S-curve: build – hold – drop</option>
           <option value="vertical">Vertical</option>
         </select></label>
-      <div class="full g2" data-show="hbh,slant,scurve">
-        <label class="f full">Solve for
+      <div class="full g2">
+        <label class="f full" data-show="hbh,slant,scurve">Solve for
           <select data-k="d.solveFor">
             <option value="tangent">Tangent inclination (given KOP)</option>
             <option value="kop">KOP depth (given tangent inclination)</option>
           </select></label>
-        <label class="f">Vertical section to KOP (ft)<input type="number" step="any" min="0" data-k="d.kop" id="inKop" title="Vertical hole from surface (conductor and surface casing) down to the kickoff point. MD equals TVD here."></label>
-        <label class="f">Tangent inc (°)<input type="number" step="any" min="0" max="89.9" data-k="d.tanInc" id="inTan"></label>
-        <label class="f">Build rate (°/100 ft)<input type="number" step="any" min="0.1" data-k="d.bur1"></label>
+        <label class="f" data-show="hbh,slant,scurve">Vertical section to KOP (ft)<input type="number" step="any" min="0" data-k="d.kop" id="inKop" title="Vertical hole from surface (conductor and surface casing) down to the kickoff point. MD equals TVD here."></label>
+        <label class="f" data-show="hbh,slant,scurve">Tangent inc (°)<input type="number" step="any" min="0" max="89.9" data-k="d.tanInc" id="inTan"></label>
+        <label class="f" data-show="hbh,slant,scurve">Build rate (°/100 ft)<input type="number" step="any" min="0.1" data-k="d.bur1"></label>
         <label class="f" data-show="hbh,scurve"><span id="lblBur2">Landing rate (°/100 ft)</span><input type="number" step="any" min="0.1" data-k="d.bur2"></label>
         <label class="f" data-show="scurve">Drop to inc (°)<input type="number" step="any" min="0" max="89" data-k="d.dropInc"></label>
         <label class="f" data-show="hbh">Lateral steering DLS (°/100 ft)<input type="number" step="any" min="0.1" data-k="d.latDls"></label>
+        <label class="f">Max DLS alarm (°/100)<input type="number" step="any" min="0" data-k="maxDls"></label>
       </div>
       <label class="f" data-show="slant,scurve,vertical">Hold past target (ft)<input type="number" step="any" min="0" data-k="d.ext"></label>
-      <label class="f">Max DLS alarm (°/100)<input type="number" step="any" min="0" data-k="maxDls"></label>
     </div>
     <div class="hint" id="designHint"></div>
     </div>
