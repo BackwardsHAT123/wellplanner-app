@@ -114,6 +114,10 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .wallcards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
 .wallcards .card{margin:0}
 .wallcards .g3{grid-template-columns:1fr 1fr}
+.wallcards .g3.d3{grid-template-columns:repeat(12,minmax(0,1fr));align-items:end}
+.wallcards .g3.d3>label:nth-child(-n+2){grid-column:span 6}
+.wallcards .g3.d3>label:nth-child(n+3){grid-column:span 4}
+@media (max-width:640px){.wallcards .g3.d3>label:nth-child(n){grid-column:span 12}}
 .wallcards .g3.w3{grid-template-columns:repeat(12,minmax(0,1fr));align-items:end}
 .wallcards .g3.w3>label:nth-child(-n+3){grid-column:span 4}
 .wallcards .g3.w3>label:nth-child(n+4){grid-column:span 3}
@@ -514,7 +518,7 @@ td.bad{color:var(--warn);font-weight:700}
     <div class="card">
       <h3 id="drillCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="drillCArrow" style="display:inline-block;width:10px">▾</span>Drill plan (survey report PDF)</h3>
       <div id="drillCBody" style="margin-top:8px">
-      <div class="g3">
+      <div class="g3 d3">
         <label class="f">Company<input data-w="company" placeholder="Company name"></label>
         <label class="f">Project<input data-w="project" placeholder="Project name"></label>
         <label class="f">Site (blank = well name)<input data-w="site"></label>
