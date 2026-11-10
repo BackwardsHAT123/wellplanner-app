@@ -345,3 +345,14 @@ $('#bWallNoLogo').onclick = () => { wallLogo = null; try { localStorage.setItem(
 
 function drawAll() { if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawPad(); drawActual(); drawWall(); }
 
+
+/* The Wall plot and Drill plan cards fold up; each remembers whether it was left open. */
+['wallC', 'drillC'].forEach(id => {
+  const set = (open, save) => {
+    $('#' + id + 'Body').hidden = !open; $('#' + id + 'Arrow').textContent = open ? '▾' : '▸'; $('#' + id + 'Head').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (save) { try { localStorage.setItem('wellplanner.' + id + 'Open', open ? '1' : '0'); } catch (e) {} }
+  };
+  $('#' + id + 'Head').onclick = () => set($('#' + id + 'Body').hidden, true);
+  $('#' + id + 'Head').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); set($('#' + id + 'Body').hidden, true); } };
+  let o = true; try { o = localStorage.getItem('wellplanner.' + id + 'Open') !== '0'; } catch (e) {} set(o, false);
+});

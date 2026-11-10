@@ -111,6 +111,10 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
 .stat.bad .v{color:var(--warn)}
 /* Plan vs actual stat rows: same compact single-line tiles as the KPI bar */
+.wallcards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
+.wallcards .card{margin:0}
+.wallcards .g3{grid-template-columns:1fr 1fr}
+@media (max-width:1100px){.wallcards{grid-template-columns:minmax(0,1fr)}}
 #actStats,#actAhead{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 #actStats .stat,#actAhead .stat{padding:3px 8px;flex:1 0 auto}
 #actStats .stat .k,#actStats .stat .v,#actAhead .stat .k,#actAhead .stat .v{white-space:nowrap}
@@ -477,8 +481,10 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane" id="pane-wall">
+    <div class="wallcards">
     <div class="card">
-      <h3>Wall plot</h3>
+      <h3 id="wallCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="wallCArrow" style="display:inline-block;width:10px">▾</span>Wall plot</h3>
+      <div id="wallCBody" style="margin-top:8px">
       <div class="g3">
         <label class="f">Plan name<input data-w="plan" placeholder="Design #1"></label>
         <label class="f">Footage reference<select data-w="foot"><option value="fnlfel">FNL / FEL</option><option value="fnlfwl">FNL / FWL</option><option value="fslfel">FSL / FEL</option><option value="fslfwl">FSL / FWL</option><option value="auto">Nearest lines</option></select></label>
@@ -500,9 +506,11 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
       <div id="wallNote" class="hint"></div>
       <div class="hint">Page is Letter landscape. In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</div>
+      </div>
     </div>
     <div class="card">
-      <h3>Drill plan (survey report PDF)</h3>
+      <h3 id="drillCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="drillCArrow" style="display:inline-block;width:10px">▾</span>Drill plan (survey report PDF)</h3>
+      <div id="drillCBody" style="margin-top:8px">
       <div class="g3">
         <label class="f">Company<input data-w="company" placeholder="Company name"></label>
         <label class="f">Project<input data-w="project" placeholder="Project name"></label>
@@ -513,6 +521,8 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="toolbar" style="margin-top:10px"><button id="bDrillPrint" class="primary">Print / save as PDF</button></div>
       <div class="hint">Portrait Letter pages in the Planning Report format: cover, well information, plan sections, planned survey every interval (plus section ends, tops and targets), design targets, formations and annotations. The plan name and the dip/direction of tops come from the Wall plot settings and the Formation tops list.</div>
       <details id="dpDet" style="margin-top:8px"><summary>Preview pages</summary><div id="drillPrev" style="display:flex;flex-wrap:wrap;margin-top:8px"></div></details>
+      </div>
+    </div>
     </div>
     <div id="wallPrev"></div>
   </div>
