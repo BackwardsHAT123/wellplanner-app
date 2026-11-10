@@ -167,6 +167,53 @@
   /* d = {surface:{n,e}, heel:{n,e,tvd}, toe:{n,e,tvd}, type:'hbh'|'slant'|'scurve'|'vertical',
    *      solveFor, kop, bur1, bur2, tanInc, ext, dropInc}
    * returns {ok, sections, heelIdx, theta, kop, notes, miss, plane, disp, lateral} */
+  /* Curve - hold - curve between two fixed points with fixed end headings: leave along unit vector a, arrive along unit vector b
+   * at displacement D, every curve at radius R. The first curve turns a -> c, then a straight hold of h along c, then the second
+   * turns c -> b. A curve turning phi from t0 to t1 moves the path by R tan(phi/2) (t0 + t1), so D = R t1 a + s c + R t2 b with
+   * t = tan(phi/2) and s = R (t1 + t2) + h, and c is the direction of D - R t1 a - R t2 b. The two angles are found by a coarse
+   * scan plus Newton polishing; of the solutions with h >= 0 the one with the least total turning is used.
+   * Returns {c, h, p1, p2} or null. */
+  function twoArc(a, b, D, R) {
+    const dot = (x, y) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+    const ev = (p1, p2) => {
+      const t1 = Math.tan(p1 / 2), t2 = Math.tan(p2 / 2);
+      const W = [D[0] - R * t1 * a[0] - R * t2 * b[0], D[1] - R * t1 * a[1] - R * t2 * b[1], D[2] - R * t1 * a[2] - R * t2 * b[2]], m = Math.hypot(W[0], W[1], W[2]);
+      if (!(m > 1e-9)) return null;
+      const c = [W[0] / m, W[1] / m, W[2] / m];
+      return { c, h: m - R * (t1 + t2), r: [dot(a, c) - Math.cos(p1), dot(b, c) - Math.cos(p2)] };
+    };
+    const N = 60, E = 1e-4, step = (Math.PI - 2 * E) / N, g = [];
+    for (let i = 0; i <= N; i++) { g.push([]); for (let k = 0; k <= N; k++) { const q = ev(E + i * step, E + k * step); g[i].push(q ? Math.hypot(q.r[0], q.r[1]) : 1e9); } }
+    const seeds = [];
+    for (let i = 0; i <= N; i++) for (let k = 0; k <= N; k++) {
+      let lm = true;
+      for (let di = -1; di <= 1 && lm; di++) for (let dk = -1; dk <= 1; dk++) { const ii = i + di, kk = k + dk; if ((di || dk) && ii >= 0 && ii <= N && kk >= 0 && kk <= N && g[ii][kk] < g[i][k]) { lm = false; break; } }
+      if (lm && g[i][k] < 0.5) seeds.push([g[i][k], E + i * step, E + k * step]);
+    }
+    seeds.sort((x, y) => x[0] - y[0]);
+    let best = null;
+    for (const s of seeds.slice(0, 8)) {
+      let p1 = s[1], p2 = s[2], q = ev(p1, p2), ok = false;
+      for (let it = 0; it < 60 && q; it++) {
+        const n0 = Math.hypot(q.r[0], q.r[1]); if (n0 < 1e-12) { ok = true; break; }
+        const d = 1e-7, qa = ev(p1 + d, p2), qb = ev(p1, p2 + d); if (!qa || !qb) break;
+        const j11 = (qa.r[0] - q.r[0]) / d, j21 = (qa.r[1] - q.r[1]) / d, j12 = (qb.r[0] - q.r[0]) / d, j22 = (qb.r[1] - q.r[1]) / d, det = j11 * j22 - j12 * j21;
+        if (Math.abs(det) < 1e-14) break;
+        let d1 = -(j22 * q.r[0] - j12 * q.r[1]) / det, d2 = -(-j21 * q.r[0] + j11 * q.r[1]) / det, lam = 1, nq = null, n1 = 0;
+        for (let k = 0; k < 20; k++) { const x1 = clamp(p1 + lam * d1, 0, Math.PI - 1e-6), x2 = clamp(p2 + lam * d2, 0, Math.PI - 1e-6); nq = ev(x1, x2); if (nq) { n1 = Math.hypot(nq.r[0], nq.r[1]); if (n1 < n0) { p1 = x1; p2 = x2; break; } } lam /= 2; nq = null; }
+        if (!nq) break; q = nq;
+      }
+      if (q && ok === false && Math.hypot(q.r[0], q.r[1]) < 1e-10) ok = true;
+      if (!(ok && q.h >= -1e-6 * Math.max(1, R) && p1 >= 0 && p2 >= 0 && p1 < Math.PI - 0.02 && p2 < Math.PI - 0.02)) continue;
+      // check by rebuilding the path from the two curves and the hold (sin / cos form, not the tan form used to solve)
+      const arcMove = (t0, t1, p) => { const sp = Math.sin(p), cp = Math.cos(p); if (sp < 1e-9) return [0, 0, 0]; return [0, 1, 2].map(i => R * (sp * t0[i] + (1 - cp) * (t1[i] - cp * t0[i]) / sp)); };
+      const m1 = arcMove(a, q.c, p1), m2 = arcMove(q.c, b, p2), hs = Math.max(0, q.h);
+      if (Math.hypot(m1[0] + m2[0] + hs * q.c[0] - D[0], m1[1] + m2[1] + hs * q.c[1] - D[1], m1[2] + m2[2] + hs * q.c[2] - D[2]) > 0.01) continue;
+      if (!best || p1 + p2 < best.p1 + best.p2 - 1e-9) best = { c: q.c, h: hs, p1, p2 };
+    }
+    return best;
+  }
+
   /* Lateral through an ordered list of targets (first = landing point, last = toe). The well passes EXACTLY through every
    * target. The landing curve ends at target 1 pointing at target 2. Between targets the path normally arrives at each target
    * already pointing at the next one: it leaves pointing at the next target, bows out and swings back (curve, optional hold,
@@ -229,7 +276,24 @@
         notes.push('Between targets ' + k + ' and ' + (k + 1) + ' the path bows out and swings back (' + (th * R2D).toFixed(2) + '\u00b0 turn at up to ' + latDls + '\u00b0/100 ft) to arrive at target ' + (k + 1) + ' pointing at target ' + (k + 2) + '.');
         dir = u[j + 1];
       } else {                                        // not pointing at the target: steer, then hold straight to it
-        const w = [u[j][0] * L, u[j][1] * L, u[j][2] * L], qx = dot(w, dir);
+        const w = [u[j][0] * L, u[j][1] * L, u[j][2] * L];
+        if (!free) {                                  // leave along dir, arrive at target k+1 pointing at target k+2: curve, hold, curve
+          const sol = twoArc(dir, u[j + 1], w, R);
+          if (!sol) {
+            let hi = R, lo = 0, found = false;       // the radius that would work: shrink until a solution exists, then bisect
+            for (let i = 0; i < 24 && !found; i++) { lo = hi * 0.88; if (lo < radius(40)) break; if (twoArc(dir, u[j + 1], w, lo)) found = true; else hi = lo; }
+            let msg = 'Target ' + (k + 1) + ' is too close to target ' + k + ' to turn from the heading at target ' + k + ' and arrive pointing at target ' + (k + 2) + ' at ' + latDls + '\u00b0/100 ft';
+            if (found) { for (let i = 0; i < 20; i++) { const mid = (lo + hi) / 2; if (twoArc(dir, u[j + 1], w, mid)) lo = mid; else hi = mid; } msg += '; it needs at least ' + fmt1(18000 / (Math.PI * lo)) + '\u00b0/100 ft'; }
+            return { ok: false, msg: msg + '. Raise the lateral steering DLS or move the targets apart.' };
+          }
+          const cs = clamp(dot(dir, sol.c), -1, 1), ce = clamp(dot(sol.c, u[j + 1]), -1, 1);
+          if (sol.p1 > 1e-9) arc(dir, [(sol.c[0] - cs * dir[0]) / Math.sin(sol.p1), (sol.c[1] - cs * dir[1]) / Math.sin(sol.p1), (sol.c[2] - cs * dir[2]) / Math.sin(sol.p1)], 0, sol.p1);
+          if (sol.h > 1e-6) out.push({ type: 'hold', len: sol.h, name: 'Lateral' });
+          if (sol.p2 > 1e-9) arc(sol.c, [(u[j + 1][0] - ce * sol.c[0]) / Math.sin(sol.p2), (u[j + 1][1] - ce * sol.c[1]) / Math.sin(sol.p2), (u[j + 1][2] - ce * sol.c[2]) / Math.sin(sol.p2)], 0, sol.p2);
+          notes.push('After target ' + k + ' the path turns ' + ((sol.p1 + sol.p2) * R2D).toFixed(1) + '\u00b0 at up to ' + latDls + '\u00b0/100 ft' + (sol.h > 1 ? ' (with a ' + sol.h.toFixed(0) + ' ft straight hold in the turn)' : '') + ' to arrive at target ' + (k + 1) + ' pointing at target ' + (k + 2) + '.');
+          dir = u[j + 1]; continue;
+        }
+        const qx = dot(w, dir);
         const perp = [w[0] - qx * dir[0], w[1] - qx * dir[1], w[2] - qx * dir[2]], qy = norm(perp);
         if (qy < 1e-6 * L) return { ok: false, msg: 'Target ' + (k + 1) + ' is directly behind the path at target ' + k + '; the lateral would have to reverse.' };
         const ev = [perp[0] / qy, perp[1] / qy, perp[2] / qy], Lc = Math.hypot(qx, qy - R);

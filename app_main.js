@@ -194,13 +194,13 @@ function renderTargets() {
       <div class="g2" style="margin-top:6px">
         <label class="f">TVD from KB (ft)<input type="number" step="any" data-ti="${i}" data-tf="tvd" value="${t.tvd}"></label>
         <label class="f">Tolerance radius (ft)<input type="number" step="any" min="0" data-ti="${i}" data-tf="tol" value="${t.tol ?? 10}"></label>
-      </div>${used && i > 0 && i < state.targets.length - 1 ? `<label style="display:flex;flex-direction:row;align-items:center;gap:7px;margin:6px 0 0;font-size:12px;cursor:pointer" title="Pass straight through this target, then steer (an arc at the lateral steering DLS, then a straight hold to the next target). Use it for a sharp turn or U-turn when you have no target at the bend."><input type="checkbox" data-ti="${i}" data-tf="turn"${t.turn ? ' checked' : ''}> Turn after this target</label>` : ''}
+      </div>${used && i > 0 && i < state.targets.length - 1 ? `<label style="display:flex;flex-direction:row;align-items:center;gap:7px;margin:6px 0 0;font-size:12px;cursor:pointer" title="Pass straight through this target (arriving along the line from the previous target), then turn after it at the lateral steering DLS. If another target follows the next one, the turn ends at the next target pointing at it (a U-turn from this target to that one); otherwise the path steers then holds straight to the next target."><input type="checkbox" data-ti="${i}" data-tf="turn"${t.turn ? ' checked' : ''}> Turn after this target</label>` : ''}
       <div class="tmiss" id="tmiss${i}"></div></div>`;
   }).join('') || '<div class="hint" style="margin:0">No targets yet.</div>';
   $$('#tgtList [data-cw]').forEach(cwFill);
   const n = state.targets.length, t = state.d.type;
   $('#tgtHint').textContent = t === 'hbh'
-    ? (n < 2 ? 'A horizontal well needs a landing point and a toe. Add the toe.' : 'Order matters: the path goes surface → target 1 (landing) → … → last target. It passes exactly through each target and arrives at each one pointing at the next. Tick “Turn after this target” on a target to pass straight through it and steer after it instead (for a sharp turn with no target at the bend).')
+    ? (n < 2 ? 'A horizontal well needs a landing point and a toe. Add the toe.' : 'Order matters: the path goes surface → target 1 (landing) → … → last target. It passes exactly through each target and arrives at each one pointing at the next. Tick “Turn after this target” on a target (such as the KOP of a U-turn) to pass straight through it and turn after it: the turn ends at the next target, pointing at the one after.')
     : 'Only target 1 is used for this well type.';
 }
 $('#tgtList').addEventListener('input', e => {
