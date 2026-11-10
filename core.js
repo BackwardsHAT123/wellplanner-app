@@ -168,11 +168,14 @@
    *      solveFor, kop, bur1, bur2, tanInc, ext, dropInc}
    * returns {ok, sections, heelIdx, theta, kop, notes, miss, plane, disp, lateral} */
   /* Lateral through an ordered list of targets (first = landing point, last = toe). The well passes EXACTLY through every
-   * target and is already pointing at the next one when it gets there: the landing curve ends at target 1 pointing at target 2,
-   * and between each pair of targets the path leaves pointing at the next target, bows out and swings back (curve, optional hold,
-   * curve, all in the plane of the two directions, each at the steering DLS) to arrive at the next target pointing at the one
-   * after it. The last leg to the toe is straight. A turn this size needs a minimum distance between targets at the given DLS;
-   * when they are closer, the DLS that would work is reported. */
+   * target. The landing curve ends at target 1 pointing at target 2. Between targets the path normally arrives at each target
+   * already pointing at the next one: it leaves pointing at the next target, bows out and swings back (curve, optional hold,
+   * curve, all in the plane of the two directions, each at the steering DLS). A target flagged `turn` ("turn after this target")
+   * is instead reached straight along the line from the previous target, and the path steers AFTER it: an arc at the steering
+   * DLS until it points at the next target, then a straight hold to it. That lets a sharp turn (a U-turn) happen without an
+   * extra target. After such a leg the heading at the next target is the hold direction, so the following leg also steers
+   * after its start. The last leg to the toe ends straight. When targets are too close for a turn at the given DLS, the DLS
+   * that would work is reported. */
   function lateralSections(pts, latDls, notes) {
     const v = (a, b) => [b.n - a.n, b.e - a.e, b.tvd - a.tvd];
     const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -187,32 +190,64 @@
     const azi0 = Math.hypot(u[0][0], u[0][1]) < 1e-9 ? 0 : norm360(Math.atan2(u[0][1], u[0][0]) * R2D);
     const segs = [{ len: len[0], inc: inc0, azi: azi0 }];
     const out = [], R = radius(latDls);
-    let total = len.reduce((a, b) => a + b, 0);
-    for (let k = 1; k + 1 < n; k++) {                 // leg into intermediate target k: leave along u[k-1], arrive along u[k]
-      const L = len[k - 1], c = clamp(dot(u[k - 1], u[k]), -1, 1), th = Math.acos(c);
-      if (th < 1e-6) { out.push({ type: 'hold', len: L, name: 'Lateral' }); continue; }
-      if (Math.PI - th < 1e-6) return { ok: false, msg: 'Target ' + (k + 2) + ' is directly behind the path at target ' + (k + 1) + '; the lateral would have to reverse.' };
-      const amax = Math.acos((1 + Math.cos(th)) / 2), cmin = 2 * Math.sin(amax) + Math.sin(th);
-      if (L < R * cmin - 1e-9) {
-        const need = 18000 * cmin / (Math.PI * L);
-        return { ok: false, msg: 'Target ' + (k + 1) + ' is too close to target ' + k + ' to arrive pointing at target ' + (k + 2) + ' at ' + latDls + '\u00b0/100 ft; it needs at least ' + (Math.ceil(need * 10) / 10).toFixed(1) + '\u00b0/100 ft. Raise the lateral steering DLS, move the targets apart, or reduce the turn.' };
+    const total = len.reduce((a, b) => a + b, 0), fmt1 = x => (Math.ceil(x * 10) / 10).toFixed(1);
+    // a steering arc in the plane of a and b (orthonormal): direction cos(p)a + sin(p)b from p0 to p1, in pieces of at most
+    // 100 degrees so the survey (minimum curvature) never has to turn more than half a circle in one section
+    const arc = (a, b, p0, p1) => {
+      const m = Math.max(1, Math.ceil(Math.abs(p1 - p0) / (100 * D2R)));
+      for (let i = 1; i <= m; i++) {
+        const p = p0 + (p1 - p0) * i / m, d = [Math.cos(p) * a[0] + Math.sin(p) * b[0], Math.cos(p) * a[1] + Math.sin(p) * b[1], Math.cos(p) * a[2] + Math.sin(p) * b[2]], ia = vecIncAzi(d, azi0);
+        out.push({ type: 'curve', dls: latDls, inc: ia.inc, azi: ia.azi, name: 'Steer' });
       }
-      const e2 = [u[k][0] - c * u[k - 1][0], u[k][1] - c * u[k - 1][1], u[k][2] - c * u[k - 1][2]], el = norm(e2);
-      const e = [e2[0] / el, e2[1] / el, e2[2] / el];
-      // bow out by alpha (away from the turn), hold h, swing back through alpha + theta; end on the chord, heading u[k]
-      const hOf = a => R * (2 * Math.cos(a) - 1 - Math.cos(th)) / Math.sin(a);
-      const f = a => 2 * R * Math.sin(a) + R * Math.sin(th) + hOf(a) * Math.cos(a) - L;
-      let lo = amax * 1e-6, hi = amax;
-      for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
-      const al = (lo + hi) / 2, h = Math.max(0, hOf(al));
-      const d1 = [Math.cos(al) * u[k - 1][0] - Math.sin(al) * e[0], Math.cos(al) * u[k - 1][1] - Math.sin(al) * e[1], Math.cos(al) * u[k - 1][2] - Math.sin(al) * e[2]];
-      const i1 = vecIncAzi(d1, azi0), i2 = vecIncAzi(u[k], azi0);
-      out.push({ type: 'curve', dls: latDls, inc: i1.inc, azi: i1.azi, name: 'Steer' });
-      if (h > 1e-6) out.push({ type: 'hold', len: h, name: 'Lateral' });
-      out.push({ type: 'curve', dls: latDls, inc: i2.inc, azi: i2.azi, name: 'Steer' });
-      notes.push('Between targets ' + k + ' and ' + (k + 1) + ' the path bows out and swings back (' + (th * R2D).toFixed(2) + '\u00b0 turn at up to ' + latDls + '\u00b0/100 ft) to arrive at target ' + (k + 1) + ' pointing at target ' + (k + 2) + '.');
+    };
+    let dir = u[0].slice();
+    for (let j = 0; j + 1 < n; j++) {                 // leg from target j+1 to target j+2 (1-based names), leaving along dir
+      const k = j + 1, L = len[j], free = j + 2 >= n || !!pts[j + 1].turn;     // free: arrive however the leg ends
+      const c = clamp(dot(dir, u[j]), -1, 1);
+      if (c > 1 - 1e-12) {                            // already pointing at the target
+        if (free) { out.push({ type: 'hold', len: L, name: 'Lateral' }); dir = u[j]; continue; }
+        const th = Math.acos(clamp(dot(u[j], u[j + 1]), -1, 1));
+        if (th < 1e-6) { out.push({ type: 'hold', len: L, name: 'Lateral' }); dir = u[j]; continue; }
+        if (Math.PI - th < 1e-6) return { ok: false, msg: 'Target ' + (k + 2) + ' is directly behind the path at target ' + (k + 1) + '; the lateral would have to reverse. Tick "Turn after this target" on target ' + (k + 1) + ' to steer after it instead.' };
+        const amax = Math.acos((1 + Math.cos(th)) / 2), cmin = 2 * Math.sin(amax) + Math.sin(th);
+        if (L < R * cmin - 1e-9) {
+          const need = 18000 * cmin / (Math.PI * L);
+          return { ok: false, msg: 'Target ' + (k + 1) + ' is too close to target ' + k + ' to arrive pointing at target ' + (k + 2) + ' at ' + latDls + '\u00b0/100 ft; it needs at least ' + fmt1(need) + '\u00b0/100 ft. Raise the lateral steering DLS, move the targets apart, reduce the turn, or tick "Turn after this target" on target ' + (k + 1) + ' to steer after it instead.' };
+        }
+        const cc = clamp(dot(u[j], u[j + 1]), -1, 1);
+        const e2 = [u[j + 1][0] - cc * u[j][0], u[j + 1][1] - cc * u[j][1], u[j + 1][2] - cc * u[j][2]], el = norm(e2);
+        const e = [e2[0] / el, e2[1] / el, e2[2] / el];
+        // bow out by alpha (away from the turn), hold h, swing back through alpha + theta; end on the chord, heading u[j+1]
+        const hOf = a => R * (2 * Math.cos(a) - 1 - Math.cos(th)) / Math.sin(a);
+        const f = a => 2 * R * Math.sin(a) + R * Math.sin(th) + hOf(a) * Math.cos(a) - L;
+        let lo = amax * 1e-6, hi = amax;
+        for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (f(mid) > 0) lo = mid; else hi = mid; }
+        const al = (lo + hi) / 2, h = Math.max(0, hOf(al));
+        arc(u[j], e, 0, -al);
+        if (h > 1e-6) out.push({ type: 'hold', len: h, name: 'Lateral' });
+        arc(u[j], e, -al, th);
+        notes.push('Between targets ' + k + ' and ' + (k + 1) + ' the path bows out and swings back (' + (th * R2D).toFixed(2) + '\u00b0 turn at up to ' + latDls + '\u00b0/100 ft) to arrive at target ' + (k + 1) + ' pointing at target ' + (k + 2) + '.');
+        dir = u[j + 1];
+      } else {                                        // not pointing at the target: steer, then hold straight to it
+        const w = [u[j][0] * L, u[j][1] * L, u[j][2] * L], qx = dot(w, dir);
+        const perp = [w[0] - qx * dir[0], w[1] - qx * dir[1], w[2] - qx * dir[2]], qy = norm(perp);
+        if (qy < 1e-6 * L) return { ok: false, msg: 'Target ' + (k + 1) + ' is directly behind the path at target ' + k + '; the lateral would have to reverse.' };
+        const ev = [perp[0] / qy, perp[1] / qy, perp[2] / qy], Lc = Math.hypot(qx, qy - R);
+        if (Lc < R) {
+          const need = 18000 * 2 * qy / (Math.PI * (qx * qx + qy * qy));
+          return { ok: false, msg: 'Target ' + (k + 1) + ' cannot be reached from target ' + k + ' at ' + latDls + '\u00b0/100 ft; it needs at least ' + fmt1(need) + '\u00b0/100 ft. Raise the lateral steering DLS or move the targets apart.' };
+        }
+        const phi0 = Math.atan2(R - qy, qx);
+        let th = Math.asin(R / Lc) - phi0;
+        if (th < 0) th += 2 * Math.PI;
+        const s = Math.sqrt(Lc * Lc - R * R);
+        const nd = [Math.cos(th) * dir[0] + Math.sin(th) * ev[0], Math.cos(th) * dir[1] + Math.sin(th) * ev[1], Math.cos(th) * dir[2] + Math.sin(th) * ev[2]];
+        arc(dir, ev, 0, th);
+        out.push({ type: 'hold', len: s, name: 'Lateral' });
+        notes.push('After target ' + k + ' the path steers ' + (th * R2D).toFixed(2) + '\u00b0 at ' + latDls + '\u00b0/100 ft to reach target ' + (k + 1) + '.');
+        dir = nd;
+      }
     }
-    out.push({ type: 'hold', len: len[n - 2], name: 'Lateral' });
     return { ok: true, sections: out, segs, total };
   }
 
