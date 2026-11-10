@@ -136,8 +136,8 @@ function cwHtml(id) {
   return `<div class="cw" data-cw="${id}">
     <label class="f">X / Easting (ft)<input type="number" step="any" data-cf="e"></label>
     <label class="f">Y / Northing (ft)<input type="number" step="any" data-cf="n"></label>
-    <label class="f ll">Latitude (° N)<input type="number" step="any" data-cf="lat"></label>
-    <label class="f ll">Longitude (° E, − west)<input type="number" step="any" data-cf="lon"></label>
+    <label class="f ll">Latitude (° N)<input type="text" inputmode="decimal" autocomplete="off" data-cf="lat"></label>
+    <label class="f ll">Longitude (° E, − west)<input type="text" inputmode="decimal" autocomplete="off" data-cf="lon"></label>
   </div>`;
 }
 function cwFill(root) {
@@ -149,6 +149,15 @@ function cwFill(root) {
   root.querySelectorAll('.ll').forEach(l => l.classList.toggle('off', !isLL()));
   if (isLL()) { const ll = WP.toLatLon(o.n, o.e, state.crs); q('lat').value = ll.lat.toFixed(6); q('lon').value = ll.lon.toFixed(6); }
 }
+/* tabbing into a latitude / longitude box selects just the digits after the decimal point (typing then replaces them) */
+let cwPointer = false;
+document.addEventListener('pointerdown', () => { cwPointer = true; }, true);
+document.addEventListener('keydown', () => { cwPointer = false; }, true);
+document.addEventListener('focusin', e => {
+  const el = e.target; if (cwPointer || !el.matches || !el.matches('[data-cf=lat],[data-cf=lon]')) return;
+  const sel = () => { const v = el.value, i = v.indexOf('.'); if (i >= 0) el.setSelectionRange(i + 1, v.length); else el.select(); };
+  sel(); setTimeout(sel, 0);
+});
 const cwFillAll = () => $$('[data-cw]').forEach(cwFill);
 document.addEventListener('input', e => {
   const el = e.target.closest('[data-cf]'); if (!el) return;
