@@ -222,6 +222,17 @@ $('#bAddTgt').onclick = () => {
 $('#bExtend').onclick = () => addTargetFrom(state.lat.az, state.lat.len, state.lat.dip);
 
 /* ================= tops ================= */
+/* tops are shared by every well on the pad (they are TVD below the surface location, which barely changes across a pad):
+ * an edit on a pad-slot well is copied to the other pad-slot wells */
+function shareTops() {
+  if (!state.slot) return;
+  project.wells.forEach(w => { if (w !== state && w.slot) w.tops = JSON.parse(JSON.stringify(state.tops)); });
+}
+function adoptPadTops() {                                  // a pad well with no tops of its own takes them from the pad
+  if (!state.slot || (state.tops && state.tops.length)) return;
+  const src = project.wells.find(w => w !== state && w.slot && w.tops && w.tops.length);
+  if (src) state.tops = JSON.parse(JSON.stringify(src.tops));
+}
 const topsEff = () => WP.resolveTops(state.tops);      // tops with blank dip / direction filled from the ones entered on this well
 /* blank dip and direction boxes show the value they are inheriting */
 function refreshTopHints() {
@@ -234,7 +245,7 @@ function renderTops() {
     || '<div class="hint" style="margin:0">None yet.</div>';
   refreshTopHints();
 }
-$('#bAddTop').onclick = () => { state.tops.push({ name: 'Top ' + (state.tops.length + 1), tvd: Math.round((state.targets[0] || { tvd: 0 }).tvd) }); renderTops(); recalc(); };
+$('#bAddTop').onclick = () => { state.tops.push({ name: 'Top ' + (state.tops.length + 1), tvd: Math.round((state.targets[0] || { tvd: 0 }).tvd) }); shareTops(); renderTops(); recalc(); };
 $('#topsList').addEventListener('input', e => {
   const el = e.target.closest('[data-top]'); if (!el) return;
   const t = state.tops[+el.dataset.top];
@@ -242,11 +253,11 @@ $('#topsList').addEventListener('input', e => {
   if (f === 'name') t.name = el.value;
   else if (f === 'dip' || f === 'azi') { const v = parseFloat(el.value); if (isFinite(v)) t[f] = v; else delete t[f]; }
   else { const v = parseFloat(el.value); if (!isFinite(v)) return; t.tvd = v; }
-  refreshTopHints(); recalc();
+  shareTops(); refreshTopHints(); recalc();
 });
 $('#topsList').addEventListener('click', e => {
   const b = e.target.closest('[data-deltop]'); if (!b) return;
-  state.tops.splice(+b.dataset.deltop, 1); renderTops(); recalc();
+  state.tops.splice(+b.dataset.deltop, 1); shareTops(); renderTops(); recalc();
 });
 
 /* ================= calculation ================= */

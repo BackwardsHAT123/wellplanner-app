@@ -73,7 +73,7 @@ function renderWellBar() {
   if (sig === wellSig) return; wellSig = sig;
   $('#wellSel').innerHTML = project.wells.map((w, i) => `<option value="${i}"${i === project.active ? ' selected' : ''}>${esc(w.name || 'Unnamed')}${w.slot ? ' (' + slotId(w.slot.c, w.slot.r) + ')' : ''}</option>`).join('');
 }
-function selectWell(i) { project.active = i; state = project.wells[i]; histOf(state); wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init(); }
+function selectWell(i) { project.active = i; state = project.wells[i]; adoptPadTops(); histOf(state); wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init(); }
 /* ---- undo / redo: snapshots of the active well, taken after each autosave, restored in place ---- */
 const HIST = new WeakMap(), HIST_MAX = 40;
 let histBusy = false;
