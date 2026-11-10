@@ -409,9 +409,9 @@ function setStoOpen(open, save) {
 $('#stoHead').onclick = () => setStoOpen($('#stoBody').hidden, true);
 $('#stoHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStoOpen($('#stoBody').hidden, true); } };
 { let o = false; try { o = localStorage.getItem('wellplanner.stoOpen') === '1'; } catch (e) {} setStoOpen(o, false); }
-/* The survey uncertainty card shares a row with the offsets card while folded; opened, both take the full width. */
+/* The survey uncertainty card shares a row with the offsets card, folded or not (both stay half width). */
 function setErrOpen(open, save) {
-  $('#errBody').hidden = !open; $('#errArrow').textContent = open ? '▾' : '▸'; $('#errHead').setAttribute('aria-expanded', open ? 'true' : 'false'); $('#offRow').classList.toggle('wide', open);
+  $('#errBody').hidden = !open; $('#errArrow').textContent = open ? '▾' : '▸'; $('#errHead').setAttribute('aria-expanded', open ? 'true' : 'false');
   if (save) { try { localStorage.setItem('wellplanner.errOpen', open ? '1' : '0'); } catch (e) {} }
 }
 $('#errHead').onclick = () => setErrOpen($('#errBody').hidden, true);
