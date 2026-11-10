@@ -390,7 +390,7 @@ td.bad{color:var(--warn);font-weight:700}
     <div class="plots">
       <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn" style="width:15px;height:15px;margin:0"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
-      <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
+      <div class="plot"><h4>3D <span>drag rotate · Shift or right-drag pans · wheel zooms at the pointer · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
       <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
     </div>
     <div class="card" id="notesCard" style="margin-top:5px">
@@ -467,7 +467,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="stats" id="actAhead"></div>
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
-        <div class="plot"><h4>3D <span>drag rotate · wheel zoom · double-click reset</span></h4><canvas id="cvAp3d"></canvas></div>
+        <div class="plot"><h4>3D <span>drag rotate · Shift or right-drag pans · wheel zooms at the pointer · double-click reset</span><span class="grow"></span><button class="small" id="b3dPan" title="Make a plain drag pan the view instead of rotating it">Pan</button></h4><canvas id="cvAp3d"></canvas></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
       <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>

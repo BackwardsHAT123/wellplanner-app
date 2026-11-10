@@ -1,7 +1,7 @@
 'use strict';
 /* 3D view (split from index.html; loaded in order, shares globals) */
 /* ---- 3D ---- */
-const V3 = { yaw: -35 * D2R, pitch: 28 * D2R, zoom: 1, drag: null };
+const V3 = { yaw: -35 * D2R, pitch: 28 * D2R, zoom: 1, drag: null, pan: { cv3d: [0, 0], cvAp3d: [0, 0] }, panMode: false };   // pan: screen-pixel offset per canvas; panMode makes a plain drag pan (touch, no Shift)
 function draw3D(id = 'cv3d') {
   const AP = id !== 'cv3d', c = $('#' + id); if (!c.offsetParent || !M.survey) return;
   const { g, w, h } = setupCanvas(c);
@@ -21,7 +21,7 @@ function draw3D(id = 'cv3d') {
   const P = q => {
     const X = q[0] - ctr[0], Y = q[1] - ctr[1], Z = q[2] - ctr[2];
     const x1 = X * cy - Y * sy, y1 = X * sy + Y * cy;
-    return [w / 2 + x1 * s, h / 2 - (Z * cp + y1 * sp) * s];
+    return [w / 2 + V3.pan[id][0] + x1 * s, h / 2 + V3.pan[id][1] - (Z * cp + y1 * sp) * s];
   };
   const seg = (a, b, col, lw, dash) => { g.strokeStyle = col; g.lineWidth = lw; g.setLineDash(dash || []); const A = P(a), B = P(b); g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); g.setLineDash([]); };
   // bounding box + floor
@@ -81,14 +81,21 @@ function draw3D(id = 'cv3d') {
 const draw3DAll = () => { draw3D('cv3d'); draw3D('cvAp3d'); };
 ['cv3d', 'cvAp3d'].forEach(id => {
   const c = $('#' + id);
-  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); V3.drag = { x: e.clientX, y: e.clientY }; });
+  c.addEventListener('contextmenu', e => e.preventDefault());
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); V3.drag = { x: e.clientX, y: e.clientY, pan: V3.panMode || e.shiftKey || e.button === 1 || e.button === 2 }; });
   c.addEventListener('pointerup', () => V3.drag = null);
   c.addEventListener('pointermove', e => {
-    if (!V3.drag) return;
-    V3.yaw += (e.clientX - V3.drag.x) * 0.008; V3.pitch = Math.max(-1.5, Math.min(1.5, V3.pitch + (e.clientY - V3.drag.y) * 0.008));
-    V3.drag = { x: e.clientX, y: e.clientY }; later(draw3DAll);
+    if (!V3.drag) return; const dx = e.clientX - V3.drag.x, dy = e.clientY - V3.drag.y;
+    if (V3.drag.pan) { const p = V3.pan[id]; p[0] += dx; p[1] += dy; }                      // slide the picture, e.g. to zoom in on one depth
+    else { V3.yaw += dx * 0.008; V3.pitch = Math.max(-1.5, Math.min(1.5, V3.pitch + dy * 0.008)); }
+    V3.drag = { x: e.clientX, y: e.clientY, pan: V3.drag.pan }; later(draw3DAll);
   });
-  c.addEventListener('wheel', e => { e.preventDefault(); V3.zoom = Math.max(.2, Math.min(12, V3.zoom * Math.exp(-e.deltaY * 0.0015))); draw3DAll(); }, { passive: false });
-  c.addEventListener('dblclick', () => { V3.yaw = -35 * D2R; V3.pitch = 28 * D2R; V3.zoom = 1; draw3DAll(); });
+  c.addEventListener('wheel', e => {                                                         // zoom toward the pointer, so the spot under it stays put
+    e.preventDefault(); const r = c.getBoundingClientRect(), mx = e.clientX - r.left - r.width / 2, my = e.clientY - r.top - r.height / 2;
+    const z = Math.max(.2, Math.min(300, V3.zoom * Math.exp(-e.deltaY * 0.0015))), k = z / V3.zoom, p = V3.pan[id]; V3.zoom = z;
+    p[0] = mx - (mx - p[0]) * k; p[1] = my - (my - p[1]) * k; draw3DAll();
+  }, { passive: false });
+  c.addEventListener('dblclick', () => { V3.yaw = -35 * D2R; V3.pitch = 28 * D2R; V3.zoom = 1; V3.pan.cv3d = [0, 0]; V3.pan.cvAp3d = [0, 0]; draw3DAll(); });
 });
-
+const pan3dBtn = $('#b3dPan');
+if (pan3dBtn) pan3dBtn.onclick = () => { V3.panMode = !V3.panMode; pan3dBtn.classList.toggle('primary', V3.panMode); pan3dBtn.textContent = V3.panMode ? 'Pan: on' : 'Pan'; };
