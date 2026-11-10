@@ -233,21 +233,28 @@ function onPad(w) {
   return WP.padSlots(P, P.cols, P.rows, crs).some(s => Math.hypot(s.n - w.surface.n, s.e - w.surface.e) <= PAD_NEAR);
 }
 const padMates = () => onPad(state) ? project.wells.filter(w => w !== state && onPad(w)) : [];
-function shareTops() { padMates().forEach(w => { w.tops = JSON.parse(JSON.stringify(state.tops)); }); }
+/* a well does not take tops more than TOP_BELOW ft (TVD) deeper than its own BHL (its last target) */
+const TOP_BELOW = 100;
+const bhlTvd = w => { const t = (w.targets || []).map(x => +x.tvd).filter(isFinite); return t.length ? t[t.length - 1] : Infinity; };
+const topsFor = (w, tops) => JSON.parse(JSON.stringify(tops)).filter(t => !(+t.tvd > bhlTvd(w) + TOP_BELOW));
+function shareTops() {
+  const lim = bhlTvd(state) + TOP_BELOW;
+  padMates().forEach(w => { const keep = (w.tops || []).filter(t => +t.tvd > lim); w.tops = topsFor(w, state.tops).concat(keep); });   // deeper tops this well could not have entered stay
+}
 function adoptPadTops() {                                  // a pad well with no tops of its own takes them from the pad
   if (state.tops && state.tops.length) return;
-  const src = padMates().find(w => w.tops && w.tops.length);
-  if (src) state.tops = JSON.parse(JSON.stringify(src.tops));
+  const src = padMates().find(w => topsFor(state, w.tops || []).length);
+  if (src) state.tops = topsFor(state, src.tops);
 }
 /* "Use pad tops": replace this well's tops with those of the other wells on the same pad (the first one that has any) */
-function padTopsSource() { return padMates().find(w => w.tops && w.tops.length); }
+function padTopsSource() { return padMates().find(w => topsFor(state, w.tops || []).length); }
 function refreshPadTopsBtn() {
   const b = $('#bPadTops'); if (!b) return; const s = padTopsSource();
-  b.disabled = !s; b.title = s ? 'Copy the ' + s.tops.length + ' tops from ' + s.name + ' (same pad) into this well' : onPad(state) ? 'No other well on this pad has tops yet' : 'This well is not on the pad template (no slot, not at a slot position)';
+  b.disabled = !s; b.title = s ? 'Copy the ' + topsFor(state, s.tops).length + ' tops from ' + s.name + ' (same pad; tops more than ' + TOP_BELOW + ' ft below this well\'s BHL are skipped) into this well' : onPad(state) ? 'No other well on this pad has tops yet' : 'This well is not on the pad template (no slot, not at a slot position)';
 }
 $('#bPadTops').onclick = e => {
   e.stopPropagation(); const s = padTopsSource(); if (!s) return;
-  state.tops = JSON.parse(JSON.stringify(s.tops));
+  state.tops = topsFor(state, s.tops);
   shareTops();
   renderTops(); recalc();
 };
