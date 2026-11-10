@@ -31,7 +31,18 @@ updateThemeBtn();
 /* ================= project: wells and pad ================= */
 const slotId = (c, r) => 'C' + c + 'R' + r;
 const wellAtSlot = (c, r) => project.wells.find(w => w.slot && w.slot.c === c && w.slot.r === r);
+const SLOT_SNAP = 10;                                     // ft: a well whose surface sits this close to a free slot is in that slot
+function autoAssignSlots() {
+  const P = project.pad, taken = new Set(project.wells.filter(w => w.slot).map(w => w.slot.c + '-' + w.slot.r));
+  project.wells.forEach(w => {
+    if (w.slot) return;
+    let best = null, bd = SLOT_SNAP;
+    WP.padSlots(P, P.cols, P.rows, w.crs || state.crs).forEach(s => { const d = Math.hypot(s.n - w.surface.n, s.e - w.surface.e); if (d <= bd && !taken.has(s.c + '-' + s.r)) { bd = d; best = s; } });
+    if (best) { w.slot = { c: best.c, r: best.r }; taken.add(best.c + '-' + best.r); if (w === state && typeof renderSlotSel === 'function') renderSlotSel(); }
+  });
+}
 function applyAllSlots() {
+  autoAssignSlots();
   project.wells.forEach(w => { if (w.slot) { const p = WP.padSlot(project.pad, w.slot.c, w.slot.r, w.crs || state.crs); w.surface.n = p.n; w.surface.e = p.e; } });
 }
 document.addEventListener('input', e => {                 // pad settings
