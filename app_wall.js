@@ -334,14 +334,33 @@ $('#bDrillPrint').onclick = () => { if (M.survey) drillPrint(); };
 $('#dpDet').addEventListener('toggle', drillPreview);
 $('#bWallPrint').onclick = () => { if (M.survey) wallPrint(); };
 $('#bWallSvg').onclick = () => { if (M.survey) download(safeName() + (apiTag() ? '_' + apiTag() : '') + '_wall_plot.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + wallSvg().replace('width="792" height="612"', 'width="11in" height="8.5in"'), 'image/svg+xml'); };
-$('#bWallLogo').onclick = () => $('#wallLogoFile').click();
+/* Logo popup: choose a file, go back to the default, or leave the logo off */
+const logoChoose = () => $('#wallLogoFile').click();
+const logoDefault = () => { try { localStorage.removeItem('wellplanner.wallLogo'); } catch (e) {} wallLogo = window.WALL_LOGO || null; drawWall(); };
+const logoNone = () => { wallLogo = null; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify({ src: '' })); } catch (e) {} drawWall(); };
+let logoPopRefresh = null;
+$('#bWallLogo').onclick = () => {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div role="dialog" aria-label="Logo" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <h3 style="margin:0 0 8px">Logo</h3>
+    <div id="lgPrev" style="height:90px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#555;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden"></div>
+    <div class="hint" style="margin:0 0 10px">Printed at the top left of the wall plot. PNG, JPEG or SVG.</div>
+    <div class="toolbar" style="margin:0"><button class="primary" id="lgFile">Choose file…</button><button id="lgDef">Default logo</button><button id="lgNone">No logo</button></div>
+    <div class="toolbar" style="margin:12px 0 0"><span class="grow"></span><button id="lgClose">Close</button></div></div>`;
+  document.body.appendChild(ov);
+  const q = s => ov.querySelector(s), close = () => { logoPopRefresh = null; ov.remove(); document.removeEventListener('keydown', esc1); };
+  const esc1 = e => { if (e.key === 'Escape') close(); };
+  const refresh = logoPopRefresh = () => { q('#lgPrev').innerHTML = wallLogo && wallLogo.src ? `<img src="${wallLogo.src}" alt="" style="max-width:100%;max-height:100%">` : 'No logo'; };
+  refresh(); document.addEventListener('keydown', esc1);
+  q('#lgFile').onclick = logoChoose; q('#lgDef').onclick = () => { logoDefault(); refresh(); }; q('#lgNone').onclick = () => { logoNone(); refresh(); }; q('#lgClose').onclick = close;
+  ov.addEventListener('mousedown', e => { if (e.target === ov) close(); }); q('#lgClose').focus();
+};
 $('#wallLogoFile').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { wallLogo = { src: rd.result, w: im.naturalWidth, h: im.naturalHeight }; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify(wallLogo)); } catch (x) { $('#wallNote').textContent = 'The logo is too big to remember between sessions, but it is used for now.'; } drawWall(); }; im.src = rd.result; };
+  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { wallLogo = { src: rd.result, w: im.naturalWidth, h: im.naturalHeight }; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify(wallLogo)); } catch (x) { $('#wallNote').textContent = 'The logo is too big to remember between sessions, but it is used for now.'; } drawWall(); if (logoPopRefresh) logoPopRefresh(); }; im.src = rd.result; };
   rd.readAsDataURL(f);
 };
-$('#bWallLogoReset').onclick = () => { try { localStorage.removeItem('wellplanner.wallLogo'); } catch (e) {} wallLogo = window.WALL_LOGO || null; drawWall(); };
-$('#bWallNoLogo').onclick = () => { wallLogo = null; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify({ src: '' })); } catch (e) {} drawWall(); };
 
 function drawAll() { if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawPad(); drawActual(); drawWall(); }
 
