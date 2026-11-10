@@ -76,6 +76,7 @@ main{overflow:auto;padding:12px 12px 20px}
 .chkcol input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
 #refCard .refrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
 #refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#refCard label.refrow{justify-content:flex-start}
 #refCard input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none}
 #stoInfo{margin-top:8px;font-size:12px;line-height:1.5}
 #stoInfo table{width:100%;border-collapse:collapse;margin-top:6px}
@@ -541,11 +542,13 @@ td.bad{color:var(--warn);font-weight:700}
       <span class="hint" style="margin:0">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</span>
     </div>
     <div class="card" id="refCard" style="margin-bottom:5px">
-      <h3>Wells from this tool as offsets</h3>
+      <h3 id="refHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="refArrow" style="display:inline-block;width:10px">▾</span>Wells from this tool as offsets <span class="grow"></span><span id="refCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="refBody" style="margin-top:8px">
       <div class="hint" style="margin:0 0 6px">Wells in this project are always compared with each other. Add wells from another saved plan (for example, ones not on the state’s layer yet) as reference copies: they are drawn on the plots and checked for clearance like any other offset. A reference is a frozen copy, so adding the same well again replaces it.</div>
       <div id="refList"></div>
       <div class="toolbar" style="margin-top:6px"><button class="small" id="bRefAdd">+ Add wells from a saved plan…</button><input type="file" id="refFile" accept=".json,application/json" hidden></div>
       <div id="refPick"></div>
+      </div>
     </div>
     <div class="card" id="stoListCard" style="margin-bottom:5px">
       <h3>Drilled wells from state records</h3>

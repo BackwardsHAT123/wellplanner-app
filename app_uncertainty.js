@@ -264,9 +264,18 @@ function refModel(r) {
   refCache.set(r, { sig, m }); return m;
 }
 const REF = { pending: null };
+function setRefOpen(open, save) {
+  $('#refBody').hidden = !open; $('#refArrow').textContent = open ? '▾' : '▸'; $('#refHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (save) { try { localStorage.setItem('wellplanner.refOpen', open ? '1' : '0'); } catch (e) {} }
+}
+$('#refHead').onclick = () => setRefOpen($('#refBody').hidden, true);
+$('#refHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRefOpen($('#refBody').hidden, true); } };
+{ let o = true; try { o = localStorage.getItem('wellplanner.refOpen') !== '0'; } catch (e) {} setRefOpen(o, false); }
 function renderRef() {
   const el = $('#refList'); if (!el) return;
   const others = project.wells.map((w, i) => ({ w, i })).filter(x => x.w !== state);
+  { const on = others.filter(x => x.w.asOffset !== false).length + (project.refs || []).filter(r => r.asOffset !== false).length, n = others.length + (project.refs || []).length;
+    $('#refCount').textContent = n ? `${on} of ${n} in use` : 'none'; }
   let h = '';
   if (others.length) h += '<div class="hint" style="margin:0 0 4px">This project</div>' + others.map(x =>
     `<label class="chk refrow"><input type="checkbox" data-asoff="w${x.i}" ${x.w.asOffset === false ? '' : 'checked'}><span><b>${esc(x.w.name || 'Unnamed')}</b>${x.w.slot ? ' · slot ' + slotId(x.w.slot.c, x.w.slot.r) : ''}</span></label>`).join('');
