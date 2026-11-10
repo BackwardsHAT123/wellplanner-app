@@ -520,7 +520,7 @@ function draw2D(key) {
   }
   // offsets
   if (kind === 'plan' && !AP && (project.pad.cols * project.pad.rows > 1 || project.wells.some(w => w.slot))) {   // pad slots
-    WP.padSlots(project.pad, project.pad.cols, project.pad.rows).forEach(sl => {
+    WP.padSlots(project.pad, project.pad.cols, project.pad.rows, state.crs).forEach(sl => {
       const x = X(sl.e - state.surface.e), y = Y(sl.n - state.surface.n);
       g.strokeStyle = muted; g.lineWidth = 1; g.strokeRect(x - 3.5, y - 3.5, 7, 7);
       if (v.s * Math.min(project.pad.dx, project.pad.dy || project.pad.dx) > 38) { g.fillStyle = muted; g.textAlign = 'center'; g.fillText(sl.id, x, y - 8); }

@@ -333,13 +333,28 @@
    * pad = {ref:{n,e}, refCol, refRow, dx, dy, rot}. Slot (c, r) sits (c-refCol)*dx along the pad X axis and
    * (r-refRow)*dy along the pad Y axis from the reference point. The axes are the grid E / N axes rotated
    * counter-clockwise by rot degrees: X points at azimuth 90-rot, Y at azimuth -rot. */
-  function padSlot(pad, c, r) {
+  function padSlot(pad, c, r, crs) {
     const di = (c - pad.refCol) * pad.dx, dj = (r - pad.refRow) * pad.dy, t = (pad.rot || 0) * D2R;
-    return { e: pad.ref.e + di * Math.cos(t) - dj * Math.sin(t), n: pad.ref.n + di * Math.sin(t) + dj * Math.cos(t) };
+    const x = di * Math.cos(t) - dj * Math.sin(t), y = di * Math.sin(t) + dj * Math.cos(t);   // east, north of the known point
+    if (crs && CRS[crs]) return offsetGround(pad.ref.n, pad.ref.e, x, y, crs);
+    return { e: pad.ref.e + x, n: pad.ref.n + y };
   }
-  function padSlots(pad, cols, rows) {
+  /* Move a grid point by footages measured on the ground (east dE, north dN, true directions, US survey feet)
+   * and return the new grid point. The lat/long of the known point is moved on the ellipsoid, so the new
+   * lat/longs are right for the footages given; grid distances differ slightly (scale factor, convergence). */
+  function offsetGround(n, e, dE, dN, crs) {
+    const ll = toLatLon(n, e, crs), a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), ft = 1 / FT_PER_M;
+    let ph = ll.lat * D2R, lat = ll.lat, lon = ll.lon;
+    for (let i = 0; i < 3; i++) {                              // re-evaluate the radii at the mid latitude
+      const s = Math.sin(ph), w = Math.sqrt(1 - e2 * s * s), M = a * (1 - e2) / (w * w * w), N = a / w;
+      lat = ll.lat + dN * ft / M * R2D; ph = (ll.lat + lat) / 2 * D2R;
+      lon = ll.lon + dE * ft / (N * Math.cos(ph)) * R2D;
+    }
+    return toGrid(lat, lon, crs);
+  }
+  function padSlots(pad, cols, rows, crs) {
     const out = [];
-    for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) out.push({ c, r, id: 'C' + c + 'R' + r, ...padSlot(pad, c, r) });
+    for (let r = 1; r <= rows; r++) for (let c = 1; c <= cols; c++) out.push({ c, r, id: 'C' + c + 'R' + r, ...padSlot(pad, c, r, crs) });
     return out;
   }
 
@@ -914,7 +929,7 @@
 
   const api = { resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
-    planFromTargets, lateralSections, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
+    planFromTargets, lateralSections, offsetGround, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.WP = api;
 })(typeof window !== 'undefined' ? window : globalThis);

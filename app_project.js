@@ -32,7 +32,7 @@ updateThemeBtn();
 const slotId = (c, r) => 'C' + c + 'R' + r;
 const wellAtSlot = (c, r) => project.wells.find(w => w.slot && w.slot.c === c && w.slot.r === r);
 function applyAllSlots() {
-  project.wells.forEach(w => { if (w.slot) { const p = WP.padSlot(project.pad, w.slot.c, w.slot.r); w.surface.n = p.n; w.surface.e = p.e; } });
+  project.wells.forEach(w => { if (w.slot) { const p = WP.padSlot(project.pad, w.slot.c, w.slot.r, w.crs || state.crs); w.surface.n = p.n; w.surface.e = p.e; } });
 }
 document.addEventListener('input', e => {                 // pad settings
   const el = e.target.closest('[data-pk]'); if (!el) return;
@@ -139,7 +139,7 @@ $('#wellSel').onchange = e => trySelectWell(+e.target.value);
 
 function renderSlotSel() {
   const P = project.pad, have = new Set(), opts = ['<option value="custom">Custom location (type coordinates)</option>'];
-  WP.padSlots(P, P.cols, P.rows).forEach(sl => {
+  WP.padSlots(P, P.cols, P.rows, state.crs).forEach(sl => {
     const o = wellAtSlot(sl.c, sl.r), taken = o && o !== state; have.add(sl.id);
     opts.push(`<option value="${sl.c}-${sl.r}"${taken ? ' disabled' : ''}>Pad slot ${sl.id}${o ? ' (' + esc(o.name) + ')' : ''}</option>`);
   });
@@ -159,7 +159,7 @@ $('#slotSel').onchange = e => {
 };
 
 function createWellAtSlot(c, r) {
-  const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r);
+  const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r, state.crs);
   const dn = p.n - src.surface.n, de = p.e - src.surface.e;
   w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
   w.surface = { n: p.n, e: p.e };
@@ -171,7 +171,7 @@ function createWellAtSlot(c, r) {
 function renderPad() {
   const P = project.pad, n = P.cols * P.rows, filled = project.wells.filter(w => w.slot).length;
   $('#padCount').textContent = `${n} slot${n === 1 ? '' : 's'} · ${filled} filled`;
-  let info = `Pad Y axis (rows) points to azimuth <b>${fmt(WP.norm360(-P.rot), 1)}°</b>, X axis (columns) to <b>${fmt(WP.norm360(90 - P.rot), 1)}°</b> (grid, clockwise from north).`;
+  let info = `Pad Y axis (rows) points to azimuth <b>${fmt(WP.norm360(-P.rot), 1)}°</b>, X axis (columns) to <b>${fmt(WP.norm360(90 - P.rot), 1)}°</b> (true, clockwise from north; with a coordinate system set, footages are ground feet and the lat/longs follow).`;
   if (P.refCol > P.cols || P.refRow > P.rows) info += `<br><span style="color:var(--warn)">The known point (${slotId(P.refCol, P.refRow)}) is outside the ${P.cols} × ${P.rows} grid.</span>`;
   $('#padInfo').innerHTML = info;
   renderSlotSel();
@@ -215,7 +215,7 @@ $('#bLsApply').onclick = () => {
 function drawPad() {
   const c = $('#cvPad'); if (!c.offsetParent) return;
   const { g, w, h } = setupCanvas(c);
-  const P = project.pad, slots = WP.padSlots(P, P.cols, P.rows);
+  const P = project.pad, slots = WP.padSlots(P, P.cols, P.rows, state.crs);
   const ink = css('--ink'), muted = css('--muted'), line = css('--line'), acc = css('--accent');
   const xs = slots.map(s => s.e), ys = slots.map(s => s.n), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const m = 40, sx = x1 - x0 > 1e-6 ? (w - 2 * m) / (x1 - x0) : Infinity, sy = y1 - y0 > 1e-6 ? (h - 2 * m) / (y1 - y0) : Infinity;
@@ -223,8 +223,8 @@ function drawPad() {
   const X = e => w / 2 + (e - (x0 + x1) / 2) * sc, Y = n => h / 2 - (n - (y0 + y1) / 2) * sc;
   // faint lines along rows and columns so the rotation is easy to see
   g.strokeStyle = line; g.lineWidth = 1; g.beginPath();
-  for (let r = 1; r <= P.rows; r++) { const a = WP.padSlot(P, 1, r), b = WP.padSlot(P, P.cols, r); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
-  for (let cc = 1; cc <= P.cols; cc++) { const a = WP.padSlot(P, cc, 1), b = WP.padSlot(P, cc, P.rows); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
+  for (let r = 1; r <= P.rows; r++) { const a = WP.padSlot(P, 1, r, state.crs), b = WP.padSlot(P, P.cols, r, state.crs); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
+  for (let cc = 1; cc <= P.cols; cc++) { const a = WP.padSlot(P, cc, 1, state.crs), b = WP.padSlot(P, cc, P.rows, state.crs); g.moveTo(X(a.e), Y(a.n)); g.lineTo(X(b.e), Y(b.n)); }
   g.stroke();
   c._slots = [];
   g.textAlign = 'center';
