@@ -63,7 +63,7 @@ function drawLogs() {
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
   if (box.dataset.key === key) tr.forEach((t, i) => { box.children[i].style.height = GEO.trackH(i, tr.length) + 'px'; });
   if (box.dataset.key !== key) { box.innerHTML = tr.map((t, i) => `<canvas class="ltk" id="cvLog${i}" style="height:${GEO.trackH(i, tr.length)}px;cursor:crosshair"></canvas>`).join(''); box.dataset.key = key; }
-  const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : geoHi(Math.max(...rg.map(r => r[1])), Math.min(...rg.map(r => r[0]))), col = logColors();
+  const rg = cs.map(c => WP.logRange(c)), lo = LOGZ.lo != null ? LOGZ.lo : Math.min(...rg.map(r => r[0])), hi = LOGZ.hi != null ? LOGZ.hi : geoHi(Math.max(...rg.map(r => r[1])), lo), col = logColors();
   logZoomUi();   // x axis spans the displayed log data
   const topMarks = LOGT.on && state.tops ? WP.formationMds(topsEff(), ACT.rows || M.survey, state.surface).filter(t => t.md !== null && t.md >= lo && t.md <= hi).map(t => ({ x: t.md, name: t.name })) : [];
   const anyRight = tr.some(t => cs.filter(c => c.trk === t).length > 1);
@@ -194,10 +194,21 @@ function renderGeo() {
 }
 function logZoomUi() {
   const b = $('#bLogZoom'); if (!b) return;
-  b.textContent = LOGZ.mode === 1 ? 'Click the start point…' : LOGZ.mode === 2 ? 'Click the end point…' : 'Zoom to interval';
+  b.textContent = LOGZ.mode === 1 ? 'Click the start point…' : LOGZ.mode === 2 ? 'Click the end point…' : 'Zoom ▾';
   b.classList.toggle('primary', LOGZ.mode > 0); $('#bLogZoomReset').hidden = LOGZ.lo == null;
 }
-$('#bLogZoom').onclick = () => { LOGZ.mode = LOGZ.mode ? 0 : 1; LOGZ.start = null; drawLogs(); };
+const zmenu = $('#logZoomMenu'), zmShow = on => { zmenu.hidden = !on; zmenu.style.display = on ? 'flex' : 'none'; };
+zmShow(false);
+$('#bLogZoom').onclick = e => { e.stopPropagation(); if (LOGZ.mode) { LOGZ.mode = 0; LOGZ.start = null; zmShow(false); drawLogs(); } else zmShow(zmenu.hidden); };
+document.addEventListener('click', () => zmShow(false));
+zmenu.onclick = e => {
+  const b = e.target.closest('[data-zm]'); if (!b) return; zmShow(false);
+  if (b.dataset.zm === 'int') { LOGZ.mode = 1; LOGZ.start = null; drawLogs(); return; }
+  // entire lateral: 400 ft above the Landing point (or the first target) down to the last measured depth
+  const L = M.markers && (M.markers.find(m => m.label === 'Landing') || M.markers.find(m => m.label === 'Target'));
+  const from = L ? L.row.md : (M.survey && M.survey.length ? M.survey[M.survey.length - 1].md : 0);
+  LOGZ.mode = 0; LOGZ.start = null; LOGZ.lo = Math.max(0, from - 400); LOGZ.hi = null; drawLogs();
+};
 $('#bLogZoomReset').onclick = () => { LOGZ.lo = LOGZ.hi = null; LOGZ.mode = 0; drawLogs(); };
 $('#logTracks').addEventListener('click', e => {
   const c = e.target.closest('canvas'); if (!LOGZ.mode || !c || !c._lc) return;
