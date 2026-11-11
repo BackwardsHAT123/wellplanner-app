@@ -174,6 +174,7 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
 .plot h4 span{font-weight:400;color:var(--muted);font-size:14px}
+.plot h4{flex-wrap:nowrap;white-space:nowrap;align-items:center}.plot h4>span:not(.grow){overflow:hidden;text-overflow:ellipsis;min-width:0}
 .plot canvas{width:100%;height:340px;display:block;touch-action:none;cursor:grab}
 .plot canvas:active{cursor:grabbing}
 #logPlot h4,#geoTvd h4{flex-wrap:nowrap;white-space:nowrap}#logPlot h4>span:first-of-type,#geoTvd h4>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -425,9 +426,9 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
   </div>
     <div class="plots">
-      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span><span class="grow"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn" style="width:15px;height:15px;margin:0"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
+      <div class="plot"><h4>Plan view <span title="North up · drag to pan · wheel to zoom · double-click to reset">N up · drag · wheel · double-click</span><span class="grow"></span><label class="chk" style="display:flex;margin:0;gap:8px;flex-direction:row;align-items:center;flex:0 0 auto" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
-      <div class="plot"><h4>3D <span>drag rotate · Shift or right-drag pans · wheel zooms at the pointer · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
+      <div class="plot"><h4>3D <span title="Drag to rotate · Shift or right-drag to pan · wheel to zoom at the pointer · double-click to reset">drag · Shift-drag pans · wheel · double-click</span></h4><canvas id="cv3d"></canvas></div>
       <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
     </div>
     <div class="card" id="notesCard" style="margin-top:5px">
