@@ -68,8 +68,9 @@ let saveTimer = 0;
  * degrees clockwise from north: the azimuth the pad's Y axis points. */
 const padRotShown = () => { const v = +WP.norm360(-(project.pad.rot || 0)).toFixed(6); return v === 360 ? 0 : v; };
 function autosave() {
+  if (typeof syncVer === 'function') syncVer(state);
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} if (typeof histPush === 'function') histPush(); }, 300);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} if (typeof histPush === 'function') histPush(); if (typeof renderVers === 'function') renderVers(); }, 300);
 }
 
 /* ================= helpers ================= */

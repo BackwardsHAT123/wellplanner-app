@@ -172,6 +172,7 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #pane-geo > *{margin:0}
 .plots{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
+.vtbl{width:100%;border-collapse:collapse;font-size:12px}.vtbl th,.vtbl td{padding:3px 5px;text-align:right;border-bottom:1px solid var(--line)}.vtbl .l{text-align:left}.vtbl tr[data-vid]{cursor:pointer}.vtbl tr[data-vid]:hover td{background:var(--panel2,rgba(127,127,127,.12))}.vtbl tr.on td{font-weight:600;color:var(--accent)}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
 .plot h4 span{font-weight:400;color:var(--muted);font-size:14px}
 .plot h4{flex-wrap:nowrap;white-space:nowrap;align-items:center}.plot h4>span:not(.grow):not(.zwrap){overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -270,6 +271,18 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div class="app">
 <aside>
+  <div class="card" id="verBox">
+    <h3>Plan version</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <select id="verSel" style="flex:1;min-width:120px" title="Alternative plans for this well. Switching loads that version's targets and path design."></select>
+      <button class="small" id="bVerNew" title="Copy the current plan into a new version and switch to it, so the original is kept while you move targets or change the path">New version</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="small ghost" id="bVerName" hidden>Rename</button><button class="small ghost" id="bVerPick" hidden title="Mark this version as the one chosen to drill">☆ Select</button><button class="small ghost" id="bVerDel" hidden>Delete</button>
+    </div>
+    <input id="verNote" type="text" placeholder="Note for this version (why it differs)" style="margin-top:6px" hidden>
+    <div id="verCmp" hidden style="margin-top:8px"></div>
+  </div>
   <div class="card">
     <h3>Well</h3>
     <div class="g2">
@@ -630,6 +643,7 @@ td.bad{color:var(--warn);font-weight:700}
 <script src="app_charts.js"></script>
 <script src="app_logs.js"></script>
 <script src="app_wall.js"></script>
+<script src="app_versions.js"></script>
 <script src="app_project.js"></script>
 </body>
 </html>

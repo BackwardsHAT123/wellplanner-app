@@ -132,6 +132,7 @@ function dlg(msg, buttons) {                 // buttons: [{label, value, primary
 }
 /* saves one well as its own file (with the pad and reference wells it needs), never the whole pad project */
 function saveWell(w) {
+  syncVer(w);
   const one = { v: 2, pad: project.pad, wells: [w], active: 0, refs: project.refs };
   download((w.name || 'well').replace(/[^\w.-]+/g, '_') + '.wellplan.json', WP.compactJson(one), 'application/json');
   markSaved(w);
@@ -367,7 +368,7 @@ function init() {
   renderTargets(); renderTops(); renderOffsetForms();
   $('#minSep').value = state.minSep;
   M = { survey: null };
-  recalc();
+  recalc(); renderVers();
 }
 init();
 markAllSaved();
