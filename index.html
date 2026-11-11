@@ -217,6 +217,7 @@ td.bad{color:var(--warn);font-weight:700}
 }
 #wallPrint{display:none}
 @media print{body.wallmode header,body.wallmode .app{display:none!important}body.wallmode #wallPrint{display:block!important}body.wallmode #wallPrint svg{display:block;page-break-after:always}body.wallmode #wallPrint svg:last-child{page-break-after:auto}body.wallmode{background:#fff}}
+.actopts{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;align-items:end}@media(max-width:900px){.actopts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -460,10 +461,10 @@ td.bad{color:var(--warn);font-weight:700}
         <div id="actAddMsg" class="hint" style="margin-top:4px"></div>
         <div class="hint" style="margin-top:2px">A station at an MD that is already in the survey replaces it, so pasting a few rows that overlap is safe.</div>
       </div>
-      <div id="actOpts" class="g2" style="margin-top:8px">
-        <label class="f">This survey is<select id="actKind"><option value="drilled">As drilled (actual)</option><option value="plan">Another plan (for example from COMPASS)</option></select></label><span></span>
+      <div id="actOpts" class="g2 actopts" style="margin-top:8px">
+        <label class="f">This survey is<select id="actKind"><option value="drilled">As drilled (actual)</option><option value="plan">Another plan (for example from COMPASS)</option></select></label>
         <label class="f">Tie-in of the first station<select id="actTie"><option value="auto">Automatic (surface if it starts at 0, else the plan)</option><option value="plan">On the plan at the first MD</option><option value="surface">Surface, vertical to the first MD</option></select></label>
-        <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span>Azimuths are true north (convert to grid)</span></label></div>
+        <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span title="Tick if the azimuths are referenced to true north; they are converted to grid using the convergence at the surface location">Azimuths are true north</span></label></div>
       </div>
       <div id="actMsg" class="derived"></div>
       </div>
