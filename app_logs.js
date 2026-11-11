@@ -266,10 +266,11 @@ $('#actHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.pre
 { let o = true; try { o = localStorage.getItem('wellplanner.actOpen') !== '0'; } catch (e) {} setActOpen(o, false); }
 function renderActual() {
   { const r = state.actual && state.actual.rows; $('#actCount').textContent = r && r.length ? `${r.length} stations, last MD ${fmt(r[r.length - 1].md, 0)}` : 'no survey'; }
+  { const k = state.actual && state.actual.kind === 'plan'; $('#actTitle').textContent = k ? 'Other plan survey' : 'Actual survey'; }
   if (!$('#pane-actual').classList.contains('on')) return;
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
-  if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; }
+  if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; $('#actKind').value = a.kind === 'plan' ? 'plan' : 'drilled'; }
   if (!a) { if (!$('#actMsg').dataset.keep) $('#actMsg').textContent = 'Import the as-drilled survey (MD, inclination, azimuth), full or partial, to compare it with this well’s plan.'; return; }
   if (!M.survey) { $('#actMsg').textContent = 'The plan does not build right now, so there is nothing to compare with.'; return; }
   if (!has) { $('#actMsg').textContent = `${a.rows.length} station${a.rows.length === 1 ? '' : 's'} so far. Add at least two to draw the actual path.`; return; }
@@ -312,7 +313,7 @@ function loadActualText(text, src) {
   const r = WP.parseActualText(text);
   if (r.rows.length < 2) { renderActual(); actualMsg(`Found ${r.rows.length} usable station${r.rows.length === 1 ? '' : 's'} in ${src || 'the pasted text'}. Each line needs MD, inclination and azimuth (a header line that names them is fine).` + (state.actual ? ' The existing actual survey was kept.' : '')); return; }
   const prev = state.actual;
-  state.actual = { src: src || 'pasted survey', added: new Date().toISOString().slice(0, 10), trueNorth: prev ? !!prev.trueNorth : false, tie: prev ? prev.tie : 'auto', rows: r.rows };
+  state.actual = { src: src || 'pasted survey', added: new Date().toISOString().slice(0, 10), trueNorth: prev ? !!prev.trueNorth : false, tie: prev ? prev.tie : 'auto', kind: prev && prev.kind === 'plan' ? 'plan' : undefined, rows: r.rows };
   P2.apPlan.view = null;
   recalc();
   actAddMsg(prev ? `Replaced the previous survey (${prev.rows.length} stations) with ${r.rows.length}.` : '');
@@ -356,6 +357,7 @@ $('#bActPasteCancel').onclick = () => { $('#actPasteBox').hidden = true; };
 $('#bActUse').onclick = () => { const t = $('#actPaste').value; loadActualText(t, 'pasted survey'); if (state.actual) { $('#actPasteBox').hidden = true; $('#actPaste').value = ''; } };
 $('#bActClear').onclick = () => { if (!confirm('Remove the actual survey from this well?')) return; state.actual = null; $('#actMsg').dataset.keep = ''; recalc(); };
 $('#actTie').onchange = e => { if (state.actual) { state.actual.tie = e.target.value; recalc(); } };
+$('#actKind').onchange = e => { if (!state.actual) return; if (e.target.value === 'plan') { state.actual.kind = 'plan'; if ((state.actual.tie || 'auto') === 'auto') state.actual.tie = 'surface'; } else delete state.actual.kind; recalc(); };
 $('#actTrue').onchange = e => { if (state.actual) { state.actual.trueNorth = e.target.checked; recalc(); } };
 
 $('#geoZone').onchange = e => { state.geoZone = e.target.value || null; autosave(); drawGeo(); };

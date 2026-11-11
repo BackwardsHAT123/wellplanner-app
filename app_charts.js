@@ -119,7 +119,7 @@ function apLegend(g, x, y) {
   g.strokeStyle = css('--accent'); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 20, y); g.stroke();
   g.fillStyle = css('--ink'); g.fillText('Plan', x + 26, y + 4);
   g.strokeStyle = css('--blue'); g.beginPath(); g.moveTo(x + 70, y); g.lineTo(x + 90, y); g.stroke();
-  g.fillStyle = css('--ink'); g.fillText('Actual', x + 96, y + 4); g.restore();
+  g.fillStyle = css('--ink'); g.fillText(state.actual && state.actual.kind === 'plan' ? 'Other plan' : 'Actual', x + 96, y + 4); g.restore();
 }
 function computeActual() {
   ACT.rows = ACT.dev = null; ACT.tieHow = ''; ACT.conv = 0;

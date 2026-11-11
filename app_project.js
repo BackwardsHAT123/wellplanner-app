@@ -187,6 +187,40 @@ function createWellAtSlot(c, r) {
   selectWell(project.wells.length - 1);
 }
 
+/* ---- start a well from a planned survey (COMPASS export or any MD / inc / azi list) ---- */
+$('#bImpSurvey').onclick = () => $('#impSurveyFile').click();
+$('#impSurveyFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let text; try { text = await f.text(); } catch (x) { await dlg('Could not read that file: ' + x.message, [{ label: 'OK', value: 1, primary: true }]); return; }
+  const r = WP.parseActualText(text);
+  if (r.rows.length < 2) { await dlg(`Found ${r.rows.length} usable station${r.rows.length === 1 ? '' : 's'} in ${f.name}. Each line needs MD, inclination and azimuth (a header line that names them is fine).`, [{ label: 'OK', value: 1, primary: true }]); return; }
+  let conv = 0;
+  if (isLL()) {
+    const a = await dlg('Are the azimuths in ' + f.name + ' referenced to grid north or true north?\n(COMPASS can export either; the report header says which.)', [{ label: 'Grid north', value: 'grid', primary: true }, { label: 'True north', value: 'true' }, { label: 'Cancel', value: null }]);
+    if (!a) return;
+    if (a === 'true') { const ll = WP.toLatLon(state.surface.n, state.surface.e, state.crs); conv = WP.convergence(ll.lat, ll.lon, state.crs); }
+  }
+  const rows = r.rows.map(q => ({ md: q.md, inc: q.inc, azi: WP.norm360(q.azi - conv) }));
+  const fit = WP.surveyToSections(rows, 0.1);
+  if (fit.err) { await dlg(fit.err, [{ label: 'OK', value: 1, primary: true }]); return; }
+  const free = WP.padSlots(project.pad, project.pad.cols, project.pad.rows, state.crs).find(sl => !wellAtSlot(sl.c, sl.r));
+  const w = JSON.parse(JSON.stringify(state));
+  w.name = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Imported well';
+  w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
+  if (free) { w.slot = { c: free.c, r: free.r }; w.surface = { n: free.n, e: free.e }; }
+  else { w.slot = null; w.surface = { n: state.surface.n, e: state.surface.e }; }
+  w.mode = 'manual'; w.manual = fit.sections; w.d = Object.assign(w.d || {}, {}); w.vsAzi = '';
+  const sv = WP.computeSurvey(WP.buildStations(fit.sections, 10), { n0: w.surface.n, e0: w.surface.e, kb: w.kb, vsAzi: 0 }), last = sv[sv.length - 1];
+  const lastHold = fit.sections.length && fit.sections[fit.sections.length - 1].type === 'hold' ? sv.find(q => q.sec === fit.sections.length - 1) : null;
+  const heel = lastHold ? sv[sv.indexOf(lastHold) - 1] || lastHold : sv[Math.max(0, sv.length - 2)];
+  w.targets = [{ name: 'Landing', n: +(heel.northing).toFixed(2), e: +(heel.easting).toFixed(2), tvd: +heel.tvd.toFixed(2), tol: 10 }, { name: 'TD', n: +(last.northing).toFixed(2), e: +(last.easting).toFixed(2), tvd: +last.tvd.toFixed(2), tol: 25 }];
+  project.wells.push(w);
+  selectWell(project.wells.length - 1);
+  autosave();
+  const sc = fit.sections.length, ok = fit.maxErr < 1;
+  showBanner('', [`Started from ${f.name}: ${fit.stations} stations fitted as ${sc} section${sc === 1 ? '' : 's'} (see Sections, where each hold and curve can be edited). The fitted path stays within ${fit.maxErr < 0.1 ? '0.1' : fmt(fit.maxErr, 1)} ft of the imported stations.` + (ok ? '' : ' That is a loose fit, so check the sections against the COMPASS plan.') + ` The surface location is ${free ? 'pad slot ' + free.id : 'copied from the previous well'}; set it to the real location.` + (conv ? ` Azimuths were converted from true north (${fmt(conv, 3)}° convergence).` : '')], []);
+};
+
 function renderPad() {
   const P = project.pad, n = P.cols * P.rows, filled = project.wells.filter(w => w.slot).length;
   $('#padCount').textContent = `${n} slot${n === 1 ? '' : 's'} · ${filled} filled`;

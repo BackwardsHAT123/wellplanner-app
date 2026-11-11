@@ -751,7 +751,7 @@
    * spaces. Rows are sorted by MD; repeated MDs are dropped. Returns {rows, skipped, byHeader}. */
   function parseActualText(text) {
     const lines = String(text || '').split(/\r?\n/);
-    const split = l => (/[\t,;]/.test(l) ? l.trim().split(/[\t,;]/) : l.trim().split(/\s+/)).map(x => x.trim()).filter(x => x !== '');
+    const split = l => (/\t/.test(l) ? l.replace(/(\d),(?=\d{3}(\D|$))/g, '$1').trim().split(/\t/) : /[,;]/.test(l) ? l.trim().split(/[,;]/) : l.trim().split(/\s+/)).map(x => x.trim().replace(/^"|"$/g, '')).filter(x => x !== '');
     let col = null, byHeader = false;
     for (const l of lines) {
       const t = split(l); if (t.length < 3 || t.some(x => isFinite(+x))) continue;
@@ -769,6 +769,51 @@
     rows.sort((x, y) => x.md - y.md);
     const out = rows.filter((r, k) => k === 0 || r.md - rows[k - 1].md > 1e-6);
     return { rows: out, skipped: byHeader ? Math.max(0, skipped - 1) : skipped, dropped: rows.length - out.length, byHeader };
+  }
+
+  /* Fits manual sections (holds, and constant-DLS curves to a target inc/azi) to a planned survey such as a COMPASS export, so a
+   * well can be started from it. rows: [{md, inc, azi}] with grid azimuths, starting vertical. A hold is a run of stations
+   * within tol degrees of one direction; a curve is the longest run that one constant-DLS arc reproduces within tol degrees.
+   * Returns {sections, maxErr (ft, largest 3-D gap between the fitted path and the survey's own stations), endErr} or {err}. */
+  function surveyToSections(rows, tol) {
+    tol = tol > 0 ? tol : 0.1;
+    const st = rows.map(r => ({ md: r.md, inc: r.inc, azi: norm360(r.azi) }));
+    if (st.length < 2) return { err: 'The survey needs at least two stations.' };
+    if (st[0].md > 0.01) st.unshift({ md: 0, inc: 0, azi: 0 });
+    if (st[0].inc > 1) return { err: 'The survey starts at ' + st[0].inc.toFixed(1) + '° inclination (MD ' + st[0].md + '). Only surveys that start vertical from the surface can be fitted.' };
+    const V = st.map(r => dirVec(r.inc, r.azi)), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const ang = (a, b) => Math.acos(clamp(dot(a, b), -1, 1)) * R2D;
+    const slerp = (a, b, f) => { const be = Math.acos(clamp(dot(a, b), -1, 1)), sb = Math.sin(be); if (sb < 1e-12) return a; const w1 = Math.sin((1 - f) * be) / sb, w2 = Math.sin(f * be) / sb; return [w1 * a[0] + w2 * b[0], w1 * a[1] + w2 * b[1], w1 * a[2] + w2 * b[2]]; };
+    const r4 = x => +x.toFixed(4), sections = []; let i = 0, cur = V[0];
+    while (i < st.length - 1) {
+      const len1 = st[i + 1].md - st[i].md;
+      if (ang(cur, V[i + 1]) < tol || ang(cur, V[i + 1]) / len1 * 100 < 0.05) {                      // hold
+        let j = i + 1; while (j + 1 < st.length && ang(cur, V[j + 1]) < tol) j++;
+        const ia = vecIncAzi(cur, st[i].azi);
+        sections.push({ type: 'hold', len: r4(st[j].md - st[i].md), name: 'Hold', _inc: ia.inc });
+        i = j; continue;
+      }
+      let e = i + 1;
+      for (let k = i + 2; k < st.length; k++) {
+        if (ang(V[i], V[k]) > 175) break;
+        let ok = true;
+        for (let m = i + 1; m < k && ok; m++) ok = ang(slerp(cur, V[k], (st[m].md - st[i].md) / (st[k].md - st[i].md)), V[m]) < tol;
+        if (!ok) break; e = k;
+      }
+      const be = ang(cur, V[e]), ia = vecIncAzi(V[e], st[e].azi);
+      sections.push({ type: 'curve', dls: r4(be / (st[e].md - st[i].md) * 100), inc: r4(ia.inc), azi: r4(ia.azi), name: 'Curve' });
+      cur = V[e]; i = e;
+    }
+    sections.forEach((sc, k) => {
+      if (sc.type === 'hold') { sc.name = k === 0 && sc._inc < 1 ? 'Vertical' : (sc._inc >= 80 && k === sections.length - 1 ? 'Lateral' : 'Hold'); }
+      else sc.name = k === 0 || (sections[k - 1].type === 'hold' && sections[k - 1].name === 'Vertical') ? 'Build' : 'Curve';
+      delete sc._inc;
+    });
+    const raw = computeSurvey(st, { n0: 0, e0: 0, kb: 0, vsAzi: 0 }), fit = computeSurvey(buildStations(sections, 10), { n0: 0, e0: 0, kb: 0, vsAzi: 0 });
+    let maxErr = 0;
+    raw.forEach(r => { const q = planAtMd(fit, r.md); maxErr = Math.max(maxErr, Math.hypot(r.n - q.n, r.e - q.e, r.tvd - q.tvd)); });
+    const a = raw[raw.length - 1], b = fit[fit.length - 1];
+    return { sections, maxErr, endErr: Math.hypot(a.n - b.n, a.e - b.e, a.tvd - b.tvd), stations: st.length, endMd: b.md, rawEndMd: a.md };
   }
   /* Survey for an actual well. tie = {n, e, tvd} offsets (ft from the surface location) of its FIRST station, which
    * lets a partial survey start part-way down the hole; azimuths must already be grid. */
@@ -1027,7 +1072,7 @@
     return 'rgb(' + A.map((x, i) => Math.round(x + t * (B[i] - x))).join(',') + ')';
   }
 
-  const api = { resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+  const api = { resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, surveyToSections, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, offsetGround, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };

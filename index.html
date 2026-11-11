@@ -228,6 +228,7 @@ td.bad{color:var(--warn);font-weight:700}
   <span class="grow"></span>
   <span class="btns" style="display:flex;gap:6px;flex-wrap:wrap">
     <button id="bNew">New</button>
+    <button id="bImpSurvey" title="Start a new well from a planned survey exported from COMPASS (or any MD / inclination / azimuth list). The path is fitted with editable hold and curve sections.">Import survey…</button><input type="file" id="impSurveyFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
     <button id="bOpen" title="Open one or more saved plans (.wellplan.json). Select several files at once to bring all their wells into this project.">Open…</button>
     <button id="bUndo" class="ghost" title="Undo (Cmd/Ctrl+Z)" disabled>Undo</button><button id="bRedo" class="ghost" title="Redo (Shift+Cmd/Ctrl+Z)" disabled>Redo</button>
     <button id="bSave">Save</button>
@@ -432,7 +433,7 @@ td.bad{color:var(--warn);font-weight:700}
 
   <div class="pane" id="pane-actual">
     <div class="card" id="actCard">
-      <h3 id="actHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="actArrow" style="display:inline-block;width:10px">▾</span>Actual survey <span class="grow"></span><span id="actCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <h3 id="actHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="actArrow" style="display:inline-block;width:10px">▾</span><span id="actTitle">Actual survey</span> <span class="grow"></span><span id="actCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
       <div id="actCardBody" style="margin-top:8px">
       <div class="toolbar">
         <button id="bActFile">Import survey file…</button><input type="file" id="actFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
@@ -460,6 +461,7 @@ td.bad{color:var(--warn);font-weight:700}
         <div class="hint" style="margin-top:2px">A station at an MD that is already in the survey replaces it, so pasting a few rows that overlap is safe.</div>
       </div>
       <div id="actOpts" class="g2" style="margin-top:8px">
+        <label class="f">This survey is<select id="actKind"><option value="drilled">As drilled (actual)</option><option value="plan">Another plan (for example from COMPASS)</option></select></label><span></span>
         <label class="f">Tie-in of the first station<select id="actTie"><option value="auto">Automatic (surface if it starts at 0, else the plan)</option><option value="plan">On the plan at the first MD</option><option value="surface">Surface, vertical to the first MD</option></select></label>
         <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span>Azimuths are true north (convert to grid)</span></label></div>
       </div>
