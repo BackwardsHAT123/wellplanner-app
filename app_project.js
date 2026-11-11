@@ -203,22 +203,27 @@ $('#impSurveyFile').onchange = async e => {
   const rows = r.rows.map(q => ({ md: q.md, inc: q.inc, azi: WP.norm360(q.azi - conv) }));
   const fit = WP.surveyToSections(rows, 0.1);
   if (fit.err) { await dlg(fit.err, [{ label: 'OK', value: 1, primary: true }]); return; }
-  const free = WP.padSlots(project.pad, project.pad.cols, project.pad.rows, state.crs).find(sl => !wellAtSlot(sl.c, sl.r));
-  const w = JSON.parse(JSON.stringify(state));
-  w.name = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Imported well';
-  w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
-  if (free) { w.slot = { c: free.c, r: free.r }; w.surface = { n: free.n, e: free.e }; }
-  else { w.slot = null; w.noSlot = true; w.surface = { n: state.surface.n, e: state.surface.e }; }
-  w.mode = 'manual'; w.manual = fit.sections; w.d = Object.assign(w.d || {}, {}); w.vsAzi = '';
+  const fname = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Imported well';
+  const choice = await dlg(`Use this survey (${fit.stations} stations from ${f.name}) for:\n\n• "${state.name}", the well you are on: its plan sections are replaced (Undo brings the old ones back), and its surface location and name stay as they are.\n• A new well named "${fname}" (the file name): placed in the next free pad slot.`,
+    [{ label: 'Current well: ' + (state.name || 'Unnamed'), value: 'here', primary: true }, { label: 'New well: ' + fname, value: 'new' }, { label: 'Cancel', value: null }]);
+  if (!choice) return;
+  const free = choice === 'new' ? WP.padSlots(project.pad, project.pad.cols, project.pad.rows, state.crs).find(sl => !wellAtSlot(sl.c, sl.r)) : null;
+  const w = choice === 'here' ? state : JSON.parse(JSON.stringify(state));
+  if (choice === 'new') {
+    w.name = fname; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
+    if (free) { w.slot = { c: free.c, r: free.r }; delete w.noSlot; w.surface = { n: free.n, e: free.e }; }
+    else { w.slot = null; w.noSlot = true; w.surface = { n: state.surface.n, e: state.surface.e }; }
+  }
+  w.mode = 'manual'; w.manual = fit.sections; w.vsAzi = '';
   const sv = WP.computeSurvey(WP.buildStations(fit.sections, 10), { n0: w.surface.n, e0: w.surface.e, kb: w.kb, vsAzi: 0 }), last = sv[sv.length - 1];
   const lastHold = fit.sections.length && fit.sections[fit.sections.length - 1].type === 'hold' ? sv.find(q => q.sec === fit.sections.length - 1) : null;
   const heel = lastHold ? sv[sv.indexOf(lastHold) - 1] || lastHold : sv[Math.max(0, sv.length - 2)];
   w.targets = [{ name: 'Landing', n: +(heel.northing).toFixed(2), e: +(heel.easting).toFixed(2), tvd: +heel.tvd.toFixed(2), tol: 10 }, { name: 'TD', n: +(last.northing).toFixed(2), e: +(last.easting).toFixed(2), tvd: +last.tvd.toFixed(2), tol: 25 }];
-  project.wells.push(w);
-  selectWell(project.wells.length - 1);
+  if (choice === 'new') { project.wells.push(w); selectWell(project.wells.length - 1); } else { P2.plan.view = P2.sec.view = P2.apPlan.view = null; recalc(); init(); }
   autosave();
   const sc = fit.sections.length, ok = fit.maxErr < 1;
-  showBanner('', [`Started from ${f.name}: ${fit.stations} stations fitted as ${sc} section${sc === 1 ? '' : 's'} (see Sections, where each hold and curve can be edited). The fitted path stays within ${fit.maxErr < 0.1 ? '0.1' : fmt(fit.maxErr, 1)} ft of the imported stations.` + (ok ? '' : ' That is a loose fit, so check the sections against the COMPASS plan.') + ` The surface location is ${free ? 'pad slot ' + free.id : 'copied from the previous well'}; set it to the real location.` + (conv ? ` Azimuths were converted from true north (${fmt(conv, 3)}° convergence).` : '')], []);
+  const where = choice === 'new' ? ` The surface location is ${free ? 'pad slot ' + free.id : 'copied from the previous well'}; set it to the real location.` : ` Applied to ${w.name}; its surface location is unchanged.`;
+  showBanner('', [`${choice === 'new' ? 'Started from' : 'Imported'} ${f.name}: ${fit.stations} stations fitted as ${sc} section${sc === 1 ? '' : 's'} (see Sections, where each hold and curve can be edited). The fitted path stays within ${fit.maxErr < 0.1 ? '0.1' : fmt(fit.maxErr, 1)} ft of the imported stations.` + (ok ? '' : ' That is a loose fit, so check the sections against the COMPASS plan.') + where + (conv ? ` Azimuths were converted from true north (${fmt(conv, 3)}° convergence).` : '')], []);
 };
 
 function renderPad() {
