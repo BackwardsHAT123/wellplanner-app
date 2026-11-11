@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Well Path Planner</title>
-<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light"||t==="high-contrast")document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 @font-face{font-family:"Outfit";src:url(fonts/Outfit-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
 @font-face{font-family:"JetBrains Mono";src:url(fonts/JetBrainsMono-Variable.woff2) format("woff2");font-weight:100 800;font-display:swap}
@@ -28,11 +28,6 @@
 :root[data-theme="dark"]{
   --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
   --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a; --info-text:#6a9ada; --warning-text:#eaa945; --purple-text:#a78bdc;
-}
-/* colour-blind safe: the dark theme with a teal for success so it is not confused with red */
-:root[data-theme="safe"]{
-  --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
-  --accent-text:#ed7437; --warn:#ea6275; --good:#35c7a0; --off:#77746a; --sel:#33302c; --tab:#2f2d2a; --info-text:#6a9ada; --warning-text:#eaa945; --purple-text:#a78bdc;
 }
 /* high contrast: dark ground, text 7:1 or better, borders 3:1 or better, brighter fills with black text; also follows prefers-contrast: more */
 :root[data-theme="high-contrast"]{

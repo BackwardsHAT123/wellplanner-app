@@ -12,8 +12,8 @@ $$('.tab').forEach(b => b.onclick = () => {
   drawAll();
 });
 new ResizeObserver(() => later(drawAll)).observe($('main'));
-/* themes from the TAH design system: dark (default), light, high contrast and colour-blind safe */
-const THEMES = [{ id: 'dark', name: 'Dark', icon: '☾' }, { id: 'light', name: 'Light', icon: '☀' }, { id: 'high-contrast', name: 'High contrast', icon: '◐' }, { id: 'safe', name: 'Colour-blind safe', icon: '◑' }];
+/* themes from the TAH design system: dark (default), light and high contrast */
+const THEMES = [{ id: 'dark', name: 'Dark', icon: '☾' }, { id: 'light', name: 'Light', icon: '☀' }, { id: 'high-contrast', name: 'High contrast', icon: '◐' }];
 function themeId() {
   const t = document.documentElement.dataset.theme;
   if (t && THEMES.some(x => x.id === t)) return t;
