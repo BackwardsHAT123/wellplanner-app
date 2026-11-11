@@ -35,7 +35,7 @@ function migrate(s) {
 }
 /* a project = one pad template + one or more wells */
 const newPad = ref => ({ ref: { n: ref.n, e: ref.e }, refCol: 1, refRow: 1, cols: 3, rows: 2, dx: 30, dy: 30, rot: 0 });
-function newProject() { const w = DEFAULT(); return { v: 2, pad: newPad(w.surface), wells: [w], active: 0, refs: [] }; }
+function newProject() { const w = DEFAULT(); w.noSlot = true; return { v: 2, pad: newPad(w.surface), wells: [w], active: 0, refs: [] }; }
 function migrateProject(p) {
   if (!p || typeof p !== 'object') return null;
   let proj;

@@ -35,7 +35,7 @@ const SLOT_SNAP = 10;                                     // ft: a well whose su
 function autoAssignSlots() {
   const P = project.pad, taken = new Set(project.wells.filter(w => w.slot).map(w => w.slot.c + '-' + w.slot.r));
   project.wells.forEach(w => {
-    if (w.slot) return;
+    if (w.slot || w.noSlot) return;                       // noSlot: the user chose a custom location
     let best = null, bd = SLOT_SNAP;
     WP.padSlots(P, P.cols, P.rows, w.crs || state.crs).forEach(s => { const d = Math.hypot(s.n - w.surface.n, s.e - w.surface.e); if (d <= bd && !taken.has(s.c + '-' + s.r)) { bd = d; best = s; } });
     if (best) { w.slot = { c: best.c, r: best.r }; taken.add(best.c + '-' + best.r); if (w === state && typeof renderSlotSel === 'function') renderSlotSel(); }
@@ -168,11 +168,11 @@ function renderSlotSel() {
 }
 $('#slotSel').onchange = e => {
   const v = e.target.value;
-  if (v === 'custom') state.slot = null;
+  if (v === 'custom') { state.slot = null; state.noSlot = true; }
   else {
     const [c, r] = v.split('-').map(Number), o = wellAtSlot(c, r);
     if (o && o !== state) { alert('Slot ' + slotId(c, r) + ' already holds ' + o.name + '.'); renderSlotSel(); return; }
-    state.slot = { c, r };
+    state.slot = { c, r }; delete state.noSlot;
   }
   recalc(); cwFill($('#surfCoord .cw'));
 };
@@ -180,7 +180,7 @@ $('#slotSel').onchange = e => {
 function createWellAtSlot(c, r) {
   const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r, state.crs);
   const dn = p.n - src.surface.n, de = p.e - src.surface.e;
-  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
+  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; delete w.noSlot; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
   w.surface = { n: p.n, e: p.e };
   w.targets.forEach(t => { t.n += dn; t.e += de; });      // same geometry, moved with the surface location
   project.wells.push(w);
@@ -208,7 +208,7 @@ $('#impSurveyFile').onchange = async e => {
   w.name = f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Imported well';
   w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
   if (free) { w.slot = { c: free.c, r: free.r }; w.surface = { n: free.n, e: free.e }; }
-  else { w.slot = null; w.surface = { n: state.surface.n, e: state.surface.e }; }
+  else { w.slot = null; w.noSlot = true; w.surface = { n: state.surface.n, e: state.surface.e }; }
   w.mode = 'manual'; w.manual = fit.sections; w.d = Object.assign(w.d || {}, {}); w.vsAzi = '';
   const sv = WP.computeSurvey(WP.buildStations(fit.sections, 10), { n0: w.surface.n, e0: w.surface.e, kb: w.kb, vsAzi: 0 }), last = sv[sv.length - 1];
   const lastHold = fit.sections.length && fit.sections[fit.sections.length - 1].type === 'hold' ? sv.find(q => q.sec === fit.sections.length - 1) : null;
