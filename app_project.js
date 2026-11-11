@@ -12,16 +12,22 @@ $$('.tab').forEach(b => b.onclick = () => {
   drawAll();
 });
 new ResizeObserver(() => later(drawAll)).observe($('main'));
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { updateThemeBtn(); drawAll(); });
-function isDarkTheme() {
+/* themes from the TAH design system: dark (default), light, high contrast and colour-blind safe */
+const THEMES = [{ id: 'dark', name: 'Dark', icon: '☾' }, { id: 'light', name: 'Light', icon: '☀' }, { id: 'high-contrast', name: 'High contrast', icon: '◐' }, { id: 'safe', name: 'Colour-blind safe', icon: '◑' }];
+function themeId() {
   const t = document.documentElement.dataset.theme;
-  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if (t && THEMES.some(x => x.id === t)) return t;
+  return matchMedia('(prefers-contrast: more)').matches ? 'high-contrast' : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
+function isDarkTheme() { return themeId() !== 'light'; }
 function updateThemeBtn() {
-  const b = $('#bTheme'); if (b) b.textContent = isDarkTheme() ? '☀' : '☾';
+  const b = $('#bTheme'); if (!b) return;
+  const i = THEMES.findIndex(x => x.id === themeId()), cur = THEMES[i], nx = THEMES[(i + 1) % THEMES.length];
+  b.textContent = cur.icon; b.title = b.ariaLabel = `Theme: ${cur.name}. Click for ${nx.name}.`;
 }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { updateThemeBtn(); drawAll(); });
 $('#bTheme').onclick = () => {
-  const t = isDarkTheme() ? 'light' : 'dark';
+  const i = THEMES.findIndex(x => x.id === themeId()), t = THEMES[(i + 1) % THEMES.length].id;
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('theme', t); } catch (e) {}
   updateThemeBtn(); drawAll();

@@ -4,28 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Well Path Planner</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
+@font-face{font-family:"Outfit";src:url(fonts/Outfit-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"JetBrains Mono";src:url(fonts/JetBrainsMono-Variable.woff2) format("woff2");font-weight:100 800;font-display:swap}
 /* TAH design system: surface / surface-raised / ink / ink-muted / hairline / border-strong / accent / success / danger */
 :root{
   --bg:#f2eee8; --panel:#fbf9f5; --ink:#121310; --muted:#5a574e; --line:#d9d3c8; --grid:#e6e0d6; --edge:#8d887b;
   --accent:#ed7437; --accent-ink:#121310; --accent-text:#a8420f; --warn:#b3263d; --good:#38763a; --off:#8a8579; --sel:#ece6da;
   --tab:#e6e0d6; --knob:#fffeff; --blue:#6a9ada; --amber:#eaa945;
-  --r-md:12px; --r-pill:999px;
+  --accent-hover:#f38a55; --accent-pressed:#d9622a; --info-text:#2c5f9e; --warning-text:#865500; --purple-text:#6a49b3; --purple:#a78bdc;
+  --r-sm:8px; --r-md:12px; --r-pill:999px; --focus:3px; --focus-off:3px;
   --sans:"Outfit","Avenir Next",system-ui,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
     --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a;
+    --info-text:#6a9ada; --warning-text:#eaa945; --purple-text:#a78bdc;
   }
 }
 :root[data-theme="dark"]{
   --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
-  --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a;
+  --accent-text:#ed7437; --warn:#ea6275; --good:#79bc76; --off:#77746a; --sel:#33302c; --tab:#2f2d2a; --info-text:#6a9ada; --warning-text:#eaa945; --purple-text:#a78bdc;
+}
+/* colour-blind safe: the dark theme with a teal for success so it is not confused with red */
+:root[data-theme="safe"]{
+  --bg:#262524; --panel:#1c1a17; --ink:#f2eee8; --muted:#b3b2ae; --line:#3a3733; --grid:#2f2d2a; --edge:#8a877d;
+  --accent-text:#ed7437; --warn:#ea6275; --good:#35c7a0; --off:#77746a; --sel:#33302c; --tab:#2f2d2a; --info-text:#6a9ada; --warning-text:#eaa945; --purple-text:#a78bdc;
+}
+/* high contrast: dark ground, text 7:1 or better, borders 3:1 or better, brighter fills with black text; also follows prefers-contrast: more */
+:root[data-theme="high-contrast"]{
+  --bg:#0d0d0c; --panel:#000; --ink:#fff; --muted:#d0cdc6; --line:#8a877d; --grid:#4a4742; --edge:#b5b1a6;
+  --accent:#f59462; --accent-hover:#ffa877; --accent-pressed:#e8814a; --accent-text:#f59462; --warn:#ff9aa8; --good:#9bdc98; --off:#9a968b; --sel:#262524; --tab:#262524; --knob:#000;
+  --blue:#9fc3f2; --amber:#f2b95c; --info-text:#9fc3f2; --warning-text:#f2b95c; --purple:#c3b0ea; --purple-text:#c3b0ea;
+}
+@media (prefers-contrast: more){
+  :root:not([data-theme]){
+    --bg:#0d0d0c; --panel:#000; --ink:#fff; --muted:#d0cdc6; --line:#8a877d; --grid:#4a4742; --edge:#b5b1a6;
+    --accent:#f59462; --accent-hover:#ffa877; --accent-pressed:#e8814a; --accent-text:#f59462; --warn:#ff9aa8; --good:#9bdc98; --off:#9a968b; --sel:#262524; --tab:#262524; --knob:#000;
+    --blue:#9fc3f2; --amber:#f2b95c; --info-text:#9fc3f2; --warning-text:#f2b95c; --purple:#c3b0ea; --purple-text:#c3b0ea;
+  }
 }
 *{box-sizing:border-box}
 .printonly{display:none}
@@ -37,7 +57,7 @@ input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:
 input[type=checkbox]:checked{background:var(--good)}
 input[type=checkbox]:checked::after{left:14px}
 input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
-input[type=checkbox]:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input[type=checkbox]:focus-visible{outline:var(--focus) solid var(--ink);outline-offset:var(--focus-off)}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
 header{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
@@ -45,12 +65,17 @@ header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.2px}
 header .sub{display:none}
 .grow{flex:1}
 button,.btn{font:inherit;font-weight:500;border:1.5px solid var(--edge);background:transparent;color:var(--ink);padding:5px 14px;border-radius:var(--r-pill);cursor:pointer}
-button:hover{background:var(--sel)}
-button:focus-visible,.tab:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button{transition:background-color 120ms ease-out,border-color 120ms ease-out}
+button:hover:not(:disabled){background:var(--panel);border-color:var(--ink)}
+button:active:not(:disabled){background:var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,.tab:focus-visible{outline:var(--focus) solid var(--ink);outline-offset:var(--focus-off)}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-button.primary:hover{background:var(--accent);filter:brightness(1.08)}
-button.small{padding:2px 10px;font-size:12px}
+button.primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover)}
+button.primary:active:not(:disabled){background:var(--accent-pressed);border-color:var(--accent-pressed)}
+button.small{padding:2px 10px;font-size:14px}
 button.ghost{border-color:transparent;background:transparent;color:var(--accent-text)}
+button.ghost:hover:not(:disabled){background:var(--panel);border-color:transparent;text-decoration:underline}
 .app{display:grid;grid-template-columns:350px minmax(0,1fr);height:calc(100vh - 50px)}
 aside{overflow:auto;padding:12px;border-right:1px solid var(--line)}
 main{overflow:auto;padding:12px 12px 20px}
@@ -62,58 +87,58 @@ main{overflow:auto;padding:12px 12px 20px}
 .geo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:5px 10px;margin-bottom:5px;align-items:start}
 .geo .card{margin:0}
 @media (max-width:1100px){.geo{grid-template-columns:1fr}}
-#secWrap{font-size:12px;display:flex;flex-direction:column;gap:7px}
+#secWrap{font-size:14px;display:flex;flex-direction:column;gap:7px}
 #secWrap .secRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#secWrap label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#secWrap label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:14px;color:var(--ink);cursor:pointer}
 #secWrap input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
 #secWrap input[type=number]{width:92px;padding:3px 6px;flex:none}
 #secWrap .mut,#secWrap #secStat{color:var(--muted)}
 #secWrap #secStat:empty{display:none}
-#notesCard #secInfo{line-height:1.5;font-size:13px}
+#notesCard #secInfo{line-height:1.5;font-size:14px}
 #notesCard:has(#secInfo:empty):has(#planNotes:empty){display:none}
-#planNotes ul{margin:0 0 6px;padding-left:18px;line-height:1.5;font-size:13px}
-.chkcol{display:flex;flex-direction:column;gap:7px;font-size:12px}
-.chkcol label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#planNotes ul{margin:0 0 6px;padding-left:18px;line-height:1.5;font-size:14px}
+.chkcol{display:flex;flex-direction:column;gap:7px;font-size:14px}
+.chkcol label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:14px;color:var(--ink);cursor:pointer}
 .chkcol input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none;cursor:pointer}
 .offrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
 .offrow .card{margin:0!important}
 @media (max-width:1100px){.offrow{grid-template-columns:minmax(0,1fr)}}
 #refCard .refrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
-#refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:12px;color:var(--ink);cursor:pointer}
+#refCard label.chk{display:flex;flex-direction:row;align-items:center;gap:7px;margin:0;font-size:14px;color:var(--ink);cursor:pointer}
 #refCard label.refrow{justify-content:flex-start}
 #refCard input[type=checkbox]{width:15px;height:15px;padding:0;margin:0;flex:none}
-#stoInfo{margin-top:8px;font-size:12px;line-height:1.5}
+#stoInfo{margin-top:8px;font-size:14px;line-height:1.5}
 #stoInfo table{width:100%;border-collapse:collapse;margin-top:6px}
 #stoInfo th,#stoInfo td{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left;font-weight:400}
-#stoInfo th{color:var(--muted);font-size:11px}
+#stoInfo th{color:var(--muted);font-size:14px}
 #stoInfo tr.none td{color:var(--muted)}
 .g2,.g3{display:grid;gap:6px 8px}
 .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
 .full{grid-column:1/-1}
-label.f{display:flex;flex-direction:column;font-size:12px;font-weight:500;color:var(--muted);gap:2px}
-input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--edge);border-radius:8px;padding:4px 6px;width:100%;min-width:0}
-input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--ink);outline-offset:1px}
+label.f{display:flex;flex-direction:column;font-size:14px;font-weight:500;color:var(--muted);gap:2px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--edge);border-radius:var(--r-sm);padding:4px 6px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--focus) solid var(--ink);outline-offset:var(--focus-off)}
 input:disabled{opacity:.65;font-style:italic}
-input[type=number]{font-variant-numeric:tabular-nums}
+input[type=number],input[data-cf]{font-variant-numeric:tabular-nums;font-family:var(--mono)}
 textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
-.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
-.derived{font-size:12px;margin-top:8px;padding:6px 8px;background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
-.msg{border-radius:var(--r-md);padding:8px 12px;margin-bottom:5px;font-size:12.5px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+.derived{font-family:var(--mono);font-size:14px;margin-top:8px;padding:6px 8px;background:var(--bg);border-radius:6px;font-variant-numeric:tabular-nums}
+.msg{border-radius:var(--r-md);padding:8px 12px;margin-bottom:5px;font-size:14px}
 .msg.err{background:color-mix(in srgb,var(--warn) 14%,var(--panel));border:1px solid var(--warn)}
 .msg.note{background:var(--panel);border:1px solid var(--line);color:var(--muted)}
 .msg ul{margin:0;padding-left:18px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:8px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 10px}
-.stat .k{font-size:12px;font-weight:500;color:var(--muted)}
-.stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
-#stats{display:flex;gap:6px;margin-bottom:6px;overflow-x:auto;scrollbar-width:none}
+.stat .k{font-size:14px;font-weight:500;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+#stats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 #stats::-webkit-scrollbar{display:none}
 #stats .stat{padding:3px 8px;flex:1 0 auto}
 #stats .stat .k,#stats .stat .v{white-space:nowrap}
-#stats .stat .k{font-size:11px;line-height:1.25}
+#stats .stat .k{font-size:14px;line-height:1.25}
 #stats .stat .v{font-size:15px;line-height:1.25}
-#stats .stat .v small{font-size:10px}
-.stat .v small{font-size:11px;font-weight:400;color:var(--muted)}
+#stats .stat .v small{font-size:14px}
+.stat .v small{font-size:14px;font-weight:400;color:var(--muted)}
 .stat.bad .v{color:var(--warn)}
 /* Plan vs actual stat rows: same compact single-line tiles as the KPI bar */
 .wallcards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px;align-items:start;margin-bottom:5px}
@@ -131,11 +156,12 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #actStats,#actAhead{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 #actStats .stat,#actAhead .stat{padding:3px 8px;flex:1 0 auto}
 #actStats .stat .k,#actStats .stat .v,#actAhead .stat .k,#actAhead .stat .v{white-space:nowrap}
-#actStats .stat .k,#actAhead .stat .k{font-size:11px;line-height:1.25}
+#actStats .stat .k,#actAhead .stat .k{font-size:14px;line-height:1.25}
 #actStats .stat .v,#actAhead .stat .v{font-size:15px;line-height:1.25}
-#actStats .stat .v small,#actAhead .stat .v small{font-size:10px}
+#actStats .stat .v small,#actAhead .stat .v small{font-size:14px}
 .stickytop{position:sticky;top:-12px;z-index:20;background:var(--bg);margin:-12px -12px 5px;padding:12px 12px 0;border-bottom:1px solid var(--line)}
 .stickytop .tabs{margin-bottom:8px}
+@media (prefers-reduced-motion:reduce){button{transition:none}}
 @media print{.stickytop{position:static;border:0}}
 .tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
 .tab{border:1.5px solid var(--edge);background:transparent;padding:1.7px 16px;border-radius:var(--r-pill);color:var(--ink)}
@@ -147,7 +173,7 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .plots{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
 .plot{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 8px;min-width:0}
 .plot h4{margin:2px 4px 4px;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:baseline}
-.plot h4 span{font-weight:400;color:var(--muted);font-size:11px}
+.plot h4 span{font-weight:400;color:var(--muted);font-size:14px}
 .plot canvas{width:100%;height:340px;display:block;touch-action:none;cursor:grab}
 .plot canvas:active{cursor:grabbing}
 #logPlot h4,#geoTvd h4{flex-wrap:nowrap;white-space:nowrap}#logPlot h4>span:first-of-type,#geoTvd h4>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -155,16 +181,17 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #pane-plots .plots .plot canvas{flex:1;min-height:0;height:auto}
 #cvApPlan,#cvAp3d{height:306px}                /* Plan vs actual: 10% shorter than the other plots */
 .tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel);max-height:calc(100vh - 230px)}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:14px}
+th{font-family:var(--sans)}
 th,td{padding:3px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
-th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;font-size:12px;z-index:1;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;font-size:14px;z-index:1;border-bottom:1px solid var(--line)}
 td.l,th.l{text-align:left}
 tr.bound td{font-weight:600;background:var(--sel)}
 td.bad{color:var(--warn);font-weight:700}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .toolbar label{display:flex;gap:6px;align-items:center;color:var(--muted)}
 .toolbar select{width:auto}
-.sectbl input,.sectbl select{padding:2px 4px;font-size:12px;text-align:right}
+.sectbl input,.sectbl select{padding:2px 4px;font-size:14px;text-align:right}
 .sectbl td.l input,.sectbl td.l select{text-align:left}
 .sectbl input.w{width:78px}
 .row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
@@ -174,7 +201,7 @@ td.bad{color:var(--warn);font-weight:700}
 .offcard{border:1px solid var(--line);border-radius:var(--r-md);padding:8px 10px;margin-bottom:5px;background:var(--panel)}
 .offcard .top{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .offcard .top input{flex:1}
-.pill{display:inline-block;padding:1px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--tab);color:var(--muted)}
+.pill{display:inline-block;padding:1px 10px;border-radius:var(--r-pill);font-size:14px;font-weight:500;background:var(--tab);color:var(--muted)}
 .pill.ok{background:color-mix(in srgb,var(--good) 18%,var(--panel));color:var(--good)}
 .pill.warn{background:color-mix(in srgb,var(--warn) 18%,var(--panel));color:var(--warn)}
 .cw{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
@@ -183,10 +210,10 @@ td.bad{color:var(--warn);font-weight:700}
 .tgt{border:1px solid var(--line);border-radius:var(--r-md);padding:8px;margin-bottom:8px;background:var(--bg)}
 .tgt .top{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .tgt .top input{flex:1}
-.tgt .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;background:var(--warn);color:var(--bg);font-size:11px;font-weight:700}
-.tgt .role{font-size:11px;color:var(--muted);margin:-2px 0 6px 26px}
+.tgt .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:99px;background:var(--warn);color:var(--bg);font-size:14px;font-weight:700}
+.tgt .role{font-size:14px;color:var(--muted);margin:-2px 0 6px 26px}
 .tgt.unused{opacity:.55}
-.tmiss{font-size:11.5px;margin-top:6px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tmiss{font-size:14px;margin-top:6px;color:var(--muted);font-variant-numeric:tabular-nums}
 @media (max-width:1100px){.plots{grid-template-columns:1fr}}
 @media (max-width:860px){.app{grid-template-columns:minmax(0,1fr);height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}}
 /* phone and small tablet: one column, finger-sized controls, tables and tab bar scroll sideways instead of overflowing */
@@ -262,7 +289,7 @@ td.bad{color:var(--warn);font-weight:700}
       <label class="f">KB elevation (ft ASL)<input type="number" id="kbOut" disabled title="Ground elevation + KB above ground. All TVD values are measured from this."></label>
       <label class="f">VS azimuth (° blank = auto)<input type="number" step="any" data-k="vsAzi" data-t="opt"></label>
     </div>
-    <div class="derived" id="crsInfo" style="font-size:11.5px"></div>
+    <div class="derived" id="crsInfo" style="font-size:14px"></div>
   </div>
 
   <div class="card">
@@ -398,7 +425,7 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
   </div>
     <div class="plots">
-      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn" style="width:15px;height:15px;margin:0"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
+      <div class="plot"><h4>Plan view <span>N up · drag pan · wheel zoom · double-click reset</span><span class="grow"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn" style="width:15px;height:15px;margin:0"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
       <div class="plot"><h4>3D <span>drag rotate · Shift or right-drag pans · wheel zooms at the pointer · double-click reset</span></h4><canvas id="cv3d"></canvas></div>
       <div class="plot"><h4>Inclination &amp; DLS vs MD</h4><canvas id="cvDls"></canvas></div>
@@ -499,8 +526,8 @@ td.bad{color:var(--warn);font-weight:700}
       <div id="logCurves"></div>
       </div>
     </div>
-    <div class="plot" id="logPlot" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
-    <div class="plot" id="geoTvd" hidden><h4 style="flex-wrap:wrap;align-items:center">TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span><span class="grow"></span><span id="geoZoneStat" style="font-weight:400;min-width:0"></span><label class="chk" style="margin:0;font-size:12px;gap:6px;flex-direction:row;align-items:center;flex:0 0 auto">Target zone <select id="geoZone" style="width:auto;max-width:200px;padding:1px 6px;font-size:12px"></select></label></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
+    <div class="plot" id="logPlot" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><button class="small" id="bLogZoom" title="Click a start point, then an end point, on any log track to zoom to that part of the well">Zoom to interval</button><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
+    <div class="plot" id="geoTvd" hidden><h4 style="flex-wrap:wrap;align-items:center">TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span><span class="grow"></span><span id="geoZoneStat" style="font-weight:400;min-width:0"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center;flex:0 0 auto">Target zone <select id="geoZone" style="width:auto;max-width:200px;padding:1px 6px;font-size:14px"></select></label></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">

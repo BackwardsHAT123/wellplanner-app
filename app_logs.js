@@ -45,7 +45,7 @@ function renderLogs() {
   $('#bLogClear').hidden = !cs.length;
   const opts = t => ['<option value="0">Hidden</option>'].concat([1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${k === t ? ' selected' : ''}>Track ${k}</option>`)).join('').replace('<option value="0">', `<option value="0"${t === 0 ? ' selected' : ''}>`);
   const col = logColors();
-  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:12px">` +
+  $('#logCurves').innerHTML = cs.length ? `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:14px">` +
     cs.map((c, i) => { const r = WP.logRange(c);
       return `<span style="display:inline-block;width:14px;height:3px;background:${logColor(c, i)}"></span><span><b>${esc(c.name)}</b>${c.unit ? ' (' + esc(c.unit) + ')' : ''} <span class="mut">MD ${fmt(r[0], 0)} to ${fmt(r[1], 0)} · ${c.v.length.toLocaleString()} samples · ${esc(c.src || '')}</span></span>` +
         `<select data-lt="${i}" style="width:auto">${opts(c.trk | 0)}</select><button class="small" data-ls="${i}" title="Axis range, direction, log scale and line colour">Scale…</button>` +
@@ -88,7 +88,7 @@ function openScaleEditor(idx) {
     <div class="hint" style="margin:0 0 8px">Leave a limit blank for automatic. If two curves share a track, the first sets the left axis and the second the right axis.</div>
     <div class="g2"><label class="f">Axis minimum<input type="number" step="any" id="scMin"></label><label class="f">Axis maximum<input type="number" step="any" id="scMax"></label></div>
     <div class="chkcol" style="margin-top:8px"><label class="chk"><input type="checkbox" id="scLog"><span>Logarithmic scale (values of zero or less sit at the bottom)</span></label><label class="chk"><input type="checkbox" id="scRev"><span>Reverse the axis (larger values lower down)</span></label></div>
-    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px"><span>Line colour</span><input type="color" id="scCol" style="width:44px;height:30px;padding:0"><button class="small" id="scColDef">Use default</button></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:14px"><span>Line colour</span><input type="color" id="scCol" style="width:44px;height:30px;padding:0"><button class="small" id="scColDef">Use default</button></div>
     <div class="toolbar" style="margin-top:12px"><span class="grow"></span><button id="scCancel">Cancel</button><button class="primary" id="scDone">Done</button></div></div>`;
   document.body.appendChild(ov);
   const $e = q => ov.querySelector(q), live = () => { autosave(); renderLogs(); drawGeo(); };
@@ -111,22 +111,22 @@ function openFillEditor(idx) {
   ov.innerHTML = `<div style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:520px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.4)">
     <h3 style="margin:0 0 8px">Colour fill · ${esc(cv.name)}${cv.unit ? ' (' + esc(cv.unit) + ')' : ''}</h3>
     <label class="chk"><input type="checkbox" id="feOn"><span>Fill under the curve</span></label>
-    <div style="margin:10px 0 2px;font-size:12px;color:var(--muted)">Colour bar · click it to add a marker at that value</div>
+    <div style="margin:10px 0 2px;font-size:14px;color:var(--muted)">Colour bar · click it to add a marker at that value</div>
     <div id="feBar" style="position:relative;height:30px;border-radius:6px;border:1px solid var(--line);cursor:copy"></div>
     <div id="feMarks" style="position:relative;height:16px"></div>
-    <div id="feRows" style="display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:center;margin-top:6px;font-size:12px"></div>
-    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;font-size:12px"><span>Opacity</span><input type="range" id="feAlpha" min="0.2" max="1" step="0.05" style="flex:1"><span id="feAlphaV" style="width:34px;text-align:right"></span></div>
+    <div id="feRows" style="display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:center;margin-top:6px;font-size:14px"></div>
+    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;font-size:14px"><span>Opacity</span><input type="range" id="feAlpha" min="0.2" max="1" step="0.05" style="flex:1"><span id="feAlphaV" style="width:34px;text-align:right"></span></div>
     <div class="toolbar" style="margin-top:12px"><button class="small" id="feAdd">Add marker</button><button class="small" id="feReset">Reset to default</button><span class="grow"></span><button id="feCancel">Cancel</button><button class="primary" id="feDone">Done</button></div></div>`;
   document.body.appendChild(ov);
   const $e = q => ov.querySelector(q), span = () => { const a = f.stops[0].v, b = f.stops[f.stops.length - 1].v, p = (b - a) * 0.12 || 5; return [a - p, b + p]; };
   const live = () => { autosave(); renderLogs(); drawGeo(); };
   function bar() {
     const [lo, hi] = span(); $e('#feBar').style.background = fillCss(f, 0, lo, hi);
-    $e('#feMarks').innerHTML = f.stops.map(s => `<div title="${s.v}" style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${s.c};filter:drop-shadow(0 0 1px #000)"></div><div style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);font-size:10px;color:var(--muted);padding-top:9px">${s.v}</div>`).join('');
+    $e('#feMarks').innerHTML = f.stops.map(s => `<div title="${s.v}" style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${s.c};filter:drop-shadow(0 0 1px #000)"></div><div style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);font-size:14px;color:var(--muted);padding-top:9px">${s.v}</div>`).join('');
   }
   function rows() {
     f.stops.sort((a, b) => a.v - b.v);
-    $e('#feRows').innerHTML = f.stops.map((s, i) => `<label class="f" style="margin:0;font-size:11px">${i === 0 ? 'Start value (and below)' : i === f.stops.length - 1 ? 'End value (and above)' : 'Marker value'}<input type="number" step="any" data-sv="${i}" value="${s.v}"></label><input type="color" data-sc="${i}" value="${s.c}" style="width:44px;height:30px;padding:0;margin-top:14px"><button class="small ghost" data-sd="${i}" style="margin-top:14px"${f.stops.length < 2 ? ' disabled' : ''}>×</button>`).join('');
+    $e('#feRows').innerHTML = f.stops.map((s, i) => `<label class="f" style="margin:0;font-size:14px">${i === 0 ? 'Start value (and below)' : i === f.stops.length - 1 ? 'End value (and above)' : 'Marker value'}<input type="number" step="any" data-sv="${i}" value="${s.v}"></label><input type="color" data-sc="${i}" value="${s.c}" style="width:44px;height:30px;padding:0;margin-top:14px"><button class="small ghost" data-sd="${i}" style="margin-top:14px"${f.stops.length < 2 ? ' disabled' : ''}>×</button>`).join('');
     bar();
   }
   const sync = () => { $e('#feOn').checked = !!f.on; $e('#feAlpha').value = f.alpha == null ? 0.85 : f.alpha; $e('#feAlphaV').textContent = Math.round((f.alpha == null ? 0.85 : f.alpha) * 100) + '%'; rows(); live(); };
