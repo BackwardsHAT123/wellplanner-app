@@ -18,7 +18,7 @@ function isDarkTheme() {
   return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
 }
 function updateThemeBtn() {
-  const b = $('#bTheme'); if (b) b.textContent = isDarkTheme() ? '☀ Light' : '☾ Dark';
+  const b = $('#bTheme'); if (b) b.textContent = isDarkTheme() ? '☀' : '☾';
 }
 $('#bTheme').onclick = () => {
   const t = isDarkTheme() ? 'light' : 'dark';
