@@ -6,13 +6,14 @@ function draw3D(id = 'cv3d') {
   const AP = id !== 'cv3d', c = $('#' + id); if (!c.offsetParent || !M.survey) return;
   const { g, w, h } = setupCanvas(c);
   const ink = css('--ink'), muted = css('--muted'), acc = css('--accent'), warn = css('--warn'), line = css('--line');
-  const W = r => [r.easting - state.surface.e, r.northing - state.surface.n, -r.tvd];
+  const W = r => [r.easting - state.surface.e, r.northing - state.surface.n, -r.tvd], W2 = r => [r.easting - state.surface.e, r.northing - state.surface.n, -offPlanTvd(r)];
   const plan = M.survey.map(W);
   const offs = AP ? [] : M.offs.map(o => o.rows.map(r => [r.easting - state.surface.e, r.northing - state.surface.n, -offPlanTvd(r)]));
+  const vov = AP ? [] : verOverlays(), vp = vov.map(o => o.rows.map(W2));
   const actP = AP && ACT.rows ? ACT.rows.map(r => [r.easting - state.surface.e, r.northing - state.surface.n, -offPlanTvd(r)]) : [];
   const tg = t => [t.e - state.surface.e, t.n - state.surface.n, -t.tvd];
   const ut = usedTargets(), tw3 = ut.map(tg);
-  const all = [...plan, ...offs.flat(), ...actP, ...tw3, [0, 0, 0]];
+  const all = [...plan, ...offs.flat(), ...vp.flat(), ...actP, ...tw3, [0, 0, 0]];
   const lo = [0, 1, 2].map(i => Math.min(...all.map(q => q[i]))), hi = [0, 1, 2].map(i => Math.max(...all.map(q => q[i])));
   const ctr = lo.map((l, i) => (l + hi[i]) / 2);
   const rad = Math.max(50, 0.5 * Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]));
@@ -38,6 +39,7 @@ function draw3D(id = 'cv3d') {
   };
   poly(plan, line, 2, [], true);                                 // floor shadow
   offs.forEach((o, i) => { poly(o, M.offs[i].color, 1.6); });
+  vp.forEach((o, i) => poly(o, vov[i].color, 1.8, [6, 4]));
   poly(plan, acc, 2.6);
   if (actP.length) { poly(actP, css('--blue'), 3.4); const e = actP[actP.length - 1], A = P(e); g.fillStyle = css('--blue'); g.beginPath(); g.arc(A[0], A[1], 4, 0, 7); g.fill(); apLegend(g, 12, 18); }
   if (AP && ACT.hov && ACT.hov.a) {

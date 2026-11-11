@@ -55,6 +55,7 @@ function renderVers() {
   $('#bVerPick').textContent = act && w.verPick === act.id ? '★ Selected' : '☆ Select';
   $('#bVerPick').classList.toggle('primary', !!(act && w.verPick === act.id));
   const note = $('#verNote'); note.hidden = !act; if (act && document.activeElement !== note) note.value = act.note || '';
+  $('#verOvRow').hidden = vs.length < 2;
   const cmp = $('#verCmp'); cmp.hidden = vs.length < 2; if (vs.length < 2) return;
   const f = (x, d = 0) => x == null ? '–' : fmt(x, d);
   cmp.innerHTML = '<table class="vtbl"><tr><th class="l">Version</th><th>TD MD</th><th>Lateral</th><th>Max DLS</th></tr>' + vs.map(v => {
@@ -69,3 +70,15 @@ $('#bVerPick').onclick = () => { if (state.verPick === state.ver) delete state.v
 $('#bVerDel').onclick = delVer;
 $('#verNote').onchange = e => { const v = state.versions.find(x => x.id === state.ver); if (v) { v.note = e.target.value; autosave(); renderVers(); } };
 $('#verCmp').onclick = e => { const r = e.target.closest('[data-vid]'); if (r) switchVer(+r.dataset.vid); };
+
+/* overlays: the other versions drawn faintly on the plan, section and 3D plots (never part of the clearance numbers) */
+const VOV = { on: true }, V_COL = ['#6a9ada', '#a78bdc', '#79bc76', '#eaa945', '#4f7fc0'];
+try { VOV.on = localStorage.getItem('wellplanner.verOverlay') !== '0'; } catch (e) {}
+function verOverlays() {
+  const w = state; if (!VOV.on || !w.versions || w.versions.length < 2) return [];
+  const out = []; let k = 0;
+  w.versions.forEach(v => { if (v.id === w.ver) return; const m = verModel(w, v), col = V_COL[k++ % V_COL.length]; if (m && !m.err && m.survey) out.push({ name: verName(w, v), rows: m.survey, color: col }); });
+  return out;
+}
+$('#verOvOn').checked = VOV.on;
+$('#verOvOn').onchange = e => { VOV.on = e.target.checked; try { localStorage.setItem('wellplanner.verOverlay', VOV.on ? '1' : '0'); } catch (x) {} if (typeof drawAll === 'function') drawAll(); };

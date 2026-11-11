@@ -482,8 +482,9 @@ function draw2D(key) {
   const pl = M.survey.map(map.row);
   const offs = AP ? [] : M.offs.map(o => o.rows.map(map.off));
   const act = AP && ACT.rows ? ACT.rows.map(map.off) : null;
+  const vov = AP ? [] : verOverlays(), vpl = vov.map(o => o.rows.map(map.off));
   const ut = usedTargets(), tgs = ut.map(tg);
-  const all = [...pl, ...offs.flat(), ...(act || []), ...tgs];
+  const all = [...pl, ...offs.flat(), ...vpl.flat(), ...(act || []), ...tgs];
   if (kind === 'sec') all.push({ x: 0, y: 0 });
   if (kind === 'plan' && (SEC.on || AP)) (AP ? curSections() : secShown()).forEach(s => s.ring.forEach(q => all.push({ x: q.e - state.surface.e, y: q.n - state.surface.n })));
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -529,6 +530,11 @@ function draw2D(key) {
   offs.forEach((o, i) => {
     g.strokeStyle = M.offs[i].color; g.lineWidth = 1.6; g.beginPath();
     o.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke();
+  });
+  vpl.forEach((o, i) => {                                   // other plan versions, dashed
+    g.strokeStyle = vov[i].color; g.lineWidth = 1.8; g.setLineDash([6, 4]); g.beginPath();
+    o.forEach((q, k) => k ? g.lineTo(X(q.x), Y(q.y)) : g.moveTo(X(q.x), Y(q.y))); g.stroke(); g.setLineDash([]);
+    const q = o[o.length - 1]; g.fillStyle = vov[i].color; g.textAlign = 'left'; g.fillText(vov[i].name, Math.min(X(q.x) + 6, w - m.r - g.measureText(vov[i].name).width), Y(q.y) - 6);
   });
   // plan path
   g.strokeStyle = acc; g.lineWidth = 2.4; g.lineJoin = 'round'; g.beginPath();
