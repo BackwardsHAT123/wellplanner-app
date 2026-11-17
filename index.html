@@ -162,6 +162,11 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .tab{border:1.5px solid var(--edge);background:transparent;padding:1.7px 16px;border-radius:var(--r-pill);color:var(--ink)}
 .tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
 .pane{display:none}.pane.on{display:block}
+.tdrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:5px 10px;margin-bottom:5px}.tdrow .card{margin:0}
+@media (max-width:900px){.tdrow{grid-template-columns:1fr}}
+#pane-td .plots .plot canvas{height:300px}
+.tdread{margin:2px 4px 0;min-height:20px;font-family:var(--mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tdComps td input{width:100%;min-width:58px}#tdComps td.l input{min-width:150px}
 #pane-geo.on{display:flex;flex-direction:column}
 #pane-geo{gap:5px}
 #pane-geo > *{margin:0}
@@ -410,6 +415,7 @@ td.bad{color:var(--warn);font-weight:700}
     <button class="tab" data-tab="actual">Plan vs actual</button>
     <button class="tab" data-tab="geo">Geosteering</button>
     <button class="tab" data-tab="wall">Wall plot</button>
+    <button class="tab" data-tab="td">Torque &amp; drag</button>
   </div>
   <div class="stats" id="stats"></div>
   </div>
@@ -627,6 +633,52 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="tblwrap" style="max-height:none"><table id="actSepTbl"></table></div>
     </div>
   </div>
+  <div class="pane" id="pane-td">
+    <div class="tdrow">
+    <div class="card" id="tdsCard">
+      <h3 id="tdsHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdsArrow" style="display:inline-block;width:10px">▾</span>Drill string <span class="grow"></span><button class="small" id="bTdAdd">+ Add component</button></h3>
+      <div id="tdsBody" style="margin-top:8px">
+      <div class="tblwrap" style="max-height:none"><table class="sectbl" id="tdComps"></table></div>
+      <div class="hint">Listed from the bit up. The last row runs to surface, so its length is not used. Weight is the adjusted weight in air, tool joints included. Torque uses the tool joint OD as the contact radius.</div>
+      <div class="toolbar" style="margin-top:6px"><button class="small" id="bTdAll" title="Copy this well's drill string, hole and operating values to every other well in the project">Use for all wells in the project</button><button class="small ghost" id="bTdReset">Reset to defaults</button></div>
+      </div>
+    </div>
+    <div class="card" id="tdhCard">
+      <h3 id="tdhHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdhArrow" style="display:inline-block;width:10px">▾</span>Hole, mud and operating values</h3>
+      <div id="tdhBody" style="margin-top:8px">
+      <div class="g3">
+        <label class="f">Path<select id="tdPath" data-td="path"><option value="plan">Planned survey</option><option value="actual">Actual survey (rest from plan)</option></select></label>
+        <label class="f" title="Leave blank to use the Landing point (or 0 for wells without one)">Casing shoe MD (ft)<input type="number" step="any" min="0" data-td="shoe" placeholder="landing"></label>
+        <label class="f">Casing ID (in)<input type="number" step="any" min="1" data-td="csgId"></label>
+        <label class="f">Open hole size (in)<input type="number" step="any" min="1" data-td="hole"></label>
+        <label class="f">Mud weight (ppg)<input type="number" step="any" min="0" data-td="mw"></label>
+        <label class="f">Block weight (klbf)<input type="number" step="any" min="0" data-td="block"></label>
+        <label class="f">Friction, cased hole<input type="number" step="0.01" min="0" data-td="ffC"></label>
+        <label class="f">Friction, open hole<input type="number" step="0.01" min="0" data-td="ffO"></label>
+        <label class="f" title="Open-hole friction factors drawn as extra (dashed) lines on the bit-depth plots">Open hole sensitivity<input type="text" data-td="ffList" placeholder="0.2, 0.4"></label>
+        <label class="f">Weight on bit (klbf)<input type="number" step="any" min="0" data-td="wob"></label>
+        <label class="f">Bit torque (kft-lbf)<input type="number" step="any" min="0" data-td="tob"></label>
+        <label class="f" title="Tension the string can take: pipe body or connection rating with your design factor applied">Tensile limit (klbf)<input type="number" step="any" min="0" data-td="tenLim"></label>
+        <label class="f" title="Make-up torque of the drill pipe connections">Torque limit (kft-lbf)<input type="number" step="any" min="0" data-td="tqLim"></label>
+        <label class="f" title="A planned path is smooth, so it under-predicts torque and drag. Add sine-wave tortuosity of this many degrees to inclination and azimuth (1° is common).">Tortuosity (°)<input type="number" step="0.1" min="0" data-td="tortAmp"></label>
+        <label class="f">Tortuosity period (ft)<input type="number" step="any" min="50" data-td="tortPer"></label>
+      </div>
+      </div>
+    </div>
+    </div>
+    <div id="tdMsg"></div>
+    <div class="stats" id="tdStats"></div>
+    <div class="plots">
+      <div class="plot"><h4>Hookload vs bit depth <span id="tdHookSub">klbf</span></h4><canvas id="cvTdHook" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdHookRd"></div></div>
+      <div class="plot"><h4>Surface torque vs bit depth <span id="tdTqSub">kft-lbf</span></h4><canvas id="cvTdTq" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdTqRd"></div></div>
+      <div class="plot"><h4>Axial force along the string, bit at TD <span>klbf · tension +, compression −</span></h4><canvas id="cvTdF" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdFRd"></div></div>
+      <div class="plot"><h4>Torque along the string, bit at TD <span>kft-lbf</span></h4><canvas id="cvTdT" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdTRd"></div></div>
+    </div>
+    <div id="tdVer" style="margin-top:8px"></div>
+    <div class="toolbar" style="margin:10px 0 6px"><span class="hint" style="margin:0">Every 500 ft of bit depth, open-hole friction <span id="tdTblFf"></span></span><span class="grow" style="flex:1"></span><button class="small" id="bTdCsv">Export CSV</button></div>
+    <div class="tblwrap" style="max-height:none"><table id="tdTbl"></table></div>
+    <div class="derived" style="margin-top:8px">Soft-string model (Johancsik, Friesen and Dawson, 1984): the string has no bending stiffness and lies against the wall, so the contact force comes from its buoyed weight and from axial load carried round the curves. Friction opposes the motion: pulling out (pick-up), running in (slack-off) and sliding (weight on bit applied without rotation). Rotating off bottom has no axial drag. Sinusoidal buckling (Dawson-Paslay; Lubinski in vertical hole) and helical buckling (Chen; Wu in vertical hole) limits are shown, and helically buckled pipe adds wall force of r F²/4EI (sinusoidal r F²/8EI). Surge, swab, viscous drag and stiff-string effects are not modelled. Calibrate the friction factors on offset wells’ pick-up and slack-off weights before relying on the numbers.</div>
+  </div>
 </main>
 </div>
 
@@ -640,6 +692,7 @@ td.bad{color:var(--warn);font-weight:700}
 <script src="app_logs.js"></script>
 <script src="app_wall.js"></script>
 <script src="app_versions.js"></script>
+<script src="app_td.js"></script>
 <script src="app_project.js"></script>
 </body>
 </html>

@@ -175,10 +175,10 @@ attachApHover($('#logTracks'), e => e.target.closest && e.target.closest('canvas
 attachApHover($('#cvGeoTvd'), e => e.currentTarget);
 
 /* Keyboard: left / right arrows move the marker along MD (10 ft; Shift 100 ft; Alt 0.5 ft) on the Plan vs actual and Geosteering tabs,
- * Esc clears it, and 1-7 jump to the tabs in order. Ignored while typing in a field. */
+ * Esc clears it, and 1-8 jump to the tabs in order. Ignored while typing in a field. */
 document.addEventListener('keydown', e => {
   const t = e.target, tag = t && t.tagName; if (e.metaKey || e.ctrlKey || (t && (t.isContentEditable || tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && t.type !== 'checkbox' && t.type !== 'range')))) return;
-  if (/^[1-7]$/.test(e.key)) { const b = $$('.tab')[+e.key - 1]; if (b) { b.click(); e.preventDefault(); } return; }
+  if (/^[1-8]$/.test(e.key)) { const b = $$('.tab')[+e.key - 1]; if (b) { b.click(); e.preventDefault(); } return; }
   if (!$('#pane-actual').classList.contains('on') && !$('#pane-geo').classList.contains('on')) return;
   if (e.key === 'Escape') { ACT.pin = false; setApHover(null); return; }
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;

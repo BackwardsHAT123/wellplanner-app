@@ -362,7 +362,7 @@ $('#wallLogoFile').onchange = e => {
   rd.readAsDataURL(f);
 };
 
-function drawAll() { drawPad(); if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawActual(); drawWall(); }   // the pad schematic does not need a built plan
+function drawAll() { drawPad(); if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawActual(); drawWall(); if (typeof drawTD === 'function') drawTD(); }   // the pad schematic does not need a built plan
 
 
 /* The Wall plot and Drill plan cards fold up; each remembers whether it was left open. */

@@ -1072,7 +1072,99 @@
     return 'rgb(' + A.map((x, i) => Math.round(x + t * (B[i] - x))).join(',') + ')';
   }
 
-  const api = { resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, surveyToSections, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+  /* ---- Torque and drag (soft-string, Johancsik et al. 1984, vector form) ----
+   * The string is a cable that lies on the low or high side of the hole: no bending stiffness, so the wall force on each element
+   * comes from the axial load turning the corner plus the element's buoyed weight. Worked from the bit up, element by element:
+   *   N  = | F (t_bot - t_top) + W (k - (k.t) t) |        wall contact force (k = down, t = mean tangent)
+   *   F' = F + W (k.t) + s mu N                           s = +1 pulling out, -1 running in / sliding, 0 rotating
+   *   T' = T + mu N r                                     when rotating, r = tool joint (or body) radius
+   * Compression beyond the helical (and sinusoidal) buckling load adds wall force r_c F^2 / (4 E I) (helical) or / (8 E I).
+   * Units: ft, lbf, ft-lbf; pipe sizes in inches; weights in air lb/ft; mud weight ppg (buoyancy factor 1 - MW / 65.5).
+   * path rows: [{md, inc, azi}] in increasing MD (a planned or actual survey). */
+  const TD_E = 30e6, TD_OPS = ['pooh', 'rih', 'rob', 'drill', 'slide'];
+  function tdPrep(path, o) {
+    const step = o.step > 0 ? o.step : 30, end = path[path.length - 1].md, mds = [];
+    for (let m = path[0].md; m < end - 1e-6; m += step) mds.push(m);
+    mds.push(end);
+    const amp = +(o.tort && o.tort.amp) || 0, per = +(o.tort && o.tort.period) || 1000, from = +(o.tort && o.tort.from) || 0;
+    let j = 0;
+    const t = mds.map(m => {
+      while (j + 1 < path.length - 1 && path[j + 1].md < m) j++;
+      const a = path[j], b = path[Math.min(j + 1, path.length - 1)], f = b.md > a.md ? clamp((m - a.md) / (b.md - a.md), 0, 1) : 0;
+      const va = dirVec(a.inc, a.azi), vb = dirVec(b.inc, b.azi), v = [0, 1, 2].map(i => va[i] + f * (vb[i] - va[i])), L = Math.hypot(...v) || 1;
+      let u = v.map(x => x / L);
+      if (amp > 0 && m > from) {                                       // sine-wave tortuosity on inclination and azimuth
+        const ia = vecIncAzi(u, a.azi), ph = 2 * Math.PI * (m - from) / per;
+        u = dirVec(Math.max(0, ia.inc + amp * Math.sin(ph)), ia.azi + amp * Math.cos(ph));
+      }
+      return u;
+    });
+    return { mds, t };
+  }
+  function tdComp(comps, dist) {                                     // the component at this distance above the bit
+    let top = 0;
+    for (let i = 0; i < comps.length; i++) { top += comps[i].len > 0 && i < comps.length - 1 ? comps[i].len : Infinity; if (dist < top) return comps[i]; }
+    return comps[comps.length - 1];
+  }
+  function tdPipe(c, bf) {
+    const od = +c.od || 5, id = Math.min(+c.id || 0, od - 0.01), I = Math.PI / 64 * (Math.pow(od, 4) - Math.pow(id, 4));
+    return { od, I, wb: (+c.wt || 0) * bf, r: (+(c.tj || od)) / 24 };   // r in ft (tool joint radius) for torque
+  }
+  /* one operation with the bit at node K of a tdPrep table. Returns surface hookload and torque, plus the profile up the string. */
+  function tdRun(P, o, K, op, ffOpen, prof) {
+    const bf = 1 - (+o.mw || 0) / 65.5, ffC = +o.ffC, ffO = ffOpen == null ? +o.ffO : ffOpen;
+    const shoe = +o.shoe || 0, csgId = +o.csgId || 8, hole = +o.hole || 8.5;
+    const s = op === 'pooh' ? 1 : (op === 'rih' || op === 'slide') ? -1 : 0, rot = op === 'rob' || op === 'drill';
+    let F = (op === 'drill' || op === 'slide') ? -(+o.wob || 0) : 0, T = op === 'drill' ? (+o.tob || 0) : 0;
+    const bit = P.mds[K], out = prof ? [{ md: bit, F, T, fs: null, fh: null }] : null, cache = new Map();
+    let lock = false, buck = 0;
+    for (let k = K - 1; k >= 0; k--) {
+      const md0 = P.mds[k], md1 = P.mds[k + 1], L = md1 - md0, mid = (md0 + md1) / 2;
+      const c = tdComp(o.comps, bit - mid); let p = cache.get(c); if (!p) { p = tdPipe(c, bf); cache.set(c, p); }
+      const tb = P.t[k + 1], tt = P.t[k], tm0 = [tb[0] + tt[0], tb[1] + tt[1], tb[2] + tt[2]], tl = Math.hypot(...tm0) || 1, tm = tm0.map(x => x / tl);
+      const W = p.wb * L, kt = tm[2];
+      const cased = mid < shoe, dh = cased ? csgId : hole, mu = cased ? ffC : ffO, rc = Math.max((dh - p.od) / 2, 0.05);
+      const sn = Math.sqrt(Math.max(0, 1 - kt * kt)), wi = p.wb / 12, v = Math.cbrt(TD_E * p.I * wi * wi);
+      const fs = Math.max(2 * Math.sqrt(TD_E * p.I * wi * sn / rc), 2.55 * v), fh = Math.max(2 * Math.SQRT2 * Math.sqrt(TD_E * p.I * wi * sn / rc), 5.55 * v);
+      let bk = 0;
+      const wall = Fx => {
+        let n = Math.hypot(Fx * (tb[0] - tt[0]) - W * kt * tm[0], Fx * (tb[1] - tt[1]) - W * kt * tm[1], Fx * (tb[2] - tt[2]) + W * (1 - kt * tm[2]));
+        if (Fx < 0) {                                                    // buckled pipe pushes on the wall as well
+          const C = -Fx;
+          if (C > fh) { n += rc * C * C / (4 * TD_E * p.I) * L * 12; bk = 2; }
+          else if (C > fs) { n += rc * C * C / (8 * TD_E * p.I) * L * 12; bk = Math.max(bk, 1); }
+        }
+        return n;
+      };
+      const F1 = F + W * kt + s * mu * wall(F);                         // predictor, then wall force at the element's mean load
+      bk = 0; const N = wall((F + F1) / 2); buck = Math.max(buck, bk);
+      F += W * kt + s * mu * N;
+      if (rot) T += mu * N * p.r;
+      if (!isFinite(F) || F < -1e7) { lock = true; F = -1e7; }
+      if (out) out.push({ md: md0, F, T, fs, fh });
+    }
+    return { hook: F + (+o.block || 0), F, T, lock, buck, prof: out };
+  }
+  /* hookload and torque against bit depth for each operation and open-hole friction factor, plus profiles with the bit at TD */
+  function torqueDrag(path, o) {
+    if (!path || path.length < 2) return null;
+    const P = tdPrep(path, o), n = P.mds.length, every = Math.max(1, Math.round((o.bitStep || 100) / (P.mds[1] - P.mds[0] || 30)));
+    const ffs = (o.ffList && o.ffList.length ? o.ffList : [+o.ffO]).map(Number).filter(isFinite);
+    const idx = []; for (let k = every; k < n - 1; k += every) idx.push(k); idx.push(n - 1);
+    const sweep = ffs.map(ff => ({ ff, rows: idx.map(K => { const r = { md: P.mds[K] }; TD_OPS.forEach(op => { const x = tdRun(P, o, K, op, ff); r[op] = x.hook; r[op + 'T'] = x.T; r[op + 'Lock'] = x.lock; r[op + 'Buck'] = x.buck; }); return r; }) }));
+    const atTd = {}; TD_OPS.forEach(op => { atTd[op] = tdRun(P, o, n - 1, op, null, true); });
+    return { sweep, atTd, P };
+  }
+  /* the most weight on bit that can be slid at TD before the hook runs out of string weight (or the string locks up) */
+  function maxSlideWob(P, o, ffOpen) {
+    const K = P.mds.length - 1, ok = w => { const r = tdRun(P, Object.assign({}, o, { wob: w }), K, 'slide', ffOpen); return !r.lock && r.hook > 0; };
+    if (!ok(0)) return 0;
+    let lo = 0, hi = 100000; if (ok(hi)) return hi;
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+    return lo;
+  }
+
+  const api = { tdPrep, tdRun, torqueDrag, maxSlideWob, TD_OPS, resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, surveyToSections, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, offsetGround, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };

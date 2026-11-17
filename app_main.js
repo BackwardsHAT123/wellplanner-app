@@ -3,6 +3,11 @@
 /* ================= state ================= */
 const LS_KEY = 'wellplanner.v1';
 const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs: 'crossed', setback: true, scale: '', tvdMin: '', tvdMax: '', wellId: true, company: '', project: '', site: '', wellbore: '', dpStep: '' });
+/* torque and drag inputs, per well (not per plan version: the same rig and string drill every version). Loads klbf / kft-lbf in the UI. */
+const TD_DEF = () => ({
+  comps: [{ name: 'BHA: bit, motor, MWD', len: 120, od: 4.75, id: 2.25, wt: 47, tj: 4.75 }, { name: 'Drill pipe 4in 14# S-135 XT39', len: 0, od: 4, id: 3.34, wt: 15.5, tj: 4.875 }],
+  path: 'plan', shoe: '', csgId: 6.276, hole: 6.75, mw: 9.5, block: 40, ffC: 0.2, ffO: 0.3, ffList: '0.2, 0.4', wob: 20, tob: 3, tenLim: 350, tqLim: 20, tortAmp: 0, tortPer: 1000
+});
 const DEFAULT = () => {
   const s = WP.toGrid(43.70, -105.45, 'WY-E');            // sample surface location, Campbell Co. area
   return {
@@ -14,7 +19,7 @@ const DEFAULT = () => {
     ],
     lat: { az: 45, len: 1000, dip: 0 },
     d: { type: 'hbh', solveFor: 'tangent', kop: 2250, tanInc: 30, bur1: 1, bur2: 8, latDls: 2, dropInc: 0, ext: 500 },
-    maxDls: 15, minSep: 100,
+    maxDls: 15, minSep: 100, td: TD_DEF(),
     mode: 'auto', manual: [], tops: [], offsets: []
   };
 };
@@ -475,7 +480,7 @@ function recalc() {
   if (typeof foldCounts === 'function') foldCounts();
   renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
-  computeActual(); renderRef(); renderSto(); renderActual(); renderGeo();
+  computeActual(); renderRef(); renderSto(); renderActual(); renderGeo(); if (typeof renderTDSoon === 'function') renderTDSoon();
   if (SEC.on || STO.on || WALL.on || ACT.rows) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
 }
 

@@ -7,6 +7,7 @@ $$('.tab').forEach(b => b.onclick = () => {
   if (b.dataset.tab === 'offsets') renderOffsetResults();
   if (b.dataset.tab === 'actual') renderActual();
   if (b.dataset.tab === 'geo') renderGeo();
+  if (b.dataset.tab === 'td') renderTD();
   WALL.on = b.dataset.tab === 'wall';
   if (WALL.on) { syncWallInputs(); if (typeof ensureSections === 'function') ensureSections(); }
   drawAll();
@@ -374,7 +375,7 @@ init();
 markAllSaved();
 
 /* Targets, Design and Formation tops fold up; each remembers whether it was left open. Buttons in a heading do not toggle it. */
-['tgtF', 'dsgF', 'topF'].forEach(id => {
+['tgtF', 'dsgF', 'topF', 'tds', 'tdh'].forEach(id => {
   const set = (open, save) => {
     $('#' + id + 'Body').hidden = !open; $('#' + id + 'Arrow').textContent = open ? '▾' : '▸'; $('#' + id + 'Head').setAttribute('aria-expanded', open ? 'true' : 'false');
     if (save) { try { localStorage.setItem('wellplanner.' + id + 'Open', open ? '1' : '0'); } catch (e) {} }
