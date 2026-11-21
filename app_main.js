@@ -532,8 +532,9 @@ function renderPlanSummary(mm) {
 
   const warn = [];
   if (maxDls > s.maxDls + 1e-6) warn.push(`Max DLS ${fmt(maxDls, 2)}°/100 ft exceeds the ${fmt(s.maxDls, 1)}° alarm.`);
-  offsetWarnings(mm, M.offs).forEach(x => warn.push(x));
-  showBanner('', mm.notes, warn);
+  const padNotes = [];
+  offsetWarnings(mm, M.offs, padNotes).forEach(x => warn.push(x));
+  showBanner('', mm.notes.concat(padNotes), warn);
 
   $('#modeBadge').textContent = s.mode === 'auto' ? 'target-driven' : 'manual sections';
   $('#modeBadge').className = 'pill ' + (s.mode === 'auto' ? 'ok' : 'warn');
@@ -727,20 +728,49 @@ function updateOffStats() {
   });
 }
 const minInRegion = (sp, start) => { let b = null; sp.forEach(x => { if (x.md >= start && (!b || x.d < b.d)) b = x; }); return b; };
+/* Clearance verdict for one other well, shared by the alerts chip, the Offsets table and KPIs, and the drilled-path check.
+ * Pad and reference wells start one slot apart (often 50 ft) and stay parallel in the vertical hole, so for them:
+ *  - nothing above the shallower of the two kickoffs counts;
+ *  - until the pair first gets farther apart than the alert distance (they are still fanning out from the pad), being closer
+ *    than the alert distance is expected: it only alerts if they close in by more than ERR.padClose ft from their surface spacing;
+ *  - after that the normal center-distance and separation-factor limits apply.
+ * Outside offsets use the normal limits everywhere. sp = separation rows in plan-MD order; rows = the well's own survey rows.
+ * Returns { pad, start, spacing, apartMd, dm (closest in the checked region), dBad (worst row breaking a distance limit),
+ *           padClosing (dBad was the pad closing-in test), sm (lowest separation factor), sfBad } or null when nothing is checked. */
+function clearanceVerdict(o, sp, kopMd, rows) {
+  const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(kopMd, o.kopMd) : -Infinity;
+  if ((pad && !isFinite(start)) || !sp || !sp.length) return null;
+  const dm = minInRegion(sp, start); if (!dm) return null;
+  const lim = state.minSep, a = rows[0], b = o.rows[0];
+  const spacing = pad && a && b ? Math.hypot(a.northing - b.northing, a.easting - b.easting) : null;
+  let apartMd = -Infinity;
+  if (pad) { const f = sp.find(x => x.md >= start && x.d > lim); apartMd = f ? f.md : Infinity; }
+  let dBad = null, padClosing = false, sm = null;
+  sp.forEach(x => {
+    if (x.md < start) return;
+    const fanning = pad && x.md < apartMd, bad = fanning ? x.d < spacing - ERR.padClose : x.d < lim;
+    if (bad && (!dBad || x.d < dBad.d)) { dBad = x; padClosing = fanning; }
+    if (x.sf !== undefined && (!sm || x.sf < sm.sf)) sm = x;
+  });
+  return { pad, start, spacing, apartMd, dm, dBad, padClosing, sm, sfBad: !!(sm && sm.sf < ERR.sf) };
+}
+/* "50 ft apart at surface, past 100 ft by MD 3,100" for a pad pair that starts inside the alert distance */
+const padNote = v => v && v.pad && v.spacing < state.minSep ? `${fmt(v.spacing, 0)} ft apart at surface` + (isFinite(v.apartMd) ? `, more than ${fmt(state.minSep, 0)} ft apart from MD ${fmt(v.apartMd, 0)}` : '') : '';
 /* Pad wells start one slot apart and stay parallel while both are vertical, so only distances from the
  * shallower of the two kickoffs down count toward the alert. */
-function offsetWarnings(mm, offs) {
-  const out = [], seps = sepAll() || [];
+function offsetWarnings(mm, offs, notes) {
+  const out = [], seps = sepAll() || [], fan = [];
   offs.forEach((o, i) => {
-    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(mm.kopMd, o.kopMd) : -Infinity;
-    if (pad && !isFinite(start)) return;
-    const sp = seps[i]; if (!sp || !sp.length) return;
-    const dm = minInRegion(sp, start); if (!dm) return;
-    let sm = null; if (sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
+    const v = clearanceVerdict(o, seps[i], mm.kopMd, mm.survey); if (!v) return;
+    const { dBad, sm } = v;
     const label = o.kind === 'state' ? o.name + ' (state survey)' : o.name, parts = [];
-    if (dm.d < state.minSep) parts.push(`center distance ${fmt(dm.d, 0)} ft at MD ${fmt(dm.md, 0)} (alert ${fmt(state.minSep, 0)} ft)`);
-    if (sm && sm.sf < ERR.sf) parts.push(`separation factor ${fmt(sm.sf, 2)} at MD ${fmt(sm.md, 0)} with ${fmt(sm.d, 0)} ft between centers (alert below ${fmt(ERR.sf, 1)})` + (sm.sf < 1 ? ', error ellipses overlap' : ''));
+    if (v.pad && v.spacing < state.minSep && isFinite(v.apartMd)) fan.push(label);
+    if (dBad && v.padClosing) parts.push(`closes to ${fmt(dBad.d, 0)} ft at MD ${fmt(dBad.md, 0)}, more than ${fmt(ERR.padClose, 0)} ft inside the ${fmt(v.spacing, 0)} ft surface spacing`);
+    else if (dBad) parts.push(`center distance ${fmt(dBad.d, 0)} ft at MD ${fmt(dBad.md, 0)} (alert ${fmt(state.minSep, 0)} ft)`);
+    if (v.sfBad) parts.push(`separation factor ${fmt(sm.sf, 2)} at MD ${fmt(sm.md, 0)} with ${fmt(sm.d, 0)} ft between centers (alert below ${fmt(ERR.sf, 1)})` + (sm.sf < 1 ? ', error ellipses overlap' : ''));
     if (parts.length) out.push(`${state.name} vs ${label}: ${parts.join('; ')}. See Offsets & clearance.`);
   });
+  if (notes && fan.length) notes.push(`Pad wells start inside the ${fmt(state.minSep, 0)} ft alert distance and fan out after kickoff (${fan.join(', ')}). ` +
+    `That is not an alert unless they close in by more than ${fmt(ERR.padClose, 0)} ft from their surface spacing; the Offsets & clearance table shows where each passes ${fmt(state.minSep, 0)} ft.`);
   return out;
 }

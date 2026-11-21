@@ -533,6 +533,8 @@ td.bad{color:var(--warn);font-weight:700}
   <div class="phead"><h2>Clearance</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Clearance">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Clearance">✕</button></div>
   <div class="pbody">
     <div class="card"><label class="f">Alert when closer than (ft, center to center)<input id="minSep" type="number" step="any" min="0"></label>
+    <label class="f" style="margin-top:6px" title="Pad wells start one slot apart. Until a pair first gets farther apart than the alert distance, it only alerts if the wells get this much closer than their surface spacing.">Pad wells: alert if they close in from their surface spacing by more than (ft)<input id="padClose" type="number" step="any" min="0"></label>
+    <div class="hint help">Pad wells (and reference wells on the pad) are expected to be closer than the alert distance near surface: they start one slot apart, often 50 ft, and run parallel down the vertical hole. Nothing above the shallower of the two kickoffs counts. From there until the pair first gets farther apart than the alert distance, it only alerts if they close in from their surface spacing by more than the amount above; after that the normal distance and separation-factor limits apply.</div>
     <div class="hint help">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</div></div>
     <div class="card" id="errCard" style="margin-bottom:5px">
       <h3 id="errHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="errArrow" style="display:inline-block;width:10px">▾</span>Survey uncertainty (screening) <span class="grow"></span><span id="errSum" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
@@ -810,17 +812,17 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=2cd212eb22"></script>
+<script src="core.js?v=bfb718167a"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=2cd212eb22"></script>
-<script src="app_uncertainty.js?v=2cd212eb22"></script>
-<script src="app_3d.js?v=2cd212eb22"></script>
-<script src="app_charts.js?v=2cd212eb22"></script>
-<script src="app_logs.js?v=2cd212eb22"></script>
-<script src="app_wall.js?v=2cd212eb22"></script>
-<script src="app_versions.js?v=2cd212eb22"></script>
-<script src="app_td.js?v=2cd212eb22"></script>
-<script src="app_project.js?v=2cd212eb22"></script>
-<script src="app_layout.js?v=2cd212eb22"></script>
+<script src="app_main.js?v=bfb718167a"></script>
+<script src="app_uncertainty.js?v=bfb718167a"></script>
+<script src="app_3d.js?v=bfb718167a"></script>
+<script src="app_charts.js?v=bfb718167a"></script>
+<script src="app_logs.js?v=bfb718167a"></script>
+<script src="app_wall.js?v=bfb718167a"></script>
+<script src="app_versions.js?v=bfb718167a"></script>
+<script src="app_td.js?v=bfb718167a"></script>
+<script src="app_project.js?v=bfb718167a"></script>
+<script src="app_layout.js?v=bfb718167a"></script>
 </body>
 </html>

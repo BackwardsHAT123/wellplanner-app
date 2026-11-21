@@ -2,11 +2,14 @@
 /* Owns: ERR, covOf, sepAll, SEC (PLSS sections), REF, STO, P2 (2D views), draw2D, setupCanvas. Uses: project, state, M, recalc, modelFor, css, paneOn (main); ACT (charts); aheadOf (logs); WALL, drawAll (wall). File map and load order: CLAUDE.md "Architecture". */
 /* survey uncertainty and offsets (split from index.html; loaded in order, shares globals) */
 /* ---- survey uncertainty settings and covariance cache ---- */
-const ERR = { tool: 'mwd', sf: 1.5, ell: false };
+const ERR = { tool: 'mwd', sf: 1.5, ell: false, padClose: 10 };   // padClose: ft a pad pair may close in from its surface spacing before alerting
 try { const t = localStorage.getItem('wellplanner.errTool'), s = parseFloat(localStorage.getItem('wellplanner.errSf')); if (t === 'mwd' || t === 'gyro' || t === 'off') ERR.tool = t; if (s > 0) ERR.sf = s; ERR.ell = localStorage.getItem('wellplanner.errEll') === '1'; } catch (e) {}
 $('#errTool').value = ERR.tool; $('#errSf').value = ERR.sf; $('#errEll').checked = ERR.ell;
 const errSave = () => { if (typeof errSummary === 'function') errSummary(); try { localStorage.setItem('wellplanner.errTool', ERR.tool); localStorage.setItem('wellplanner.errSf', String(ERR.sf)); localStorage.setItem('wellplanner.errEll', ERR.ell ? '1' : '0'); } catch (x) {} };
 $('#errTool').onchange = e => { ERR.tool = e.target.value; errSave(); renderOffsetResults(); drawAll(); };
+try { const v = parseFloat(localStorage.getItem('wellplanner.padClose')); if (v >= 0) ERR.padClose = v; } catch (e) {}
+$('#padClose').value = ERR.padClose;
+$('#padClose').oninput = e => { const v = parseFloat(e.target.value); if (!(v >= 0)) return; ERR.padClose = v; try { localStorage.setItem('wellplanner.padClose', String(v)); } catch (x) {} recalcSoon(); };
 $('#errSf').oninput = e => { const v = parseFloat(e.target.value); if (!(v > 0)) return; ERR.sf = v; errSave(); renderOffsetResults(); };
 $('#errEll').onchange = e => { ERR.ell = e.target.checked; errSave(); drawAll(); };
 const covCache = new WeakMap();
@@ -40,15 +43,15 @@ function renderOffsetResults() {
   M.offs.forEach((o, i) => {
     const sp = M.sep[i];
     let all = sp[0]; sp.forEach(x => { if (x.d < all.d) all = x; });
-    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity;
-    const reg = pad ? minInRegion(sp, start) : all;
-    let sfMin = null; if (useSf && sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sfMin || x.sf < sfMin.sf)) sfMin = x; });
-    const judged = reg, okD = !judged || judged.d >= state.minSep, okS = !sfMin || sfMin.sf >= ERR.sf, ok = okD && okS, at = judged || all;
-    const why = !okD ? 'closer than ' + fmt(state.minSep, 0) + ' ft' : 'separation factor below ' + fmt(ERR.sf, 1);
+    const pad = o.kind === 'pad' || o.kind === 'ref', v = clearanceVerdict(o, sp, M.kopMd, M.survey);
+    const reg = v && v.dm, sfMin = useSf && v ? v.sm : null, judged = v, ok = v && !v.dBad && !v.sfBad, at = (v && (v.dBad || v.dm)) || all;
+    const why = v && v.dBad ? (v.padClosing ? `closes in more than ${fmt(ERR.padClose, 0)} ft from the ${fmt(v.spacing, 0)} ft surface spacing` : 'closer than ' + fmt(state.minSep, 0) + ' ft')
+      : 'separation factor below ' + fmt(ERR.sf, 1);
+    const clearTxt = 'clear' + (padNote(v) ? ` · ${padNote(v)}` : '');
     h += `<tr><td class="l"><b style="color:${o.color}">●</b> ${esc(o.name)}</td><td class="l">${o.kind === 'pad' ? 'pad well' : o.kind === 'ref' ? 'reference well' : o.kind === 'state' ? 'state record' : 'outside offset'}</td><td>${fmt(all.d, 1)}</td><td>${pad ? (reg ? fmt(reg.d, 1) : '–') : '–'}</td>` +
       (useSf ? `<td>${sfMin ? (isFinite(sfMin.sf) ? fmt(sfMin.sf, 2) : '∞') + ` <span style="color:var(--muted)">at MD ${fmt(sfMin.md, 0)}</span>` : '–'}</td>` : '') +
       `<td>${fmt(at.md, 0)}</td><td>${fmt(at.offMd, 0)}</td>` +
-      `<td class="l"><span class="pill ${ok ? 'ok' : 'warn'}">${!judged ? 'no kickoff to compare' : ok ? 'clear' : why}</span></td></tr>`;
+      `<td class="l"><span class="pill ${ok ? 'ok' : 'warn'}">${!judged ? 'no kickoff to compare' : ok ? clearTxt : why}</span></td></tr>`;
   });
   if (!M.offs.length) h += '<tr><td class="l" colspan="8" style="color:var(--muted)">No other wells or offsets.</td></tr>';
   $('#sepTbl').innerHTML = h + '</tbody>';
@@ -61,16 +64,14 @@ function renderOffsetKpis(useSf) {
   if (!M.offs.length) { $('#offStats').innerHTML = st('Wells checked', '0', '', 'no other wells or offsets'); return; }
   let close = null, sfMin = null, alerts = 0;
   M.offs.forEach((o, i) => {
-    const sp = M.sep[i]; if (!sp || !sp.length) return;
-    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity;
-    const reg = minInRegion(sp, start); let sm = null;
-    if (useSf && sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
+    const v = clearanceVerdict(o, M.sep[i], M.kopMd, M.survey); if (!v) return;
+    const reg = v.dm, sm = useSf ? v.sm : null;
     if (reg && (!close || reg.d < close.r.d)) close = { r: reg, o };
     if (sm && (!sfMin || sm.sf < sfMin.r.sf)) sfMin = { r: sm, o };
-    if ((reg && reg.d < state.minSep) || (sm && sm.sf < ERR.sf)) alerts++;
+    if (v.dBad || (useSf && v.sfBad)) alerts++;
   });
   let h = st('Wells checked', fmt(M.offs.length, 0));
-  if (close) h += st('Closest approach', fmt(close.r.d, 1), 'ft', `${esc(close.o.name)} · MD ${fmt(close.r.md, 0)}`, close.r.d < state.minSep);
+  if (close) h += st('Closest approach', fmt(close.r.d, 1), 'ft', `${esc(close.o.name)} · MD ${fmt(close.r.md, 0)}`, alerts > 0 && close.r.d < state.minSep);
   if (sfMin) h += st('Lowest sep. factor', isFinite(sfMin.r.sf) ? fmt(sfMin.r.sf, 2) : '∞', '', `${esc(sfMin.o.name)} · MD ${fmt(sfMin.r.md, 0)}`, sfMin.r.sf < ERR.sf);
   h += st('Wells in alert', fmt(alerts, 0), `of ${fmt(M.offs.length, 0)}`, '', alerts > 0);
   h += st('Alert limits', fmt(state.minSep, 0), 'ft', useSf ? `separation factor ${fmt(ERR.sf, 1)}` : 'no separation factor (tool off)');
@@ -84,11 +85,12 @@ function renderActualClearance(useSf) {
   let h = '<thead><tr><th class="l">Other well</th><th>Closest, drilled part (ft)</th><th>Closest, projected part (ft)</th>' + (pc ? '<th>Min separation factor</th>' : '') + '<th>At actual MD</th><th class="l">Status</th></tr></thead><tbody>';
   M.offs.forEach(o => {
     const os = sepStride(o.rows), oc = pc && covOf(o.rows), sp = oc ? WP.separationSF(rows, o.rows, pc, oc, 1, os) : WP.separation(rows, o.rows, 1, os);
-    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity, ok0 = x => x.md >= start;
+    const v = clearanceVerdict(o, sp, M.kopMd, rows), start = v ? v.start : Infinity, ok0 = x => x.md >= start;
     const pick = (f, key) => { let b = null; sp.forEach(x => { if (f(x) && (!b || x[key] < b[key])) b = x; }); return b; };
-    const dr = pick(x => ok0(x) && x.md <= lastMd, 'd'), pr = pick(x => ok0(x) && x.md > lastMd, 'd'), sf = pc && sp[0].sf !== undefined ? pick(ok0, 'sf') : null, worst = pick(ok0, 'd');
-    const okD = !worst || worst.d >= state.minSep, okS = !sf || sf.sf >= ERR.sf, ok = okD && okS;
-    const why = !okD ? 'closer than ' + fmt(state.minSep, 0) + ' ft' + (worst.md > lastMd ? ' (projected)' : '') : 'separation factor below ' + fmt(ERR.sf, 1) + (sf.md > lastMd ? ' (projected)' : '');
+    const dr = pick(x => ok0(x) && x.md <= lastMd, 'd'), pr = pick(x => ok0(x) && x.md > lastMd, 'd'), sf = pc && v ? v.sm : null, worst = v && (v.dBad || v.dm);
+    const okD = !v || !v.dBad, okS = !pc || !v || !v.sfBad, ok = okD && okS;
+    const why = !okD ? (v.padClosing ? `closes in more than ${fmt(ERR.padClose, 0)} ft from the surface spacing` : 'closer than ' + fmt(state.minSep, 0) + ' ft') + (worst.md > lastMd ? ' (projected)' : '')
+      : 'separation factor below ' + fmt(ERR.sf, 1) + (sf.md > lastMd ? ' (projected)' : '');
     const cell = x => x ? fmt(x.d, 1) + ` <span style="color:var(--muted)">at MD ${fmt(x.md, 0)}</span>` : '–';
     h += `<tr><td class="l"><b style="color:${o.color}">●</b> ${esc(o.name)}</td><td>${cell(dr)}</td><td>${cell(pr)}</td>` +
       (pc ? `<td>${sf ? (isFinite(sf.sf) ? fmt(sf.sf, 2) : '∞') + ` <span style="color:var(--muted)">at MD ${fmt(sf.md, 0)}</span>` : '–'}</td>` : '') +
