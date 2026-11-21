@@ -168,11 +168,15 @@ function drillPlanPages() {
   const zone = ZONE_NAME[s.crs] || (WP.CRS[s.crs] ? WP.CRS[s.crs].name : '');
   const tg = usedTargets(), id = wallShortId(s.name), tname = t => w.wellId && id ? `${t.name} - ${id}` : t.name;
   const pages = []; let o = '', y = 0, pageNo = 0;
+  // the app logo from the title bar (one copy of the drawing) and the width of the footer name, to place the logo beside it
+  const appLogo = ($('header .applogo') || {}).innerHTML || '';
+  const footW = (() => { const g = document.createElement('canvas').getContext('2d'); g.font = `6.95px ${F}`; return g.measureText('Well Path Planner').width; })();
   const T = (x, yy, str, sz = 7.15, a = {}) => { o += `<text x="${r2(x)}" y="${r2(yy)}" font-size="${sz}"${a.anchor ? ` text-anchor="${a.anchor}"` : ''}${a.bold ? ' font-weight="bold"' : ''}${a.italic ? ' font-style="italic"' : ''}${a.fill ? ` fill="${a.fill}"` : ''}>${esc(String(str))}</text>`; };
   const R = (x, yy, wd, ht, fill) => { o += `<rect x="${r2(x)}" y="${r2(yy)}" width="${r2(wd)}" height="${r2(ht)}" fill="${fill}"/>`; };
   const LN = (x1, y1, x2, y2, col = '#000', wd = 1) => { o += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${wd}"/>`; };
   const finish = () => {
     LN(28.8, 739.25, 581.55, 739.25); T(29, 753, stamp, 6.95); T(306, 754, 'Page ' + pageNo, 6.95, { anchor: 'middle' }); T(581, 754, 'Well Path Planner', 6.95, { anchor: 'end' });
+    if (appLogo) o += `<svg x="${r2(581 - footW - 11.5)}" y="745.2" width="10" height="10" viewBox="0 0 64 64">${appLogo}</svg>`;   // app logo just left of the name
     pages.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 792" width="612" height="792" font-family="${F}"><rect width="612" height="792" fill="#fff"/>${o}</svg>`);
   };
   const newPage = (hdr = true) => {
