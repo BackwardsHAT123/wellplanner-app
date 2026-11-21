@@ -23,6 +23,9 @@ function wallFootage() {
   else { const m = { fnlfel: ['fnl', 'fel'], fnlfwl: ['fnl', 'fwl'], fslfel: ['fsl', 'fel'], fslfwl: ['fsl', 'fwl'] }[w.foot] || ['fnl', 'fel']; a = pick[m[0]]; b = pick[m[1]]; }
   return [a, b].filter(x => x[1] !== null).map(x => `${x[1].toFixed(1)} ${x[0]}`).join('   ');
 }
+/* Target line under each design target (wall plot and drill plan): "hits" only when the closest approach rounds to 0.0 ft,
+ * otherwise how far the plan passes from the target point. ms = one of M.misses ({d: ft}). */
+const missText = ms => !ms ? '' : ms.d < 0.05 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`;
 function wallSvg() {
   if (!M.survey) return '';
   const s = state, w = s.wall, sv = M.survey, surf = s.surface, F = 'Helvetica, Arial, sans-serif';
@@ -67,7 +70,7 @@ function wallSvg() {
     T(173, yC, tname(t), 6.8); T(col.tvd, yC, (+t.tvd).toFixed(1), 6.8, { anchor: 'middle' }); T(col.ns, yC, (t.n - surf.n).toFixed(1), 6.8, { anchor: 'middle' }); T(col.ew, yC, (t.e - surf.e).toFixed(1), 6.8, { anchor: 'middle' });
     T(col.n, yC, (+t.n).toFixed(2), 6.8, { anchor: 'middle' }); T(col.e, yC, (+t.e).toFixed(2), 6.8, { anchor: 'middle' });
     const ms = M.misses && M.misses[i]; yC += 7.5;
-    T(253, yC, ms ? (ms.d < 0.5 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`) : '', 6.8); yC += 7.5;
+    T(253, yC, missText(ms), 6.8); yC += 7.5;
   });
 
   o += '</g>';
@@ -291,7 +294,7 @@ function drillPlanPages() {
       const lt = ll ? WP.toLatLon(t.n, t.e, s.crs) : null, ms = M.misses && M.misses[i];
       [nf(0, 2), nf(0, 2), nf(+t.tvd), nf(t.n - surf.n), nf(t.e - surf.e), nf(t.n, 2), nf(t.e, 2), lt ? lt.lat.toFixed(6) : '', lt ? lt.lon.toFixed(6) : ''].forEach((v, k) => T(hx[k], y, v, 7.15, { anchor: 'end' }));
       T(34, y, tname(t), 7.15); y += 9.2;
-      T(40, y, ms ? (ms.d < 0.5 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`) : '', 7.15); y += 9.2; T(40, y, '- Point', 7.15); y += 14;
+      T(40, y, missText(ms), 7.15); y += 9.2; T(40, y, '- Point', 7.15); y += 14;
     });
     y += 8;
   }
