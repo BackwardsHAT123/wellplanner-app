@@ -304,11 +304,11 @@ function drillPlanPages() {
   finish(); return pages;
 }
 function drillPreview() {
-  const det = $('#dpDet'); if (!det || !det.open || !$('#pane-wall').classList.contains('on')) return;
+  const det = $('#dpDet'); if (!det || !det.open || !paneOn('wall')) return;
   $('#drillPrev').innerHTML = M.survey ? drillPlanPages().map(p => p.replace('width="612" height="792"', 'style="width:100%;max-width:560px;height:auto;border:1px solid var(--line);margin:0 6px 10px 0;background:#fff"')).join('') : '';
 }
 function drawWall() {
-  if (!$('#pane-wall').classList.contains('on')) return;
+  if (!paneOn('wall')) return;
   const box = $('#wallPrev'); if (!M.survey) { box.innerHTML = '<div class="hint">The plan does not build right now.</div>'; return; }
   box.innerHTML = wallSvg().replace('width="792" height="612"', 'style="width:100%;height:auto;border:1px solid var(--line)"');
   const note = [];

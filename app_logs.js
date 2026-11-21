@@ -180,7 +180,7 @@ function layoutGeo(hasLogs, hasTvd) {
   GEO.logH = inner; GEO.tvdH = inner;
 }
 function drawGeo() {
-  if (!$('#pane-geo').classList.contains('on')) return;
+  if (!paneOn('geo')) return;
   const L = state.logs, hasLogs = !!(L && L.curves.some(c => c.trk > 0)), hasTvd = !!(ACT.rows || M.survey);
   $('#logPlot').hidden = !hasLogs; $('#geoTvd').hidden = !hasTvd;
   layoutGeo(hasLogs, hasTvd);
@@ -189,7 +189,7 @@ function drawGeo() {
 }
 new ResizeObserver(() => drawGeo()).observe($('#logCard'));
 function renderGeo() {
-  if (!$('#pane-geo').classList.contains('on')) return;
+  if (!paneOn('geo')) return;
   renderLogs(); drawLogs();
 }
 function logZoomUi() {
@@ -255,8 +255,8 @@ $('#logCard').addEventListener('change', e => {
   state.logs.curves[+s.dataset.lt].trk = +s.value; logChanged();
 });
 function drawActual() {
-  if ($('#pane-geo').classList.contains('on')) drawGeo();
-  if (!$('#pane-actual').classList.contains('on') || !ACT.rows) return;
+  if (paneOn('geo')) drawGeo();
+  if (!paneOn('actual') || !ACT.rows) return;
   draw2D('apPlan'); draw3D('cvAp3d'); drawApDist();
 }
 /* Projection to bit from the last two stations, and the constant-DLS arc that rejoins the plan. Null without an actual survey. */
@@ -278,7 +278,7 @@ $('#actHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.pre
 function renderActual() {
   { const r = state.actual && state.actual.rows; $('#actCount').textContent = r && r.length ? `${r.length} stations, last MD ${fmt(r[r.length - 1].md, 0)}` : 'no survey'; }
   { const k = state.actual && state.actual.kind === 'plan'; $('#actTitle').textContent = k ? 'Other plan survey' : 'Actual survey'; }
-  if (!$('#pane-actual').classList.contains('on')) return;
+  if (!paneOn('actual')) return;
   const a = state.actual, has = !!ACT.rows;
   $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
   if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; $('#actKind').value = a.kind === 'plan' ? 'plan' : 'drilled'; }

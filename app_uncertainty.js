@@ -31,7 +31,7 @@ function sepAll() {
 }
 function renderOffsetResults() {
   if (!M.survey) return;
-  if (!$('#pane-offsets').classList.contains('on')) return;     // only when the tab is showing
+  if (!paneOn('offsets')) return;     // only when the tab is showing
   const pc = covOf(M.survey);
   sepAll();
   const useSf = !!pc;

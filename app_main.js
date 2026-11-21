@@ -85,6 +85,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const getp = (o, p) => p.split('.').reduce((a, k) => a && a[k], o);
 const setp = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const paneOn = id => $('#pane-' + id).classList.contains('on');   // is that tab showing?
 const D2R = Math.PI / 180;
 const OFF_COLORS = ['#8a877d', '#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#4f7fc0'];   // TAH grey, blue, green, purple, amber (orange is the planned well)
 let raf = 0;
@@ -410,8 +411,23 @@ function failPlan(err) {
   renderWellBar(); renderPad(); drawPad();
 }
 
+/* recalc(): rebuild the active well's plan and every view of it. Called after any edit (typing goes through recalcSoon).
+ * Steps: well housekeeping, header info, model (plan + offsets into M), then the views. A plan that fails clears the views. */
 function recalc() {
   if (recalcRaf) { cancelAnimationFrame(recalcRaf); recalcRaf = 0; }
+  syncWell();
+  renderCrsInfo();
+  if (!state.targets.length) { failPlan('Add at least one target.'); return; }
+  renderDerived();
+  const mm = modelFor(state);
+  if (mm.err) { failPlan(mm.err); return; }
+  setModel(mm);
+  renderPlanSummary(mm);
+  renderViews();
+}
+
+/* derived values on the well, autosave, title and slot-driven surface location */
+function syncWell() {
   if (typeof refreshPadTopsBtn === 'function') refreshPadTopsBtn();
   applyAllSlots();
   const s = state;
@@ -420,18 +436,23 @@ function recalc() {
   autosave();
   $('#wellTitle').textContent = s.name;
   document.title = (s.name ? s.name + ' · ' : '') + 'Well Path Planner';
-  const surf = { n: s.surface.n, e: s.surface.e };
   if (s.slot) { const sr = $('#surfCoord .cw'); if (sr) cwFill(sr); }
-  // coordinate system info
+}
+
+/* coordinate system info under the surface location */
+function renderCrsInfo() {
+  const s = state;
   if (isLL()) {
-    const ll = WP.toLatLon(surf.n, surf.e, s.crs), cv = WP.convergence(ll.lat, ll.lon, s.crs), far = Math.abs(ll.lon - WP.CRS[s.crs].lon0) > 3;
+    const ll = WP.toLatLon(s.surface.n, s.surface.e, s.crs), cv = WP.convergence(ll.lat, ll.lon, s.crs), far = Math.abs(ll.lon - WP.CRS[s.crs].lon0) > 3;
     $('#crsInfo').innerHTML = `SHL: <b>${fmt(ll.lat, 6)}°, ${fmt(ll.lon, 6)}°</b><br>Grid convergence ≈ <b>${fmt(cv, 3)}°</b> (true az = grid az + γ). All azimuths here are <b>grid</b> azimuths.` +
       (far ? `<br><span style="color:var(--warn)">This location is more than 3° from the zone’s central meridian. Check the zone.</span>` : '');
   } else $('#crsInfo').innerHTML = 'Local grid: no lat/long. All azimuths are grid azimuths.';
-  const T = s.targets;
-  if (!T.length) { failPlan('Add at least one target.'); return; }
-  const heel = T[0];
-  const dn = heel.n - surf.n, de = heel.e - surf.e, disp = Math.hypot(dn, de);
+}
+
+/* surface → target 1 and target-to-target legs, straight lines (before any plan is built) */
+function renderDerived() {
+  const s = state, T = s.targets, heel = T[0];
+  const dn = heel.n - s.surface.n, de = heel.e - s.surface.e, disp = Math.hypot(dn, de);
   const azHeel = disp > 0.01 ? WP.norm360(Math.atan2(de, dn) / D2R) : 0;
   let der = `Surface → target 1: <b>${fmt(disp, 0)} ft @ ${fmt(azHeel, 1)}°</b>`;
   if (s.d.type === 'hbh') for (let k = 0; k + 1 < T.length; k++) {
@@ -439,19 +460,24 @@ function recalc() {
     der += `<br>${k + 1} → ${k + 2}: <b>${fmt(l, 0)} ft</b>, inc ${fmt(Math.acos(Math.max(-1, Math.min(1, (b.tvd - a.tvd) / (l || 1)))) / D2R, 2)}°, az ${fmt(WP.norm360(Math.atan2(b.e - a.e, b.n - a.n) / D2R), 1)}°`;
   }
   $('#derived').innerHTML = der;
+}
 
-  const mm = modelFor(s);
-  if (mm.err) { failPlan(mm.err); return; }
+/* M = the built plan plus every other well it is checked against; writes back the solved KOP or tangent */
+function setModel(mm) {
   const plan = mm.plan;
   if (plan) {
     lastSolved = { theta: plan.theta, kop: plan.kop };
-    if (s.d.solveFor === 'kop') $('#inKop').value = fmt(plan.kop, 1).replace(/,/g, '');
+    if (state.d.solveFor === 'kop') $('#inKop').value = fmt(plan.kop, 1).replace(/,/g, '');
     else $('#inTan').value = fmt(plan.theta, 2).replace(/,/g, '');
   }
   const offs = buildOffs();
   M = { ...mm, offs, sep: null };
   stoRefresh(); M.offs = offs.concat(stoOffs());
-  const { survey, misses, maxDls, maxInc, latLenOut, vsAzi } = mm;
+}
+
+/* target misses, warning banner, mode badge and the stat tiles */
+function renderPlanSummary(mm) {
+  const s = state, { survey, misses, maxDls, maxInc, latLenOut, vsAzi, plan } = mm;
   const last = survey[survey.length - 1];
 
   s.targets.forEach((t, i) => {
@@ -481,7 +507,10 @@ function recalc() {
     html += st('Target miss', fmt(w.d, 1), 'ft · ' + esc(w.label), w.d > w.tol);
   }
   $('#stats').innerHTML = html;
+}
 
+/* every tab and plot; each skips itself when its tab is hidden */
+function renderViews() {
   if (typeof foldCounts === 'function') foldCounts();
   renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
@@ -508,8 +537,9 @@ function secName(r) {
   if (r.sec < 0) return 'Surface';
   const sc = M.sections[r.sec]; return sc ? (sc.name || (sc.type === 'hold' ? 'Hold' : 'Curve')) : '';
 }
-function renderSurvey() {
-  if (!M.survey) return;
+/* Survey and Sections tables are built only while their tab shows (the tab click builds them) or for printing (force). */
+function renderSurvey(force) {
+  if (!M.survey || !(force || paneOn('survey'))) return;
   const rows = filteredRows();
   const sv = M.survey;
   let h = '<thead><tr>' + COLS.map(c => `<th>${c[1]}</th>`).join('') + '<th class="l">Section</th></tr></thead><tbody>';
@@ -523,7 +553,7 @@ function renderSurvey() {
   });
   $('#surveyTbl').innerHTML = h + '</tbody>';
 }
-$('#repInt').onchange = renderSurvey;
+$('#repInt').onchange = () => renderSurvey();
 
 function download(name, text, type) {
   const a = document.createElement('a');
@@ -541,12 +571,13 @@ $('#bCsv').onclick = () => {
   filteredRows().forEach(r => lines.push(COLS.map(c => (+r[c[0]]).toFixed(c[2] + 1)).concat('"' + secName(r) + '"').join(',')));
   download(safeName() + (apiTag() ? '_' + apiTag() : '') + '_plan_survey.csv', lines.join('\n') + '\n', 'text/csv');
 };
-$('#bPrint').onclick = () => { updatePrintId(); drawAll(); window.print(); };
-window.addEventListener('beforeprint', () => { updatePrintId(); drawAll(); });
+const printPrep = () => { updatePrintId(); renderSurvey(true); renderSections(true); drawAll(); };   // print shows every tab
+$('#bPrint').onclick = () => { printPrep(); window.print(); };
+window.addEventListener('beforeprint', printPrep);
 
 /* ================= sections tab ================= */
-function renderSections() {
-  if (!M.survey) return;
+function renderSections(force) {
+  if (!M.survey || !(force || paneOn('sections'))) return;
   const manual = state.mode === 'manual';
   $('#secBar').innerHTML = manual
     ? `<button id="bAddHold">+ Hold</button><button id="bAddCurve">+ Curve</button><button id="bBack" class="primary">Back to target-driven</button><span class="hint" style="margin:0">Manual mode: the targets no longer drive the path; target misses are shown above.</span>`

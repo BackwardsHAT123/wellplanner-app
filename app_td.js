@@ -87,9 +87,9 @@ function tdCompute() {
 }
 
 /* ---- page ---- */
-function renderTDSoon() { clearTimeout(TDV.t); if ($('#pane-td').classList.contains('on')) TDV.t = setTimeout(renderTD, 120); }
+function renderTDSoon() { clearTimeout(TDV.t); if (paneOn('td')) TDV.t = setTimeout(renderTD, 120); }
 function renderTD() {
-  if (!$('#pane-td').classList.contains('on')) return;
+  if (!paneOn('td')) return;
   renderTdInputs();
   const r = M.survey ? tdCompute() : null;
   if (!r) { $('#tdStats').innerHTML = ''; $('#tdMsg').innerHTML = '<div class="msg note">Build a plan first.</div>'; $('#tdTbl').innerHTML = ''; $('#tdVer').innerHTML = ''; drawTD(); return; }
@@ -155,7 +155,7 @@ function tdChart(id, o) {
   el.textContent = 'MD ' + fmt(o.cursor, 0) + ' · ' + parts.join(' · ');
 }
 function drawTD() {
-  if (!$('#pane-td').classList.contains('on')) return;
+  if (!paneOn('td')) return;
   const r = TDV.res && M.survey ? TDV.res : null;
   ['cvTdHook', 'cvTdTq', 'cvTdF', 'cvTdT'].forEach(id => { if (!r) { const c = $('#' + id); if (c.width) c.getContext('2d').clearRect(0, 0, c.width, c.height); } });
   if (!r) return;

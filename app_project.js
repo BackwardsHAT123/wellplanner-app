@@ -4,6 +4,8 @@
 $$('.tab').forEach(b => b.onclick = () => {
   $$('.tab').forEach(x => x.classList.toggle('on', x === b));
   $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  if (b.dataset.tab === 'survey') renderSurvey();
+  if (b.dataset.tab === 'sections') renderSections();
   if (b.dataset.tab === 'offsets') renderOffsetResults();
   if (b.dataset.tab === 'actual') renderActual();
   if (b.dataset.tab === 'geo') renderGeo();

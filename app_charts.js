@@ -179,7 +179,7 @@ attachApHover($('#cvGeoTvd'), e => e.currentTarget);
 document.addEventListener('keydown', e => {
   const t = e.target, tag = t && t.tagName; if (e.metaKey || e.ctrlKey || (t && (t.isContentEditable || tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && t.type !== 'checkbox' && t.type !== 'range')))) return;
   if (/^[1-8]$/.test(e.key)) { const b = $$('.tab')[+e.key - 1]; if (b) { b.click(); e.preventDefault(); } return; }
-  if (!$('#pane-actual').classList.contains('on') && !$('#pane-geo').classList.contains('on')) return;
+  if (!paneOn('actual') && !paneOn('geo')) return;
   if (e.key === 'Escape') { ACT.pin = false; setApHover(null); return; }
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   const rows = ACT.rows || M.survey; if (!rows) return;
