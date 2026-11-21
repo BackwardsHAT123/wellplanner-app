@@ -144,9 +144,70 @@ function renderTdVersions(r) {
 }
 
 /* ---- charts ---- */
+/* T&D chart with depth down the Y axis (surface at the top) and the load or torque along the X axis.
+ * o = { dl: depth axis title, vl: value axis title, series: [{ name, color, dash, noLegend, noScale, pts: [[md, value]] }],
+ *       vlines: [{ v, color, label }] (limits, drawn as dashed vertical lines), cursor: MD of the hover line or null }.
+ * The value range includes zero and the limits, like lineChart; noScale series (locked-up loads) do not set it.
+ * Leaves c._lc = { m, ih, dlo, dhi } for the hover handler. */
+function depthChart(canvasId, o) {
+  const c = $('#' + canvasId); if (!c.offsetParent) return;
+  const { g, w, h } = setupCanvas(c);
+  const ink = css('--ink'), muted = css('--muted'), grid = css('--grid');
+  const m = { l: 64, r: 14, t: 26, b: 36 }, iw = w - m.l - m.r, ih = h - m.t - m.b;      // legend sits in the top margin
+  let dlo = 0, dhi = -Infinity, vlo = Infinity, vhi = -Infinity;
+  o.series.forEach(s => s.pts.forEach(p => {
+    dlo = Math.min(dlo, p[0]); dhi = Math.max(dhi, p[0]);
+    if (!s.noScale) { vlo = Math.min(vlo, p[1]); vhi = Math.max(vhi, p[1]); }
+  }));
+  (o.vlines || []).forEach(l => { vlo = Math.min(vlo, l.v); vhi = Math.max(vhi, l.v); });
+  if (!isFinite(dhi) || dhi <= dlo) dhi = dlo + 1;
+  if (!isFinite(vlo)) { vlo = 0; vhi = 1; }
+  vlo = Math.min(vlo, 0); vhi += (vhi - vlo) * 0.08 || 1;
+  const X = v => m.l + (v - vlo) / (vhi - vlo) * iw, Y = d => m.t + (d - dlo) / (dhi - dlo) * ih;
+  const sv = niceStep(vhi - vlo, Math.max(3, Math.round(iw / 90))), sd = niceStep(dhi - dlo, Math.max(4, Math.round(ih / 55)));
+  const vt = [], dt = [];
+  for (let v = Math.ceil(vlo / sv) * sv; v <= vhi + 1e-9; v += sv) vt.push(v);
+  for (let d = Math.ceil(dlo / sd) * sd; d <= dhi + 1e-9; d += sd) dt.push(d);
+  g.lineWidth = 1; g.strokeStyle = grid; g.beginPath();
+  vt.forEach(v => { const x = Math.round(X(v)) + .5; g.moveTo(x, m.t); g.lineTo(x, m.t + ih); });
+  dt.forEach(d => { const y = Math.round(Y(d)) + .5; g.moveTo(m.l, y); g.lineTo(m.l + iw, y); });
+  g.stroke();
+  if (vlo < 0) { g.strokeStyle = muted; g.beginPath(); g.moveTo(Math.round(X(0)) + .5, m.t); g.lineTo(Math.round(X(0)) + .5, m.t + ih); g.stroke(); }   // zero line between tension and compression
+  g.fillStyle = muted; g.textAlign = 'center';
+  vt.forEach(v => g.fillText(fmt(v, sv < 1 ? 1 : 0), X(v), m.t + ih + 14));
+  g.fillText(o.vl, m.l + iw / 2, h - 4);
+  g.textAlign = 'right'; dt.forEach(d => g.fillText(fmt(d, 0), m.l - 6, Y(d) + 4));
+  g.save(); g.translate(12, m.t + ih / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.fillText(o.dl, 0, 0); g.restore();
+  g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
+  (o.vlines || []).forEach(l => {                    // limits: dashed vertical line, label along its top
+    const x = X(l.v); g.strokeStyle = l.color; g.setLineDash([5, 4]);
+    g.beginPath(); g.moveTo(x, m.t); g.lineTo(x, m.t + ih); g.stroke(); g.setLineDash([]);
+    g.fillStyle = l.color; const tw = g.measureText(l.label).width;
+    g.textAlign = x - tw - 6 > m.l ? 'right' : 'left'; g.fillText(l.label, x + (g.textAlign === 'right' ? -5 : 5), m.t + 13);
+  });
+  o.series.forEach(s => {
+    if (!s.pts.length) return;
+    g.strokeStyle = s.color; g.lineWidth = s.dash ? 1 : 2; g.setLineDash(s.dash || []); g.beginPath();
+    s.pts.forEach((p, i) => i ? g.lineTo(X(p[1]), Y(p[0])) : g.moveTo(X(p[1]), Y(p[0]))); g.stroke(); g.setLineDash([]);
+  });
+  c._lc = { m, ih, dlo, dhi };
+  if (o.cursor != null && o.cursor >= dlo && o.cursor <= dhi) {      // hover: dashed line across at that MD, a dot on each curve
+    const cy = Y(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(m.l, cy); g.lineTo(m.l + iw, cy); g.stroke(); g.setLineDash([]);
+    o.series.forEach(s => {
+      if (s.noLegend || !s.pts.length) return;
+      let b = s.pts[0]; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(b[0] - o.cursor)) b = p; });
+      g.fillStyle = s.color; g.beginPath(); g.arc(X(b[1]), Y(b[0]), 3.5, 0, 7); g.fill();
+    });
+  }
+  g.restore(); g.strokeStyle = css('--line'); g.strokeRect(m.l + .5, m.t + .5, iw, ih);
+  let lx = m.l; g.textAlign = 'left';                 // legend above the plot
+  o.series.filter(s => !s.noLegend).forEach(s => {
+    g.fillStyle = s.color; g.fillRect(lx, 11, 14, 3); g.fillStyle = ink; g.fillText(s.name, lx + 19, 16); lx += g.measureText(s.name).width + 34;
+  });
+}
 function tdChart(id, o) {
   TDV.ser[id] = o; o.cursor = TDV.hov[id] ?? null;
-  lineChart(id, o);
+  depthChart(id, o);
   const el = $('#td' + id.slice(4) + 'Rd'); if (!el) return;
   if (o.cursor == null) { el.textContent = 'Hover for values'; return; }
   const parts = o.series.filter(s => !s.noLegend && !s.noRead && s.pts.length).map(s => {
@@ -164,31 +225,31 @@ function drawTD() {
   const ser = (sw, k, name, col, dash) => ({ name: dash ? name + ' µ' + fmt(sw.ff, 2) : name, color: col, dash: dash ? [5, 4] : null, noLegend: !!dash, pts: sw.rows.filter(x => !x[k + 'Lock']).map(x => [x.md, Math.max(kl(x[k]), -0.5 * +td.tenLim)]) });
   const dashTx = others.length ? ' · solid µ ' + fmt(ffO, 2) + ', dashed µ ' + others.map(s => fmt(s.ff, 2)).join(' / ') : ' · µ ' + fmt(ffO, 2);
   $('#tdHookSub').textContent = 'klbf' + dashTx; $('#tdTqSub').textContent = 'kft-lbf' + dashTx;
-  tdChart('cvTdHook', { xl: 'Bit measured depth (ft)',
+  tdChart('cvTdHook', { dl: 'Bit measured depth (ft)', vl: 'Hookload (klbf)',
     series: [ser(r.main, 'pooh', 'Pick-up', C.pu), ser(r.main, 'rih', 'Slack-off', C.so), ser(r.main, 'rob', 'Rotating', C.rob), ser(r.main, 'slide', 'Sliding', C.sl)]
       .concat(others.flatMap(s => [ser(s, 'pooh', 'Pick-up', C.pu, 1), ser(s, 'rih', 'Slack-off', C.so, 1), ser(s, 'slide', 'Sliding', C.sl, 1)])),
-    hlines: [{ y: +td.tenLim, color: css('--warn'), label: 'tensile limit ' + fmt(+td.tenLim, 0) }] });
+    vlines: [{ v: +td.tenLim, color: css('--warn'), label: 'tensile limit ' + fmt(+td.tenLim, 0) }] });
   const tq = (sw, k, name, col, dash) => ({ name: dash ? name + ' µ' + fmt(sw.ff, 2) : name, color: col, dash: dash ? [5, 4] : null, noLegend: !!dash, pts: sw.rows.map(x => [x.md, kl(x[k + 'T'])]) });
-  tdChart('cvTdTq', { xl: 'Bit measured depth (ft)',
+  tdChart('cvTdTq', { dl: 'Bit measured depth (ft)', vl: 'Surface torque (kft-lbf)',
     series: [tq(r.main, 'drill', 'Drilling', C.dr), tq(r.main, 'rob', 'Off bottom', C.ob)].concat(others.flatMap(s => [tq(s, 'drill', 'Drilling', C.dr, 1), tq(s, 'rob', 'Off bottom', C.ob, 1)])),
-    hlines: [{ y: +td.tqLim, color: css('--warn'), label: 'torque limit ' + fmt(+td.tqLim, 1) }] });
+    vlines: [{ v: +td.tqLim, color: css('--warn'), label: 'torque limit ' + fmt(+td.tqLim, 1) }] });
   const a = r.atTd, pf = (p, f) => p.prof.map(x => [x.md, f(x)]);
   const bk = a.slide.prof.filter(x => x.fs != null);
-  tdChart('cvTdF', { xl: 'Measured depth along the string (ft)',
+  tdChart('cvTdF', { dl: 'MD along the string (ft)', vl: 'Axial force (klbf): tension +, compression −',
     series: [{ name: 'Pick-up', color: C.pu, pts: pf(a.pooh, x => kl(x.F)) }, { name: 'Slack-off', color: C.so, noScale: a.rih.lock, pts: pf(a.rih, x => Math.max(kl(x.F), -1e4)) },
       { name: 'Rotate', color: C.rob, pts: pf(a.rob, x => kl(x.F)) }, { name: 'Slide', color: C.sl, noScale: a.slide.lock, pts: pf(a.slide, x => Math.max(kl(x.F), -1e4)) },
       { name: 'Sin. buckling', color: css('--amber'), dash: [5, 4], pts: bk.map(x => [x.md, -kl(x.fs)]) },      // locked-up loads run off the bottom; the buckling limits set the scale
       { name: 'Helical', color: css('--warn'), dash: [5, 4], pts: bk.map(x => [x.md, -kl(x.fh)]) }] });
-  tdChart('cvTdT', { xl: 'Measured depth along the string (ft)',
+  tdChart('cvTdT', { dl: 'MD along the string (ft)', vl: 'Torque (kft-lbf)',
     series: [{ name: 'Drilling', color: C.dr, pts: pf(a.drill, x => kl(x.T)) }, { name: 'Off bottom', color: C.ob, pts: pf(a.rob, x => kl(x.T)) }],
-    hlines: [{ y: +td.tqLim, color: css('--warn'), label: 'torque limit ' + fmt(+td.tqLim, 1) }] });
+    vlines: [{ v: +td.tqLim, color: css('--warn'), label: 'torque limit ' + fmt(+td.tqLim, 1) }] });
 }
 ['cvTdHook', 'cvTdTq', 'cvTdF', 'cvTdT'].forEach(id => {
   const c = $('#' + id);
   c.addEventListener('mousemove', e => {
     const L = c._lc, o = TDV.ser[id]; if (!L || !o) return;
-    const x = e.clientX - c.getBoundingClientRect().left, md = L.xlo + (x - L.m.l) / L.iw * (L.xhi - L.xlo);
-    TDV.hov[id] = md >= L.xlo && md <= L.xhi ? md : null; tdChart(id, o);
+    const y = e.clientY - c.getBoundingClientRect().top, md = L.dlo + (y - L.m.t) / L.ih * (L.dhi - L.dlo);    // depth runs down the chart
+    TDV.hov[id] = md >= L.dlo && md <= L.dhi ? md : null; tdChart(id, o);
   });
   c.addEventListener('mouseleave', () => { TDV.hov[id] = null; const o = TDV.ser[id]; if (o) tdChart(id, o); });
 });

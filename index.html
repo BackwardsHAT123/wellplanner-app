@@ -217,7 +217,7 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 .pane{display:none}.pane.on{display:block}
 .tdrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:5px 10px;margin-bottom:5px}.tdrow .card{margin:0}
 @media (max-width:900px){.tdrow{grid-template-columns:1fr}}
-#pane-td .plots .plot canvas{height:300px}
+#pane-td .plots .plot canvas{height:460px}   /* depth down the Y axis: taller than wide reads better */
 .tdread{margin:2px 4px 0;min-height:20px;font-family:var(--mono);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tdComps td input{width:100%;min-width:58px}#tdComps td.l input{min-width:150px}
 #pane-geo.on{display:flex;flex-direction:column}
@@ -834,17 +834,17 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=093a82121c"></script>
+<script src="core.js?v=e1781a5393"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=093a82121c"></script>
-<script src="app_uncertainty.js?v=093a82121c"></script>
-<script src="app_3d.js?v=093a82121c"></script>
-<script src="app_charts.js?v=093a82121c"></script>
-<script src="app_logs.js?v=093a82121c"></script>
-<script src="app_wall.js?v=093a82121c"></script>
-<script src="app_versions.js?v=093a82121c"></script>
-<script src="app_td.js?v=093a82121c"></script>
-<script src="app_project.js?v=093a82121c"></script>
-<script src="app_layout.js?v=093a82121c"></script>
+<script src="app_main.js?v=e1781a5393"></script>
+<script src="app_uncertainty.js?v=e1781a5393"></script>
+<script src="app_3d.js?v=e1781a5393"></script>
+<script src="app_charts.js?v=e1781a5393"></script>
+<script src="app_logs.js?v=e1781a5393"></script>
+<script src="app_wall.js?v=e1781a5393"></script>
+<script src="app_versions.js?v=e1781a5393"></script>
+<script src="app_td.js?v=e1781a5393"></script>
+<script src="app_project.js?v=e1781a5393"></script>
+<script src="app_layout.js?v=e1781a5393"></script>
 </body>
 </html>
