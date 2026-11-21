@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: project, state (active well), M (its model), logs store, recalc/recalcSoon, modelFor, css, paneOn. Uses: ERR, SEC, STO, sepAll (uncertainty); ACT, computeActual (charts); renderGeo (logs); WALL, drawAll (wall); syncVer (versions); renderPad, drawPad (project), all at run time. File map and load order: CLAUDE.md "Architecture". */
 /* state, inputs, plan, 2D views (split from index.html; loaded in order, shares globals) */
 /* ================= state ================= */
 const LS_KEY = 'wellplanner.v1', LS_LOGS = 'wellplanner.v1.logs';
@@ -113,7 +114,17 @@ const fmt = (x, d = 1) => isFinite(x) ? (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const getp = (o, p) => p.split('.').reduce((a, k) => a && a[k], o);
 const setp = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+/* Theme colour token, e.g. css('--ink'). getComputedStyle forces a style pass, so values are cached per theme
+ * (the chosen theme plus the system dark setting, which together decide every token). */
+const darkMQ = matchMedia('(prefers-color-scheme: dark)'), cssCache = new Map();
+let cssKey = '';
+const css = n => {
+  const k = (document.documentElement.dataset.theme || '') + '|' + darkMQ.matches;
+  if (k !== cssKey) { cssKey = k; cssCache.clear(); }
+  let v = cssCache.get(n);
+  if (v === undefined) { v = getComputedStyle(document.documentElement).getPropertyValue(n).trim(); cssCache.set(n, v); }
+  return v;
+};
 const paneOn = id => $('#pane-' + id).classList.contains('on');   // is that tab showing?
 const D2R = Math.PI / 180;
 const OFF_COLORS = ['#8a877d', '#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#4f7fc0'];   // TAH grey, blue, green, purple, amber (orange is the planned well)

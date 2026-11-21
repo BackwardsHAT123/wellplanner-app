@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: VOV, syncVer, verModel. Uses: state, modelFor (main); P2 (uncertainty); drawAll (wall); init (project). File map and load order: CLAUDE.md "Architecture". */
 /* Plan versions: a well can hold several alternative plans (targets, path design) so they can be moved and compared before one is
  * picked for drilling. The well object itself stays the working copy of the active version; every other version keeps a snapshot
  * of the plan fields. Surface location, slot, logs, tops and actual survey belong to the well, not to a version. */

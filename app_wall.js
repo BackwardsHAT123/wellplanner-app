@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: WALL, drawAll, drawWall. Uses: project, state, M, paneOn (main); SEC, draw2D (uncertainty); draw3D (3d); drawPad (project). File map and load order: CLAUDE.md "Architecture". */
 /* wall plot and drill plan reports (split from index.html; loaded in order, shares globals) */
 /* ================= wall plot ================= */
 /* A one-page landscape Letter plot like a standard wall plot: header, formation tops, design targets, section details,
@@ -358,11 +359,27 @@ $('#bWallLogo').onclick = () => {
 };
 $('#wallLogoFile').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { wallLogo = { src: rd.result, w: im.naturalWidth, h: im.naturalHeight }; try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify(wallLogo)); } catch (x) { $('#wallNote').textContent = 'The logo is too big to remember between sessions, but it is used for now.'; } drawWall(); if (logoPopRefresh) logoPopRefresh(); }; im.src = rd.result; };
+  const rd = new FileReader();
+  rd.onload = () => {
+    const im = new Image();
+    im.onload = () => {                              // size known: keep it, and remember it if it fits in browser storage
+      wallLogo = { src: rd.result, w: im.naturalWidth, h: im.naturalHeight };
+      try { localStorage.setItem('wellplanner.wallLogo', JSON.stringify(wallLogo)); }
+      catch (x) { $('#wallNote').textContent = 'The logo is too big to remember between sessions, but it is used for now.'; }
+      drawWall(); if (logoPopRefresh) logoPopRefresh();
+    };
+    im.src = rd.result;
+  };
   rd.readAsDataURL(f);
 };
 
-function drawAll() { drawPad(); if (!M.survey) return; draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawActual(); drawWall(); if (typeof drawTD === 'function') drawTD(); }   // the pad schematic does not need a built plan
+/* every canvas and SVG view; each skips itself when its tab is hidden */
+function drawAll() {
+  drawPad();                                         // the pad schematic does not need a built plan
+  if (!M.survey) return;
+  draw2D('plan'); draw2D('sec'); draw3D(); drawDls(); drawSep(); drawActual(); drawWall();
+  if (typeof drawTD === 'function') drawTD();
+}
 
 
 /* The Wall plot and Drill plan cards fold up; each remembers whether it was left open. */

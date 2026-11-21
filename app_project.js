@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: HIST (undo), init, selectWell, renderPad, drawPad. Uses: project, state, M, recalc, css (main); P2, setupCanvas (uncertainty); renderGeo (logs); WALL, drawAll (wall); syncVer (versions); renderTD (td). File map and load order: CLAUDE.md "Architecture". */
 /* tabs, project, pad, file actions, init (split from index.html; loaded in order, shares globals) */
 /* ================= tabs, resize, theme ================= */
 $$('.tab').forEach(b => b.onclick = () => {

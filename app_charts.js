@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: ACT (actual survey model), lineChart, computeActual. Uses: state, M, css, paneOn (main); setupCanvas (uncertainty). File map and load order: CLAUDE.md "Architecture". */
 /* line charts and plan vs actual (split from index.html; loaded in order, shares globals) */
 /* ---- line charts ---- */
 const colorAt = WP.colorAt;   // colour ramp helper lives in core.js (tested there)
@@ -38,7 +39,12 @@ function lineChart(canvasId, o) {
   if (!o.hideX) { for (let x = Math.ceil(xlo / sx) * sx; x <= xhi; x += sx) g.fillText(fmt(x, 0), X(x), m.t + ih + 14);
     g.fillText(o.xl, m.l + iw / 2, h - 4); }
   g.save(); g.beginPath(); g.rect(m.l, m.t, iw, ih); g.clip();
-  (o.hlines || []).forEach(l => { const r = (l.axis || 'left') === 'right' ? R : L, y = Yf(r, l.y); g.strokeStyle = l.color; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.color; g.textAlign = 'left'; g.fillText(l.label, m.l + 6, y - 4); });
+  (o.hlines || []).forEach(l => {                    // dashed horizontal reference lines with a label
+    const r = (l.axis || 'left') === 'right' ? R : L, y = Yf(r, l.y);
+    g.strokeStyle = l.color; g.setLineDash([5, 4]);
+    g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]);
+    g.fillStyle = l.color; g.textAlign = 'left'; g.fillText(l.label, m.l + 6, y - 4);
+  });
   o.series.forEach(s => {                      // fill under the curve, coloured by value
     if (!s.fill || s.pts.length < 2) return;
     const r = (s.axis || 'left') === 'right' ? R : L, yb = m.t + ih; g.save(); g.globalAlpha = s.fill.alpha == null ? 0.85 : s.fill.alpha;
@@ -56,13 +62,25 @@ function lineChart(canvasId, o) {
   (o.tops || []).forEach(t => {                // formation tops: dashed line on every track, name on the top one
     if (t.x < xlo || t.x > xhi) return; const x = X(t.x);
     g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, m.t); g.lineTo(x, m.t + ih); g.stroke(); g.setLineDash([]);
-    if (o.topLabels) { g.save(); g.translate(x + 3, m.t + 4); g.rotate(Math.PI / 2); g.textAlign = 'left'; g.font = '10px -apple-system,Segoe UI,system-ui,sans-serif'; const tw = g.measureText(t.name).width; g.fillStyle = css('--panel'); g.globalAlpha = 0.75; g.fillRect(-2, -11, tw + 4, 12); g.globalAlpha = 1; g.fillStyle = ink; g.fillText(t.name, 0, -2); g.restore(); }
+    if (o.topLabels) {                               // name written down the line on a translucent backing
+      g.save(); g.translate(x + 3, m.t + 4); g.rotate(Math.PI / 2);
+      g.textAlign = 'left'; g.font = '10px -apple-system,Segoe UI,system-ui,sans-serif';
+      const tw = g.measureText(t.name).width;
+      g.fillStyle = css('--panel'); g.globalAlpha = 0.75; g.fillRect(-2, -11, tw + 4, 12); g.globalAlpha = 1;
+      g.fillStyle = ink; g.fillText(t.name, 0, -2);
+      g.restore();
+    }
   });
   (o.vlines || []).forEach(v => { if (v.x < xlo || v.x > xhi) return; g.strokeStyle = v.color; g.lineWidth = 1.5; g.setLineDash([6, 3]); g.beginPath(); g.moveTo(X(v.x), m.t); g.lineTo(X(v.x), m.t + ih); g.stroke(); g.setLineDash([]); });
   c._lc = { m, iw, xlo, xhi };
   if (o.cursor != null && o.cursor >= xlo && o.cursor <= xhi) {
     const cx = X(o.cursor); g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(cx, m.t); g.lineTo(cx, m.t + ih); g.stroke(); g.setLineDash([]);
-    o.series.forEach(s => { if (s.noLegend) return; const r = (s.axis || 'left') === 'right' ? R : L; let best = s.pts[0]; if (!best) return; s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; }); g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill();
+    o.series.forEach(s => {
+      if (s.noLegend) return;
+      const r = (s.axis || 'left') === 'right' ? R : L;
+      let best = s.pts[0]; if (!best) return;
+      s.pts.forEach(p => { if (Math.abs(p[0] - o.cursor) < Math.abs(best[0] - o.cursor)) best = p; });   // point nearest the cursor
+      g.fillStyle = s.color; g.beginPath(); g.arc(cx, Yf(r, best[1]), 3.5, 0, 7); g.fill();
       if (o.dropLines) {                       // dashed line out to the Y axis with the value at each end
         const y = Yf(r, best[1]), tx = fmt(best[1], Math.abs(best[1]) < 10 ? 2 : 1);
         g.strokeStyle = s.color; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(m.l, y); g.lineTo(m.l + iw, y); g.stroke(); g.setLineDash([]);
@@ -82,7 +100,14 @@ function lineChart(canvasId, o) {
       const ss = o.series.filter(s => (s.axis || 'left') === ax); if (!ss.length || (ax === 'right' && !R)) return;
       const ws = ss.map(s => g.measureText(s.label || s.name).width), tot = ws.reduce((x, y) => x + y, 0) + 16 * (ss.length - 1);
       const L = ax === 'left'; let pos = m.t + ih / 2 + (L ? tot / 2 : -tot / 2);       // right-hand names read top to bottom
-      ss.forEach((s, i) => { g.save(); g.translate(L ? 11 : w - 6, pos + (L ? -1 : 1) * ws[i] / 2); g.rotate(L ? -Math.PI / 2 : Math.PI / 2); g.fillStyle = s.color; g.textAlign = 'center'; g.font = '600 11px -apple-system,Segoe UI,system-ui,sans-serif'; g.fillText(s.label || s.name, 0, 0); g.restore(); pos += (L ? -1 : 1) * (ws[i] + 16); });
+      ss.forEach((s, i) => {                         // axis titles, rotated, one per series in its colour
+        g.save();
+        g.translate(L ? 11 : w - 6, pos + (L ? -1 : 1) * ws[i] / 2); g.rotate(L ? -Math.PI / 2 : Math.PI / 2);
+        g.fillStyle = s.color; g.textAlign = 'center'; g.font = '600 11px -apple-system,Segoe UI,system-ui,sans-serif';
+        g.fillText(s.label || s.name, 0, 0);
+        g.restore();
+        pos += (L ? -1 : 1) * (ws[i] + 16);
+      });
     });
     return;
   }

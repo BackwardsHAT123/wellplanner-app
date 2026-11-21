@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: TDV, renderTD. Uses: project, state, M, css, paneOn (main); ACT, lineChart (charts); verModel (versions). File map and load order: CLAUDE.md "Architecture". */
 /* Torque and drag tab: soft-string hookload and torque for the active well's planned (or actual) path. The maths is WP.torqueDrag
  * in core.js (tested in test.js). Inputs live in state.td (per well, shared by its plan versions); loads are klbf / kft-lbf here. */
 const TDV = { key: '', res: null, hov: {}, ser: {} };

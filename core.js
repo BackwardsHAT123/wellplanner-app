@@ -429,21 +429,30 @@
       }
       runs.push(b);
     }
+    // Closest point on segment k; keeps the smallest distance, and on an exact tie the lowest k (as a scan from k = 0 would).
+    let px = 0, py = 0, pz = 0, best = Infinity, bestK = -1, om = OM[0];
+    const tryK = k => {
+      const ax = X[k], ay = Y[k], az = Z[k], dx = X[k + 1] - ax, dy = Y[k + 1] - ay, dz = Z[k + 1] - az, l2 = dx * dx + dy * dy + dz * dz;
+      let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const qx = px - ax - t * dx, qy = py - ay - t * dy, qz = pz - az - t * dz, d = Math.sqrt(qx * qx + qy * qy + qz * qz);
+      if (d < best || (d === best && k < bestK)) { best = d; bestK = k; om = OM[k] + t * (OM[k + 1] - OM[k]); }
+    };
     const res = [];
+    let seed = 0;                       // closest segment of the previous plan station: the next one is usually near it
     for (const i of pick(plan.length, ps)) {
-      const px = plan[i].easting, py = plan[i].northing, pz = plan[i].tvdss;
-      let best = Infinity, om = OM[0];
+      px = plan[i].easting; py = plan[i].northing; pz = plan[i].tvdss;
+      best = Infinity; bestK = -1; om = OM[0];
       if (m === 1) best = Math.hypot(px - X[0], py - Y[0], pz - Z[0]);
-      for (const b of runs) {
-        const bx = Math.max(b.x0 - px, 0, px - b.x1), by = Math.max(b.y0 - py, 0, py - b.y1), bz = Math.max(b.z0 - pz, 0, pz - b.z1);
-        if (bx * bx + by * by + bz * bz >= best * best) continue;
-        for (let k = b.s; k < b.e; k++) {
-          const ax = X[k], ay = Y[k], az = Z[k], dx = X[k + 1] - ax, dy = Y[k + 1] - ay, dz = Z[k + 1] - az, l2 = dx * dx + dy * dy + dz * dz;
-          let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / l2 : 0;
-          t = t < 0 ? 0 : t > 1 ? 1 : t;
-          const qx = px - ax - t * dx, qy = py - ay - t * dy, qz = pz - az - t * dz, d = Math.sqrt(qx * qx + qy * qy + qz * qz);
-          if (d < best) { best = d; om = OM[k] + t * (OM[k + 1] - OM[k]); }
+      else {
+        // a good first guess makes the box test below skip most runs
+        for (let k = Math.max(0, seed - 2); k <= Math.min(m - 2, seed + 2); k++) tryK(k);
+        for (const b of runs) {
+          const bx = Math.max(b.x0 - px, 0, px - b.x1), by = Math.max(b.y0 - py, 0, py - b.y1), bz = Math.max(b.z0 - pz, 0, pz - b.z1);
+          if (bx * bx + by * by + bz * bz > best * best) continue;
+          for (let k = b.s; k < b.e; k++) tryK(k);
         }
+        seed = bestK;
       }
       res.push({ i, md: plan[i].md, tvd: plan[i].tvd, d: best, offMd: om });
     }

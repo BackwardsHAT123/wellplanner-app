@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: LOG, GEO, renderGeo, aheadOf. Uses: state, M, recalc, logsOf, css, paneOn (main); P2, draw2D (uncertainty); draw3D (3d); ACT, lineChart (charts). File map and load order: CLAUDE.md "Architecture". */
 /* well logs, geosteering, actual survey entry (split from index.html; loaded in order, shares globals) */
 /* ================= well logs ================= */
 /* logsOf(state) = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */

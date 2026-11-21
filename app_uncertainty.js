@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: ERR, covOf, sepAll, SEC (PLSS sections), REF, STO, P2 (2D views), draw2D, setupCanvas. Uses: project, state, M, recalc, modelFor, css, paneOn (main); ACT (charts); aheadOf (logs); WALL, drawAll (wall). File map and load order: CLAUDE.md "Architecture". */
 /* survey uncertainty and offsets (split from index.html; loaded in order, shares globals) */
 /* ---- survey uncertainty settings and covariance cache ---- */
 const ERR = { tool: 'mwd', sf: 1.5, ell: false };
@@ -164,7 +165,18 @@ async function ensureSections() {
   try { rows = await liveSections(want); src = 'live from BLM'; } catch (e) { rows = null; }
   if (!rows) { try { rows = await tileSections(want); src = 'offline files'; } catch (e) { rows = null; } }
   SEC.loading = false;
-  if (rows) { rows.forEach(r => { r.bb = [Math.min(...r.ll.filter((_, i) => i % 2 === 0)), Math.max(...r.ll.filter((_, i) => i % 2 === 0)), Math.min(...r.ll.filter((_, i) => i % 2)), Math.max(...r.ll.filter((_, i) => i % 2))]; SEC.cache.set(secKey(r), r); }); SEC.covered.push(want); SEC.src = src; SEC.msg = ''; SEC.nearKey = null; }
+  if (rows) {
+    rows.forEach(r => {                              // r.bb = [west, east, south, north] of the outline (ll = lon, lat, lon, lat...)
+      const bb = [Infinity, -Infinity, Infinity, -Infinity];
+      for (let i = 0; i + 1 < r.ll.length; i += 2) {
+        const lon = r.ll[i], lat = r.ll[i + 1];
+        if (lon < bb[0]) bb[0] = lon; if (lon > bb[1]) bb[1] = lon;
+        if (lat < bb[2]) bb[2] = lat; if (lat > bb[3]) bb[3] = lat;
+      }
+      r.bb = bb; SEC.cache.set(secKey(r), r);
+    });
+    SEC.covered.push(want); SEC.src = src; SEC.msg = ''; SEC.nearKey = null;
+  }
   else SEC.msg = 'no section data: the BLM service is unreachable and there are no offline files for this area';
   drawAll(); updateSecInfo();
   if (STO.on) { STO.key = ''; recalc(); }
@@ -354,8 +366,23 @@ document.addEventListener('click', e => { if (e.target.closest('[data-stopick]')
 $('#stoTrue').onchange = e => { STO.tn = e.target.checked; try { localStorage.setItem('wellplanner.stoTrue', STO.tn ? '1' : '0'); } catch (x) {} STO.key = ''; recalc(); };
 /* The state-wells file (offsets/prb.js) is not on the public page. It is read from the private copy once with "Load state wells file…"
  * and kept in this browser (IndexedDB), so the public page never serves it. */
-const idb = (mode, fn) => new Promise((res, rej) => { const q = indexedDB.open('wellplanner', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onerror = () => rej(q.error); q.onsuccess = () => { const t = q.result.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }; });
-function useStoText(text) { STO.data = null; (0, eval)(text); if (!STO.data || !STO.data.wells) throw new Error('not a state wells file'); STO.state = 'ready'; STO.msg = ''; STO.key = ''; STO.rows.clear(); { const m = $('#stoFileMsg'); if (m) m.textContent = ''; } }
+/* one IndexedDB transaction on the 'kv' store: fn(store) returns a request; resolves with its result */
+const idb = (mode, fn) => new Promise((res, rej) => {
+  const q = indexedDB.open('wellplanner', 1);
+  q.onupgradeneeded = () => q.result.createObjectStore('kv');
+  q.onerror = () => rej(q.error);
+  q.onsuccess = () => {
+    const t = q.result.transaction('kv', mode), r = fn(t.objectStore('kv'));
+    t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error);
+  };
+});
+/* runs a state wells file (WPOFF({...}) script text, from the private folder or browser storage); WPOFF fills STO.data */
+function useStoText(text) {
+  STO.data = null; (0, eval)(text);
+  if (!STO.data || !STO.data.wells) throw new Error('not a state wells file');
+  STO.state = 'ready'; STO.msg = ''; STO.key = ''; STO.rows.clear();
+  { const m = $('#stoFileMsg'); if (m) m.textContent = ''; }
+}
 function loadStoData() {
   if (STO.data || STO.state === 'loading') return;
   STO.state = 'loading';

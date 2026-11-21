@@ -1,4 +1,5 @@
 'use strict';
+/* Owns: V3, draw3D. Uses: state, M, css (main); ERR, covOf, setupCanvas (uncertainty); ACT (charts). File map and load order: CLAUDE.md "Architecture". */
 /* 3D view (split from index.html; loaded in order, shares globals) */
 /* ---- 3D ---- */
 const V3 = { yaw: -35 * D2R, pitch: 28 * D2R, zoom: 1, drag: null, pan: { cv3d: [0, 0], cvAp3d: [0, 0] }, panMode: false };   // pan: screen-pixel offset per canvas; panMode makes a plain drag pan (touch, no Shift)
