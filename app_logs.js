@@ -300,13 +300,14 @@ function renderActual() {
     (a.trueNorth ? ` · azimuths converted from true north (${fmt(ACT.conv, 3)}° convergence)` : ' · azimuths taken as grid') +
     (last.md > planEnd.md + 1 ? ' · <b>the actual survey runs past the plan TD</b>' : '');
   $('#actMsg').dataset.keep = '';
-  const st = (k, v, u, cls, note) => `<div class="stat ${cls || ''}"><div class="k">${k}</div><div class="v"><span class="num">${v}</span>${u ? ` <small>${u}</small>` : ''}</div>${note ? `<div class="n" title="${note}">${note}</div>` : ''}</div>`;
+  const st = (k, v, u, cls, note, mark) => `<div class="stat ${cls || ''}"${mark ? ` data-mark="${mark}" title="Hover to point it out on the plan view and 3D"` : ''}><div class="k">${k}</div><div class="v"><span class="num">${v}</span>${u ? ` <small>${u}</small>` : ''}</div>${note ? `<div class="n" title="${note}">${note}</div>` : ''}</div>`;
   $('#actStats').innerHTML =
     st('Last actual MD / TVD', `${fmt(last.md, 0)} / ${fmt(last.tvd, 0)}`, 'ft') +
     st('Δ to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
     st('Right / high of plan', `${fmt(ld.right, 1)} / ${fmt(ld.high, 1)}`, 'ft', '', 'left and low are negative') +
     st('Largest distance', fmt(mx.dist, 1), 'ft', '', `at MD ${fmt(mx.md, 0)}`) +
-    st('Max DLS, actual', fmt(dl.dls, 2), '°/100 ft', dl.dls > state.maxDls + 1e-6 ? 'bad' : '', `at MD ${fmt(dl.md, 0)} · alarm ${fmt(state.maxDls, 1)}`);
+    st('Max DLS, actual', fmt(dl.dls, 2), '°/100 ft', dl.dls > state.maxDls + 1e-6 ? 'bad' : '', `at MD ${fmt(dl.md, 0)} · alarm ${fmt(state.maxDls, 1)}`, 'maxdls');
+  ACT.marks = { maxdls: { md: dl.md, label: `Max DLS ${fmt(dl.dls, 2)}°/100 ft · MD ${fmt(dl.md, 0)}` } };
   const pj = aheadOf(); let ah = '';
   if (pj) {
     const e = pj.proj.rows[pj.proj.rows.length - 1], rj = pj.rej, fm = (v, d) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v), d);

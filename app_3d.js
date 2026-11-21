@@ -47,6 +47,7 @@ function draw3D(id = 'cv3d') {
     const A = [ACT.hov.a.x, ACT.hov.a.y, ACT.hov.a.z], Pp = [ACT.hov.p.x, ACT.hov.p.y, ACT.hov.p.z];
     seg(Pp, A, ink, 1.2, [3, 2]); [[Pp, acc], [A, css('--blue')]].forEach(([q, col]) => { const B = P(q); g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(B[0], B[1], 6, 0, 7); g.fill(); g.stroke(); });
   }
+  if (AP && ACT.mark) { const B = P([ACT.mark.a.x, ACT.mark.a.y, ACT.mark.a.z]); drawPointer(g, B[0], B[1], ACT.mark.label, css('--warn'), w, h); }   // hovered KPI box
   // survey error ellipses: cross-section of the position uncertainty perpendicular to the hole, every 1,000 ft, 2.79 sigma
   if (ERR.ell && !AP) {
     const ring = (rows, cov, col, lw) => {

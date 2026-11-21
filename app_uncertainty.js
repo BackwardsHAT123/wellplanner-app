@@ -627,6 +627,7 @@ function draw2D(key) {
       const A = ACT.hov.a, Pp = ACT.hov.p; g.strokeStyle = css('--ink'); g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(X(Pp.x), Y(Pp.y)); g.lineTo(X(A.x), Y(A.y)); g.stroke(); g.setLineDash([]);
       [[Pp, css('--accent')], [A, css('--blue')]].forEach(([q, col]) => { g.fillStyle = col; g.strokeStyle = css('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(X(q.x), Y(q.y), 6, 0, 7); g.fill(); g.stroke(); });
     }
+    if (ACT.mark) drawPointer(g, X(ACT.mark.a.x), Y(ACT.mark.a.y), ACT.mark.label, css('--warn'), w, h);   // hovered KPI box
   }
   // targets
   const diamond = (q, label) => {

@@ -201,6 +201,8 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #kpis .stat .v{font-size:15px;line-height:1.3;white-space:nowrap}
 #kpis .stat .v small{font-size:13px}
 #kpis .stat .n{width:0;min-width:100%}   /* the note line never widens the box */
+#kpis .stat.bad{background:color-mix(in srgb,var(--warn) 14%,var(--panel));border-color:var(--warn)}   /* over its limit */
+#kpis .stat[data-mark]{cursor:help}          /* hovering points the value out on the plots */
 /* Plan vs actual: drilled numbers on the first row, projected ones on the second; each row's boxes share its width equally.
  * A value may wrap at its spaces (before the unit, around " / "); numbers have no spaces so they never break. */
 #kpis .kpiset[data-mods="actual"]{flex-direction:column;flex-wrap:nowrap;gap:6px}
@@ -847,17 +849,17 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=1882706ae8"></script>
+<script src="core.js?v=1efea9c9dd"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=1882706ae8"></script>
-<script src="app_uncertainty.js?v=1882706ae8"></script>
-<script src="app_3d.js?v=1882706ae8"></script>
-<script src="app_charts.js?v=1882706ae8"></script>
-<script src="app_logs.js?v=1882706ae8"></script>
-<script src="app_wall.js?v=1882706ae8"></script>
-<script src="app_versions.js?v=1882706ae8"></script>
-<script src="app_td.js?v=1882706ae8"></script>
-<script src="app_project.js?v=1882706ae8"></script>
-<script src="app_layout.js?v=1882706ae8"></script>
+<script src="app_main.js?v=1efea9c9dd"></script>
+<script src="app_uncertainty.js?v=1efea9c9dd"></script>
+<script src="app_3d.js?v=1efea9c9dd"></script>
+<script src="app_charts.js?v=1efea9c9dd"></script>
+<script src="app_logs.js?v=1efea9c9dd"></script>
+<script src="app_wall.js?v=1efea9c9dd"></script>
+<script src="app_versions.js?v=1efea9c9dd"></script>
+<script src="app_td.js?v=1efea9c9dd"></script>
+<script src="app_project.js?v=1efea9c9dd"></script>
+<script src="app_layout.js?v=1efea9c9dd"></script>
 </body>
 </html>

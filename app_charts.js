@@ -146,8 +146,35 @@ function apLegend(g, x, y) {
   g.strokeStyle = css('--blue'); g.beginPath(); g.moveTo(x + 70, y); g.lineTo(x + 90, y); g.stroke();
   g.fillStyle = css('--ink'); g.fillText(state.actual && state.actual.kind === 'plan' ? 'Other plan' : 'Actual', x + 96, y + 4); g.restore();
 }
+/* Arrow pointing at (x, y) on a plot with a label at its tail, used when a KPI box is hovered (ACT.mark).
+ * The tail sits toward the middle of the plot and above the point (below it near the top edge); the label stays inside. */
+function drawPointer(g, x, y, label, col, w, h) {
+  g.save();
+  g.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
+  const tw = g.measureText(label).width, sx = x < w / 2 ? 1 : -1, sy = y > 90 ? -1 : 1;
+  const tx = x + sx * 70, ty = y + sy * 56, ang = Math.atan2(y - ty, x - tx), r = 9;
+  const hx = x - Math.cos(ang) * r, hy = y - Math.sin(ang) * r;          // arrow tip stops at the ring round the point
+  g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, 7, 0, 7); g.stroke();
+  g.beginPath(); g.moveTo(tx, ty); g.lineTo(hx, hy); g.stroke();
+  g.beginPath(); g.moveTo(hx, hy);
+  g.lineTo(hx - Math.cos(ang - 0.45) * 11, hy - Math.sin(ang - 0.45) * 11); g.lineTo(hx - Math.cos(ang + 0.45) * 11, hy - Math.sin(ang + 0.45) * 11); g.closePath(); g.fill();
+  const bx = Math.min(Math.max(sx > 0 ? tx - 4 : tx - tw - 8, 4), w - tw - 12), by = Math.min(Math.max(sy < 0 ? ty - 22 : ty, 4), h - 24);
+  g.fillStyle = css('--panel'); g.globalAlpha = 0.92; g.fillRect(bx, by, tw + 12, 20); g.globalAlpha = 1;
+  g.strokeStyle = col; g.lineWidth = 1; g.strokeRect(bx + .5, by + .5, tw + 11, 19);
+  g.fillStyle = col; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(label, bx + 6, by + 10.5);
+  g.restore();
+}
+/* Hovering a KPI box with data-mark (e.g. Max DLS on Plan vs actual) points that station out on the plan view and 3D. */
+function setActMark(key) {
+  const m = key && ACT.marks && ACT.marks[key], q = m && ACT.rows && ACT.rows.find(r => r.md === m.md);
+  ACT.mark = q ? { label: m.label, a: { x: q.easting - state.surface.e, y: q.northing - state.surface.n, z: -(q.tvdss + state.kb) } } : null;
+  draw2D('apPlan'); draw3D('cvAp3d');
+}
+$('#kpis').addEventListener('mouseover', e => { const b = e.target.closest('.stat[data-mark]'); if (b && (!ACT.mark || ACT.markKey !== b.dataset.mark)) { ACT.markKey = b.dataset.mark; setActMark(b.dataset.mark); } });
+$('#kpis').addEventListener('mouseout', e => { const b = e.target.closest('.stat[data-mark]'); if (b && !b.contains(e.relatedTarget)) { ACT.markKey = null; setActMark(null); } });
 function computeActual() {
-  ACT.rows = ACT.dev = null; ACT.tieHow = ''; ACT.conv = 0;
+  ACT.rows = ACT.dev = null; ACT.tieHow = ''; ACT.conv = 0; ACT.mark = null; ACT.marks = null;
   const a = state.actual; if (!a || !a.rows || a.rows.length < 2 || !M.survey) return;
   if (a.trueNorth && isLL()) { const ll = WP.toLatLon(state.surface.n, state.surface.e, state.crs); ACT.conv = WP.convergence(ll.lat, ll.lon, state.crs); }
   const st = a.rows.map(r => ({ md: r.md, inc: r.inc, azi: WP.norm360(r.azi - ACT.conv) })), first = st[0].md, mode = a.tie || 'auto';
