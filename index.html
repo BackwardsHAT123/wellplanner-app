@@ -99,6 +99,7 @@ body.panehelp #bPaneHelp{color:var(--accent);border-color:var(--accent)}
 #warnList{position:absolute;right:0;top:calc(100% + 6px);width:min(640px,80vw);max-height:60vh;overflow:auto;z-index:40;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px}
 #warnList ul{margin:0;padding-left:18px}#warnList li{margin:4px 0}
 .empty{color:var(--muted);padding:30px 10px;text-align:center}
+.pagehelp{font-size:14px;margin-bottom:8px;border-left:3px solid var(--accent)}.pagehelp h3{margin:0 0 4px}.pagehelp ul{margin:0 0 4px;padding-left:18px}.pagehelp li{margin:3px 0}.pagehelp .mut{font-size:13px}
 /* module tabs stay on one line (scroll sideways when a panel makes the page narrow) */
 .stickytop .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.stickytop .tabs::-webkit-scrollbar{display:none}
 .stickytop .tab{flex:0 0 auto;padding:1.7px 13px}
@@ -351,6 +352,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-well" data-pw="360" hidden>
   <div class="phead"><h2>Well</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well">✕</button></div>
   <div class="pbody">
+    <div class="card hint help" style="margin-top:0">Name and API number of the well, the coordinate system all coordinates are in, and the surface location: pick a pad slot, or choose a custom location and type X / Y or latitude / longitude. KB elevation = ground elevation + KB above ground; every TVD is measured from KB. Leave VS azimuth blank to use the plan’s own direction (the azimuth of the lateral plane, or surface to target 1).</div>
   <div class="card">
     <h3>Well</h3>
     <div class="g2">
@@ -378,6 +380,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-versions" data-pw="360" hidden>
   <div class="phead"><h2>Plan versions</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Plan versions">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Plan versions">✕</button></div>
   <div class="pbody">
+    <div class="card hint help" style="margin-top:0">A well can hold several alternative plans (targets and path design) so you can move targets and compare before choosing one. New version copies the current plan and switches to it; the original stays as it was. Surface location, slot, logs, tops and the actual survey belong to the well, not to a version. ☆ Select marks the version chosen to drill, and Show other versions draws the others as dashed lines on the plots (they are not included in clearance checks).</div>
   <div class="card" id="verBox">
     <h3>Plan version</h3>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
@@ -617,6 +620,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-logs" data-pw="560" hidden>
   <div class="phead"><h2>Well logs</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well logs">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well logs">✕</button></div>
   <div class="pbody">
+    <div class="card hint help" style="margin-top:0">Import LAS files; each curve can go in one of six tracks or be hidden. Scale sets the axis range, direction, log scale and colour; Fill colours the area under the curve by value. Logs belong to the well, are saved with it, and are not covered by Undo.</div>
     <div class="card" id="logCard">
       <h3 id="logHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="logArrow" style="display:inline-block;width:10px">▾</span>Well logs <span class="grow"></span><span id="logCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
       <div id="logBody" style="margin-top:8px">
@@ -696,6 +700,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-hole" data-pw="440" hidden>
   <div class="phead"><h2>Hole, mud and operating values</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Hole, mud and operating values">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Hole, mud and operating values">✕</button></div>
   <div class="pbody">
+    <div class="card hint help" style="margin-top:0">Path picks the planned survey or the actual survey (the rest from the plan). The casing shoe (blank = the Landing point) splits cased-hole and open-hole friction. Open hole sensitivity adds dashed lines for other friction factors. Weight and torque on bit are used for drilling and sliding; the tensile and torque limits are drawn on the charts. Tortuosity adds a sine wave to the planned path, which is otherwise too smooth and under-predicts torque and drag.</div>
     <div class="card" id="tdhCard">
       <h3 id="tdhHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdhArrow" style="display:inline-block;width:10px">▾</span>Hole, mud and operating values</h3>
       <div id="tdhBody" style="margin-top:8px">
@@ -749,6 +754,7 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane on" id="pane-plots">
+    <div class="card help pagehelp"><h3>About the Plots page</h3><ul><li><b>KPI row</b>: total MD, TVD at TD, vertical hole to the kickoff, maximum inclination and DLS, vertical section at TD, tangent inclination, lateral length and the worst target miss. A red value breaks a limit you set (for example the DLS alarm in Design).</li><li><b>Plan view</b>: north up, in feet from the surface location. Drag to pan, scroll to zoom, double-click to reset. Other wells (pad, reference, state and outside offsets) are drawn in their colours; the Well names switch labels them. With sections turned on (Sections and state wells) the PLSS section lines and the setback (dashed) are drawn too.</li><li><b>Section view</b>: TVD against vertical section along the VS azimuth shown in the title (set it in Well, or leave it blank for automatic). Formation tops are drawn as lines with their dip.</li><li><b>3D</b>: drag to rotate, Shift-drag or right-drag to pan, scroll to zoom at the pointer, double-click to reset.</li><li><b>Inclination &amp; DLS vs MD</b>: inclination on the left axis, dogleg severity on the right, with the DLS alarm as a dashed line.</li><li><b>Notes</b> under the plots explain anything unusual about the path (turns between targets, landing curve turning, pad wells fanning out). <b>Alerts</b> (clearance, DLS) are behind the chip at the right end of the tab row.</li><li>Every chart has an enlarge button at the right of its title; its X or Esc puts it back.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="plots">
       <div class="plot"><h4>Plan view <span title="North up · drag to pan · wheel to zoom · double-click to reset">N up · drag · wheel · double-click</span><span class="grow"></span><label class="chk" style="display:flex;margin:0;gap:8px;flex-direction:row;align-items:center;flex:0 0 auto" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
@@ -763,6 +769,7 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane" id="pane-survey">
+    <div class="card help pagehelp"><h3>About the Survey page</h3><ul><li>The planned survey, computed by minimum curvature from the plan sections at 10 ft steps.</li><li><b>Rows</b> picks how often a row is listed. Section ends and TD are always listed (bold), and DLS above the alarm is red.</li><li><b>Export survey</b> in the title bar saves the rows listed here as a CSV file. TVDSS uses the KB elevation from the Well panel.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="toolbar">
       <label>Rows
         <select id="repInt">
@@ -779,12 +786,14 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane" id="pane-sections">
+    <div class="card help pagehelp"><h3>About the Sections page</h3><ul><li>The holds and curves that make up the plan, with the MD, inclination, azimuth and position at the end of each.</li><li>In target-driven mode these are solved from your targets and the Design settings. <b>Edit as manual sections</b> copies them so you can edit each hold length and each curve’s DLS and end inclination / azimuth directly; <b>Back to target-driven</b> returns to solving from the targets.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="toolbar" id="secBar"></div>
     <div class="tblwrap" style="max-height:none"><table class="sectbl" id="secTbl"></table></div>
     <div class="hint help">Target-driven mode solves these sections from your targets. Switch to manual to edit holds and curves directly (like building a plan by section in COMPASS); the curve “target inc/azi” is where the section ends, built at the DLS you enter.</div>
   </div>
 
   <div class="pane" id="pane-actual">
+    <div class="card help pagehelp"><h3>About the Plan vs actual page</h3><ul><li><b>First KPI row</b>: the drilled survey: last station MD / TVD, distance to the plan there, how far right and high of the plan it is (left and low are negative), and the largest distance so far.</li><li><b>Second KPI row</b>: the projection ahead of the last station at its build and turn rates (length set under Projection to the bit in the Actual survey panel): projected inclination / azimuth, distance to plan, and the DLS and toolface needed to rejoin the plan and the heading you would arrive with.</li><li><b>Plan view</b> and <b>3D</b>: the plan and the actual path together. <b>Actual minus plan</b>: distance, right / left and high / low against actual MD. The table lists every station.</li><li>Import, paste or add stations in the <b>Actual survey</b> panel on the left.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="empty" id="actEmpty">No survey to compare yet. Open <b>Actual survey</b> in the left menu to import, paste or add stations.</div>
     <div id="actBody">
       <div class="plots">
@@ -798,17 +807,20 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane" id="pane-geo">
+    <div class="card help pagehelp"><h3>About the Geosteering page</h3><ul><li><b>Well logs</b>: the curves from your LAS files against MD, one track per group. Hover to mark the same MD on the TVD chart and on the Plan vs actual views. The Tops switch draws the formation tops; Zoom picks an MD range by clicking its start and end.</li><li><b>TVD vs MD</b>: the actual survey (and its projection) and the plan against the same MD axis as the logs, with the formation tops. Pick a <b>Target zone</b> to see the share of the drilled lateral inside it, above and below.</li><li>Import LAS files and choose tracks, scales and fills in the <b>Well logs</b> panel on the left.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="empty" id="geoEmpty" hidden>No logs or survey to show yet. Open <b>Well logs</b> in the left menu to import a LAS file.</div>
     <div class="plot" id="logPlot" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><span class="zwrap" style="position:relative;display:inline-block;overflow:visible"><button class="small" id="bLogZoom" title="Zoom the log tracks: the entire lateral, or an interval you pick with two clicks">Zoom ▾</button><div id="logZoomMenu" hidden style="position:absolute;right:0;top:100%;margin-top:4px;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-sm);padding:4px;display:flex;flex-direction:column;gap:2px;min-width:170px"><button class="small ghost" data-zm="lat" style="text-align:left" title="From 400 ft above the Landing point (or the first target) to the last measured depth">Entire lateral</button><button class="small ghost" data-zm="int" style="text-align:left" title="Click a start point, then an end point, on any log track">Interval</button></div></span><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
     <div class="plot" id="geoTvd" hidden><h4 style="flex-wrap:wrap;align-items:center">TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span><span class="grow"></span><span id="geoZoneStat" style="font-weight:400;min-width:0"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center;flex:0 0 auto">Target zone <select id="geoZone" style="width:auto;max-width:200px;padding:1px 6px;font-size:14px"></select></label></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">
+    <div class="card help pagehelp"><h3>About the Wall plot page</h3><ul><li>A Letter landscape wall plot of this well: plan view with section lines and setbacks, section view with tops, the well header, formation tops, targets and the plan sections.</li><li>Set the plan name, footage call, scales and options, print it or download an SVG in the <b>Wall plot</b> panel. The <b>Drill plan</b> panel makes the portrait survey report PDF; <b>Preview pages</b> below shows its pages.</li><li>In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div id="wallPrev"></div>
       <details id="dpDet" style="margin-top:10px"><summary>Preview pages</summary><div id="drillPrev" style="display:flex;flex-wrap:wrap;margin-top:8px"></div></details>
   </div>
 
   <div class="pane" id="pane-offsets">
+    <div class="card help pagehelp"><h3>About the Offsets &amp; clearance page</h3><ul><li><b>KPI row</b>: how many wells are checked, the closest approach and the lowest separation factor (with the well and MD), how many wells are in alert, and the limits in use.</li><li><b>Chart</b>: center-to-center distance from this plan to each other well, against plan MD.</li><li><b>Table</b>: the closest approach at any depth and below the kickoff, the lowest separation factor and where it occurs, and a status. Pad and reference wells only count below the shallower kickoff, and while they are still fanning out from the pad they only alert if they close in from their surface spacing (set in Clearance).</li><li>When an actual survey is loaded, a second table checks the drilled path, and its projection to the bit, against the same wells.</li><li><b>Offset wells</b> (left) adds reference wells from other saved plans, outside offsets and state records; <b>Clearance</b> sets the alert distance, the survey tool and separation-factor limit, and the error ellipses. The separation factor is a simplified screening model, not an ISCWSA calculation.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div class="plot" style="margin-bottom:5px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>
     <div class="tblwrap" style="max-height:none"><table id="sepTbl"></table></div>
     <div id="actSepBox" hidden>
@@ -817,6 +829,7 @@ td.bad{color:var(--warn);font-weight:700}
     </div>
   </div>
   <div class="pane" id="pane-td">
+    <div class="card help pagehelp"><h3>About the Torque &amp; drag page</h3><ul><li><b>KPI row</b>: hookloads and torques with the bit at TD, the overpull margin to the tensile limit, and the most weight you can slide with. Red means a limit is broken or the string locks up.</li><li>The red box lists what would go wrong (lock-up, sliding weight, buckling); the box under it lists the assumptions (casing shoe, buoyancy, tortuosity).</li><li><b>Hookload</b> and <b>Surface torque vs bit depth</b>: what you would see at surface as the bit goes down, for each operation. Solid lines use the open-hole friction set in Hole, mud and operating values; dashed lines use the sensitivity values.</li><li><b>Axial force</b> and <b>Torque along the string</b>: with the bit at TD, from the bit (bottom) to surface (top). Compression is left of zero; the dashed lines are the sinusoidal and helical buckling limits.</li><li>Hover any chart to read the values at that MD. With several plan versions, a table compares them; the table at the bottom lists every 500 ft and exports to CSV.</li><li>The string is set in <b>Drill string</b> and the hole, mud and friction in <b>Hole, mud and operating values</b> on the left.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div id="tdMsg"></div>
     <div class="plots">
       <div class="plot"><h4>Hookload vs bit depth <span id="tdHookSub">klbf</span></h4><canvas id="cvTdHook" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdHookRd"></div></div>
@@ -834,17 +847,17 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=e1781a5393"></script>
+<script src="core.js?v=580f7db8ac"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=e1781a5393"></script>
-<script src="app_uncertainty.js?v=e1781a5393"></script>
-<script src="app_3d.js?v=e1781a5393"></script>
-<script src="app_charts.js?v=e1781a5393"></script>
-<script src="app_logs.js?v=e1781a5393"></script>
-<script src="app_wall.js?v=e1781a5393"></script>
-<script src="app_versions.js?v=e1781a5393"></script>
-<script src="app_td.js?v=e1781a5393"></script>
-<script src="app_project.js?v=e1781a5393"></script>
-<script src="app_layout.js?v=e1781a5393"></script>
+<script src="app_main.js?v=580f7db8ac"></script>
+<script src="app_uncertainty.js?v=580f7db8ac"></script>
+<script src="app_3d.js?v=580f7db8ac"></script>
+<script src="app_charts.js?v=580f7db8ac"></script>
+<script src="app_logs.js?v=580f7db8ac"></script>
+<script src="app_wall.js?v=580f7db8ac"></script>
+<script src="app_versions.js?v=580f7db8ac"></script>
+<script src="app_td.js?v=580f7db8ac"></script>
+<script src="app_project.js?v=580f7db8ac"></script>
+<script src="app_layout.js?v=580f7db8ac"></script>
 </body>
 </html>

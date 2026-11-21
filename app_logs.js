@@ -177,7 +177,8 @@ function layoutGeo(hasLogs, hasTvd) {
   const avail = Math.max(420, main.clientHeight - top - 24);       // main keeps 40px of padding at the bottom, less the pane's -20px margin, less a little slack
   pane.style.height = avail + 'px';
   const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); $('#geoEmpty').hidden = n > 0; if (!n) return;
-  const sec = Math.max(150, (avail - 5 * n) / n), inner = sec - 40;      // the log controls are in the Well logs panel, not the pane    // 40px for each section's title and padding
+  const hb = pane.querySelector('.pagehelp'), helpH = hb && hb.offsetParent ? hb.getBoundingClientRect().height + 8 : 0;   // page notes shown by ?
+  const sec = Math.max(150, (avail - helpH - 5 * n) / n), inner = sec - 40;      // the log controls are in the Well logs panel, not the pane    // 40px for each section's title and padding
   GEO.logH = inner; GEO.tvdH = inner;
   // an enlarged log or TVD chart (app_layout.js) takes the height of its box instead
   const mx = typeof PMAX !== 'undefined' && PMAX.el;          // PMAX loads after this file

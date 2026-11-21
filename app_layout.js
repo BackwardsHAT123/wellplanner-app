@@ -108,6 +108,7 @@ $('#bPaneHelp').onclick = () => {
   const on = document.body.classList.toggle('panehelp');
   $('#bPaneHelp').setAttribute('aria-pressed', on ? 'true' : 'false');
   try { localStorage.setItem('wellplanner.paneHelp', on ? '1' : ''); } catch (e) {}
+  later(drawAll);                                     // pages that size charts to the window (Geosteering) make room for the notes
 };
 
 /* alerts chip: showBanner() fills it; click opens the list */
