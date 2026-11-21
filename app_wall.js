@@ -4,7 +4,7 @@
 /* ================= wall plot ================= */
 /* A one-page landscape Letter plot like a standard wall plot: header, formation tops, design targets, section details,
  * plan view and a close-up section view. Built as SVG in points (1/72 in) so printing to PDF stays vector. */
-const WALL = { on: false };
+const WALL = { on: false, edit: false, view: 'wall' };   // edit: layout editing in the preview; view: 'wall' or 'pages' (drill plan pages)
 const ZONE_NAME = { 'WY-E': 'Wyoming Eastern Zone', 'WY-EC': 'Wyoming East Central Zone', 'WY-WC': 'Wyoming West Central Zone', 'WY-W': 'Wyoming Western Zone' };
 let wallLogo = window.WALL_LOGO || null;
 try { const t = JSON.parse(localStorage.getItem('wellplanner.wallLogo') || 'null'); if (t && t.src) wallLogo = t; } catch (e) {}
@@ -33,29 +33,33 @@ function wallSvg() {
   const T = (x, y, str, sz, a = {}) => { o += `<text x="${r2(x)}" y="${r2(y)}" font-size="${sz}"${a.anchor ? ` text-anchor="${a.anchor}"` : ''}${a.bold ? ' font-weight="bold"' : ''}${a.fill ? ` fill="${a.fill}"` : ''}${a.rot ? ` transform="rotate(${a.rot} ${r2(x)} ${r2(y)})"` : ''}>${esc2(str)}</text>`; };
   const L = (x1, y1, x2, y2, col = '#000', wd = .6, dash) => { o += `<line x1="${r2(x1)}" y1="${r2(y1)}" x2="${r2(x2)}" y2="${r2(y2)}" stroke="${col}" stroke-width="${wd}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; };
   const PL = (pts, col, wd, dash, close) => { o += `<${close ? 'polygon' : 'polyline'} points="${pts.map(p => r2(p[0]) + ',' + r2(p[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${wd}" stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; };
+  /* Each block is a <g data-blk> group, shifted by its saved offset (state.wall.layout) and hidden if switched off
+   * (state.wall.hide). Edit layout mode in the preview drags these groups; print and the SVG download use the same groups. */
+  const lay = w.layout || {}, hid = w.hide || {};
+  const blk = key => { const d = lay[key] || {}; return `<g data-blk="${key}"${d.x || d.y ? ` transform="translate(${r2(d.x || 0)} ${r2(d.y || 0)})"` : ''}${hid[key] ? ' display="none"' : ''}>`; };
 
   /* ---- logo ---- */
-  if (wallLogo) { const lw = 150, lh = lw * wallLogo.h / wallLogo.w; o += `<image href="${wallLogo.src}" x="14" y="10" width="${lw}" height="${r2(lh)}"/>`; }
+  o += blk('logo'); if (wallLogo) { const lw = 150, lh = lw * wallLogo.h / wallLogo.w; o += `<image href="${wallLogo.src}" x="14" y="10" width="${lw}" height="${r2(lh)}"/>`; } o += '</g>';
 
   /* ---- formation tops (left) ---- */
   const tops = WP.formationMds(WP.resolveTops(s.tops), sv, surf).filter(t => t.md !== null);
-  let yL = 152; T(88, yL, 'FORMATION TOP DETAILS', 8.3, { anchor: 'middle' }); yL += 19;
+  o += blk('tops'); let yL = 152; T(88, yL, 'FORMATION TOP DETAILS', 8.3, { anchor: 'middle' }); yL += 19;
   T(49, yL, 'TVDPath', 8.3, { anchor: 'end' }); T(86, yL, 'MDPath', 8.3, { anchor: 'end' }); T(138, yL, 'Formation', 8.3, { anchor: 'middle' }); yL += 9;
-  tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(138, yL, t.name, 8.3, { anchor: 'middle' }); yL += 9.2; });
+  tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(138, yL, t.name, 8.3, { anchor: 'middle' }); yL += 9.2; }); o += '</g>';
 
   /* ---- header block ---- */
   const cx = 335;
-  T(cx, 22, s.name, 10.2, { anchor: 'middle', bold: true });
+  o += blk('header'); T(cx, 22, s.name, 10.2, { anchor: 'middle', bold: true });
   const foot = wallFootage(); if (foot) T(cx, 34, foot, 9.8, { anchor: 'middle' });
   if (ll) { T(cx, 55, 'North American Datum 1983', 9.8, { anchor: 'middle' }); T(cx, 66, 'US State Plane 1983', 9.8, { anchor: 'middle' }); T(cx, 77, ZONE_NAME[s.crs] || WP.CRS[s.crs].name, 9.8, { anchor: 'middle' }); }
   else T(cx, 62, 'Local grid coordinates', 9.8, { anchor: 'middle' });
   T(cx - 46, 99, 'GL: ' + (+s.gl).toFixed(1), 9.8, { anchor: 'end' }); T(cx - 32, 99, `WELL @ ${(+s.kb).toFixed(1)}usft (Original Well Elev)`, 9.8);
   if (ll) { T(cx - 46, 110, 'Latitude ' + ll.lat.toFixed(6), 9.8, { anchor: 'end' }); T(cx + 9, 110, 'Longitude ' + ll.lon.toFixed(6), 9.8); }
-  T(cx - 46, 121, 'Easting ' + surf.e.toFixed(2), 9.8, { anchor: 'end' }); T(cx + 9, 121, 'Northing ' + surf.n.toFixed(2), 9.8);
+  T(cx - 46, 121, 'Easting ' + surf.e.toFixed(2), 9.8, { anchor: 'end' }); T(cx + 9, 121, 'Northing ' + surf.n.toFixed(2), 9.8); o += '</g>';
 
   /* ---- design targets ---- */
   const tg = usedTargets(), id = wallShortId(s.name), tname = t => w.wellId && id ? `${t.name} - ${id}` : t.name;
-  let yC = 140; T(cx, yC, 'DESIGN TARGET DETAILS', 6.8, { anchor: 'middle' }); yC += 8; T(cx - 6, yC, 'Plan: ' + (w.plan || ''), 6.8, { anchor: 'start' }); yC += 15;
+  o += blk('targets'); let yC = 140; T(cx, yC, 'DESIGN TARGET DETAILS', 6.8, { anchor: 'middle' }); yC += 8; T(cx - 6, yC, 'Plan: ' + (w.plan || ''), 6.8, { anchor: 'start' }); yC += 15;
   const col = { name: 215, tvd: 273, ns: 305, ew: 335, n: 405, e: 450 };
   T(col.name, yC, 'Name', 6.8, { anchor: 'middle' }); T(col.tvd, yC, 'TVD', 6.8, { anchor: 'middle' }); T(col.ns, yC, '+N/-S', 6.8, { anchor: 'middle' }); T(col.ew, yC, '+E/-W', 6.8, { anchor: 'middle' });
   T(col.n, yC, 'Northing', 6.8, { anchor: 'middle' }); T(col.e, yC, 'Easting', 6.8, { anchor: 'middle' }); yC += 8;
@@ -66,6 +70,7 @@ function wallSvg() {
     T(253, yC, ms ? (ms.d < 0.5 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`) : '', 6.8); yC += 7.5;
   });
 
+  o += '</g>';
   /* ---- section details ---- */
   const rows = WP.wallSectionRows(M.sections, M.secEnds, sv[0]);
   const oMain = o, secTop = yC - 4; o = '';
@@ -88,7 +93,7 @@ function wallSvg() {
   const fit = Math.max((bx1 - bx0) / (pw / 72 * .86), (by1 - by0) / (ph / 72 * .86), 1);
   const ftIn = parseFloat(w.scale) > 0 ? parseFloat(w.scale) : wallNice(fit, scaleList), k = 72 / ftIn;     // points per ft
   const ccx = (bx0 + bx1) / 2, ccy = (by0 + by1) / 2, PXf = e => PX0 + pw / 2 + (e - ccx) * k, PYf = n => PY0 + ph / 2 - (n - ccy) * k;
-  o += `<defs><clipPath id="cpPlan"><rect x="${PX0}" y="${PY0}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  o += blk('plan'); o += `<defs><clipPath id="cpPlan"><rect x="${PX0}" y="${PY0}" width="${pw}" height="${ph}"/></clipPath></defs>`;
   o += `<rect x="${PX0}" y="${PY0}" width="${pw}" height="${ph}" fill="none" stroke="#000" stroke-width=".7"/>`;
   const major = ftIn / 2, minor = major / 5;
   const eLo = ccx - pw / 2 / k, eHi = ccx + pw / 2 / k, nLo = ccy - ph / 2 / k, nHi = ccy + ph / 2 / k;
@@ -115,6 +120,7 @@ function wallSvg() {
   });
   o += `</g>`;
 
+  o += '</g>';
   /* ---- section view (bottom) ---- */
   const X0 = 58, X1 = 770, Y0 = plotTop + 6, Y1 = 574, vsAzi = M.vsAzi;
   const tvds = tg.map(t => +t.tvd), maxT = Math.max(...tvds, sv[sv.length - 1].tvd);
@@ -126,7 +132,7 @@ function wallSvg() {
   const xStep = wallNice(vSpan0 / 15, [50, 100, 200, 250, 500, 600, 1000, 2000]);
   const xMin = Math.floor((vLo0 - vSpan0 * .04) / xStep) * xStep, xMax = Math.ceil((vHi0 + vSpan0 * .04) / xStep) * xStep;
   const SX = v => X0 + (v - xMin) / (xMax - xMin) * (X1 - X0), SY = d => Y0 + (d - yMin) / ySpan * (Y1 - Y0);
-  o += `<defs><clipPath id="cpSec"><rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}"/></clipPath></defs>`;
+  o += blk('section'); o += `<defs><clipPath id="cpSec"><rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}"/></clipPath></defs>`;
   for (let d = Math.ceil(yMin / yStep) * yStep; d <= yMax + 1e-6; d += yStep) { L(X0, SY(d), X1, SY(d), '#cfcfcf', .6); L(X0 - 7, SY(d), X0, SY(d), '#000', .8); T(X0 - 10, SY(d) + 2, String(Math.round(d)), 5.5, { anchor: 'end' }); }
   for (let d = Math.ceil(yMin / (yStep / 5)) * (yStep / 5); d <= yMax + 1e-6; d += yStep / 5) if (Math.abs(d / yStep - Math.round(d / yStep)) > 1e-6) L(X0 - 4, SY(d), X0, SY(d), '#000', .5);
   for (let v = xMin; v <= xMax + 1e-6; v += xStep) { L(SX(v), Y0, SX(v), Y1, '#cfcfcf', .6); T(SX(v), Y1 + 9, String(Math.round(v)), 5.5, { anchor: 'middle' }); }
@@ -143,7 +149,8 @@ function wallSvg() {
   o += `</g>`;
   let flip = -1;
   tops.forEach(t => { const lt = t.dip ? WP.topTvdAt(t.top, sv[0].northing, sv[0].easting, surf) : t.tvd; if (lt >= yMin && lt <= yMax) { const y = SY(lt); flip = -flip; L(X0, y, X0 + 14, y + flip * 9, '#000', .5, '3 2'); T(X0 + 16, y + flip * 9 + (flip < 0 ? -1 : 6), t.name, 5.5); } });
-  o += `<rect x="${secLeft}" y="${r2(secTop)}" width="${r2(secRight - secLeft)}" height="${r2(secBot - secTop)}" fill="#fff"/>` + secOut;
+  o += '</g>';
+  o += blk('secdet') + `<rect x="${secLeft}" y="${r2(secTop)}" width="${r2(secRight - secLeft)}" height="${r2(secBot - secTop)}" fill="#fff"/>` + secOut + '</g>';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" width="792" height="612" font-family="${F}" style="background:#fff">` + `<rect width="792" height="612" fill="#fff"/>` + o + `</svg>`;
 }
 /* ================= drill plan: Landmark-style "Standard Planning Report", portrait Letter pages as SVG ================= */
@@ -305,13 +312,15 @@ function drillPlanPages() {
   finish(); return pages;
 }
 function drillPreview() {
-  const det = $('#dpDet'); if (!det || !det.open || !paneOn('wall')) return;
+  if (WALL.view !== 'pages' || !paneOn('wall')) return;
   $('#drillPrev').innerHTML = M.survey ? drillPlanPages().map(p => p.replace('width="612" height="792"', 'style="width:100%;max-width:560px;height:auto;border:1px solid var(--line);margin:0 6px 10px 0;background:#fff"')).join('') : '';
 }
 function drawWall() {
   if (!paneOn('wall')) return;
   const box = $('#wallPrev'); if (!M.survey) { box.innerHTML = '<div class="hint">The plan does not build right now.</div>'; return; }
+  if (WALL.view === 'pages') { drillPreview(); return; }
   box.innerHTML = wallSvg().replace('width="792" height="612"', 'style="width:100%;height:auto;border:1px solid var(--line)"');
+  if (WALL.edit) wallEditDecorate();
   const note = [];
   if (isLL() && !wallFootage()) note.push('No footage call yet: the section data is not loaded (turn on Show sections once in Sections and state wells on the Plots tab, or type the footage in the Wall plot panel).');
   $('#wallNote').textContent = note.join(' ');
@@ -332,7 +341,82 @@ const wallPrint = () => printPages([wallSvg().replace('width="792" height="612"'
 const drillPrint = () => printPages(drillPlanPages().map(p => p.replace('width="612" height="792"', 'width="8.5in" height="11in"')), '8.5in 11in');
 window.addEventListener('afterprint', () => { document.body.classList.remove('wallmode'); const st = $('#wallPageStyle'); if (st) st.remove(); $('#wallPrint').innerHTML = ''; });
 $('#bDrillPrint').onclick = () => { if (M.survey) drillPrint(); };
-$('#dpDet').addEventListener('toggle', drillPreview);
+
+/* ---- wall plot layout editing ----
+ * Edit layout outlines every block on the preview; drag one to move it. Offsets are in page points (1/72 in) and saved per well
+ * in state.wall.layout; switched-off blocks are in state.wall.hide. Both go through autosave, so Undo covers them. */
+const WALL_BLOCKS = [['header', 'Well header'], ['logo', 'Logo'], ['tops', 'Formation tops'], ['targets', 'Design targets'], ['secdet', 'Section details'], ['plan', 'Plan view'], ['section', 'Section view']];
+/* a block's box on the page: its children, with clipped map contents counted only as far as their clip rectangle */
+function wallBlockBox(g) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const add = b => { if (!b || !(b.width || b.height)) return; x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height); };
+  [...g.children].forEach(ch => {
+    if (ch.tagName === 'defs' || ch.classList.contains('wl-ol')) return;
+    const cp = ch.getAttribute('clip-path');
+    if (cp) { const r = g.ownerSVGElement.querySelector(cp.replace(/^url\((.*)\)$/, '$1') + ' rect'); add(r && r.getBBox()); return; }
+    try { add(ch.getBBox()); } catch (e) {}
+  });
+  return isFinite(x0) ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
+}
+function wallEditDecorate() {
+  const svg = $('#wallPrev svg'); if (!svg) return;
+  svg.classList.add('wl-editing');
+  const NS = 'http://www.w3.org/2000/svg', names = Object.fromEntries(WALL_BLOCKS);
+  svg.querySelectorAll('g[data-blk]').forEach(g => {
+    if (g.getAttribute('display') === 'none') return;
+    const b = wallBlockBox(g); if (!b) return;
+    const r = document.createElementNS(NS, 'rect'), t = document.createElementNS(NS, 'text');
+    r.setAttribute('class', 'wl-ol'); [['x', b.x - 3], ['y', b.y - 3], ['width', b.width + 6], ['height', b.height + 6]].forEach(([k, v]) => r.setAttribute(k, v.toFixed(1)));
+    t.setAttribute('class', 'wl-ol wl-name'); t.setAttribute('x', (b.x - 2).toFixed(1)); t.setAttribute('y', (b.y - 5).toFixed(1)); t.textContent = names[g.dataset.blk] || g.dataset.blk;
+    g.insertBefore(r, g.firstChild); g.appendChild(t);
+  });
+}
+function setWallEdit(on) {
+  WALL.edit = on;
+  $('#bWallEdit').classList.toggle('primary', on); $('#bWallEdit').textContent = on ? 'Done editing' : 'Edit layout';
+  $('#wallEditBar').hidden = !on;
+  if (on) $$('#wallShow [data-wb]').forEach(c => { c.checked = !(state.wall.hide || {})[c.dataset.wb]; });
+  drawWall();
+}
+$('#bWallEdit').onclick = () => setWallEdit(!WALL.edit);
+$('#bWallReset').onclick = () => { state.wall.layout = {}; state.wall.hide = {}; autosave(); setWallEdit(WALL.edit); };
+$('#wallShow').addEventListener('change', e => {
+  const c = e.target.closest('[data-wb]'); if (!c) return;
+  const h = Object.assign({}, state.wall.hide || {}); if (c.checked) delete h[c.dataset.wb]; else h[c.dataset.wb] = true;
+  state.wall.hide = h; autosave(); drawWall();
+});
+{ // drag a block while editing
+  let drag = null;
+  $('#wallPrev').addEventListener('pointerdown', e => {
+    if (!WALL.edit) return;
+    const g = e.target.closest('g[data-blk]'), svg = e.target.closest('svg'); if (!g || !svg) return;
+    const d = (state.wall.layout || {})[g.dataset.blk] || {};
+    drag = { g, key: g.dataset.blk, sx: e.clientX, sy: e.clientY, ox: d.x || 0, oy: d.y || 0, k: 792 / svg.getBoundingClientRect().width, x: d.x || 0, y: d.y || 0 };
+    svg.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  $('#wallPrev').addEventListener('pointermove', e => {
+    if (!drag) return;
+    drag.x = Math.round((drag.ox + (e.clientX - drag.sx) * drag.k) * 2) / 2; drag.y = Math.round((drag.oy + (e.clientY - drag.sy) * drag.k) * 2) / 2;
+    drag.g.setAttribute('transform', `translate(${drag.x} ${drag.y})`);
+  });
+  const end = () => {
+    if (!drag) return;
+    const moved = drag.x !== drag.ox || drag.y !== drag.oy, key = drag.key, x = drag.x, y = drag.y; drag = null;
+    if (!moved) return;
+    state.wall.layout = Object.assign({}, state.wall.layout || {}, { [key]: { x, y } }); autosave(); drawWall();
+  };
+  $('#wallPrev').addEventListener('pointerup', end); $('#wallPrev').addEventListener('pointercancel', end);
+}
+/* the Drill plan pages preview replaces the wall plot preview (rail icon at the bottom of the Wall plot tab) */
+function setWallView(v) {
+  WALL.view = v;
+  $('#wallView').hidden = v !== 'wall'; $('#drillPrevBox').hidden = v !== 'pages';
+  const b = $('#rail .railbtn[data-view="pages"]'); if (b) { b.classList.toggle('on', v === 'pages'); b.setAttribute('aria-pressed', v === 'pages' ? 'true' : 'false'); }
+  if (v === 'pages' && WALL.edit) setWallEdit(false);
+  drawWall();
+}
+$('#bPagesBack').onclick = () => setWallView('wall');
+$('#bPagesPrint').onclick = () => { if (M.survey) drillPrint(); };
 $('#bWallPrint').onclick = () => { if (M.survey) wallPrint(); };
 $('#bWallSvg').onclick = () => { if (M.survey) download(safeName() + (apiTag() ? '_' + apiTag() : '') + '_wall_plot.svg', '<?xml version="1.0" encoding="UTF-8"?>\n' + wallSvg().replace('width="792" height="612"', 'width="11in" height="8.5in"'), 'image/svg+xml'); };
 /* Logo popup: choose a file, go back to the default, or leave the logo off */

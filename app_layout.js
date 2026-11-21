@@ -35,6 +35,7 @@ function applyModule(tab) {
 
 $('#rail').addEventListener('click', e => {
   const b = e.target.closest('.railbtn'); if (!b) return;
+  if (b.dataset.view === 'pages') { setWallView(WALL.view === 'pages' ? 'wall' : 'pages'); return; }   // swaps the main view, no panel
   if (LAYOUT.panel === b.dataset.panel) closePanel(); else openPanel(b.dataset.panel);
 });
 $('#dock').addEventListener('click', e => {
