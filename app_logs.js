@@ -294,21 +294,21 @@ function renderActual() {
     (a.trueNorth ? ` · azimuths converted from true north (${fmt(ACT.conv, 3)}° convergence)` : ' · azimuths taken as grid') +
     (last.md > planEnd.md + 1 ? ' · <b>the actual survey runs past the plan TD</b>' : '');
   $('#actMsg').dataset.keep = '';
-  const st = (k, v, u, cls) => `<div class="stat ${cls || ''}"><div class="k">${k}</div><div class="v">${v}${u ? ` <small>${u}</small>` : ''}</div></div>`;
+  const st = (k, v, u, cls, note) => `<div class="stat ${cls || ''}"><div class="k">${k}</div><div class="v">${v}${u ? ` <small>${u}</small>` : ''}</div>${note ? `<div class="n" title="${note}">${note}</div>` : ''}</div>`;
   $('#actStats').innerHTML =
-    st('Last actual MD', fmt(last.md, 0), 'ft') + st('Last actual TVD', fmt(last.tvd, 0), 'ft') +
+    st('Last actual MD / TVD', `${fmt(last.md, 0)} / ${fmt(last.tvd, 0)}`, 'ft') +
     st('Δ to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
-    st('Right (+) / left (−)', fmt(ld.right, 1), 'ft') + st('High (+) / low (−)', fmt(ld.high, 1), 'ft') +
-    st('Largest distance', fmt(mx.dist, 1), `ft at MD ${fmt(mx.md, 0)}`);
+    st('Right / high of plan', `${fmt(ld.right, 1)} / ${fmt(ld.high, 1)}`, 'ft', '', 'left and low are negative') +
+    st('Largest distance', fmt(mx.dist, 1), 'ft', '', `at MD ${fmt(mx.md, 0)}`);
   const pj = aheadOf(); let ah = '';
   if (pj) {
     const e = pj.proj.rows[pj.proj.rows.length - 1], rj = pj.rej, fm = (v, d) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v), d);
     ah = st('Build / turn rate', `${fm(pj.proj.br, 2)} / ${fm(pj.proj.tr, 2)}`, '°/100 ft') +
-      st(`Projected at MD ${fmt(e.md, 0)}`, `${fmt(e.inc, 1)}° / ${fmt(e.azi, 1)}°`, `TVD ${fmt(e.tvd, 0)}`) +
+      st('Projected inc / azi', `${fmt(e.inc, 1)}° / ${fmt(e.azi, 1)}°`, '', '', `at MD ${fmt(e.md, 0)} · TVD ${fmt(e.tvd, 0)}`) +
       st('Projected Δ to plan', fmt(pj.dist, 1), 'ft', pj.dist > 50 ? 'bad' : '') +
-      (rj.error ? st('To rejoin plan', 'n/a', rj.error) :
-        st(`DLS to rejoin plan at MD ${fmt(pj.rejMd, 0)}`, fmt(rj.dls, 2), `°/100 ft · TF ${fm(rj.tf, 0)}° (high side) · ${fmt(rj.arc, 0)} ft`, rj.dls > 6 ? 'bad' : '') +
-        st('Arrives heading', `${fmt(rj.inc, 1)}° / ${fmt(rj.azi, 1)}°`, `plan ${fmt(rj.plan.inc, 1)}° / ${fmt(rj.plan.azi, 1)}°`));
+      (rj.error ? st('To rejoin plan', 'n/a', '', '', rj.error) :
+        st('DLS to rejoin plan', fmt(rj.dls, 2), '°/100 ft', rj.dls > 6 ? 'bad' : '', `TF ${fm(rj.tf, 0)}° high side · ${fmt(rj.arc, 0)} ft · at plan MD ${fmt(pj.rejMd, 0)}`) +
+        st('Arrives heading', `${fmt(rj.inc, 1)}° / ${fmt(rj.azi, 1)}°`, '', '', `plan ${fmt(rj.plan.inc, 1)}° / ${fmt(rj.plan.azi, 1)}°`));
   }
   $('#actAhead').innerHTML = ah;
   let h = '<thead><tr><th>MD (ft)</th><th>Inc (°)</th><th>Azi (°, grid)</th><th>TVD (ft)</th><th>VS (ft)</th><th>Distance to plan (ft)</th><th>Right + / left − (ft)</th><th>High + / low − (ft)</th><th>Plan MD at closest (ft)</th></tr></thead><tbody>';
