@@ -294,6 +294,7 @@ function renderActual() {
   if (!has) { $('#actMsg').textContent = `${a.rows.length} station${a.rows.length === 1 ? '' : 's'} so far. Add at least two to draw the actual path.`; return; }
   const r = ACT.rows, last = r[r.length - 1], dv = ACT.dev, ld = dv[dv.length - 1];
   let mx = dv[0]; dv.forEach(d => { if (d.dist > mx.dist) mx = d; });
+  let dl = r[0]; r.forEach(q => { if (q.dls > dl.dls) dl = q; });       // largest dogleg between survey stations
   const planEnd = M.survey[M.survey.length - 1];
   $('#actMsg').innerHTML = `${esc(a.src || 'Pasted survey')} · ${r.length} stations, MD ${fmt(r[0].md, 0)} to ${fmt(last.md, 0)} · ${ACT.tieHow}` +
     (a.trueNorth ? ` · azimuths converted from true north (${fmt(ACT.conv, 3)}° convergence)` : ' · azimuths taken as grid') +
@@ -304,7 +305,8 @@ function renderActual() {
     st('Last actual MD / TVD', `${fmt(last.md, 0)} / ${fmt(last.tvd, 0)}`, 'ft') +
     st('Δ to plan at last station', fmt(ld.dist, 1), 'ft', ld.dist > 50 ? 'bad' : '') +
     st('Right / high of plan', `${fmt(ld.right, 1)} / ${fmt(ld.high, 1)}`, 'ft', '', 'left and low are negative') +
-    st('Largest distance', fmt(mx.dist, 1), 'ft', '', `at MD ${fmt(mx.md, 0)}`);
+    st('Largest distance', fmt(mx.dist, 1), 'ft', '', `at MD ${fmt(mx.md, 0)}`) +
+    st('Max DLS, actual', fmt(dl.dls, 2), '°/100 ft', dl.dls > state.maxDls + 1e-6 ? 'bad' : '', `at MD ${fmt(dl.md, 0)} · alarm ${fmt(state.maxDls, 1)}`);
   const pj = aheadOf(); let ah = '';
   if (pj) {
     const e = pj.proj.rows[pj.proj.rows.length - 1], rj = pj.rej, fm = (v, d) => (v >= 0 ? '+' : '−') + fmt(Math.abs(v), d);
