@@ -190,6 +190,10 @@ function drillPlanPages() {
 
   /* ---------- cover ---------- */
   newPage(false);
+  if (wallLogo && wallLogo.src && wallLogo.w > 0) {        // company logo (the same one as on the wall plot), at most 220 x 80 pt
+    const lk = Math.min(220 / wallLogo.w, 80 / wallLogo.h), lw = wallLogo.w * lk, lh = wallLogo.h * lk;
+    o += `<image href="${wallLogo.src}" x="118.8" y="${r2(150 - lh)}" width="${r2(lw)}" height="${r2(lh)}"/>`;
+  }
   T(118.8, 178, company, 21.5, { bold: true }); T(118.8, 197, project, 12.25); T(118.8, 213.5, site, 12.25); T(118.8, 230, s.name, 12.25);
   T(118.8, 263, wellbore, 12.25); T(118.8, 319, 'Plan: ' + design, 12.25);
   T(118.8, 393, 'Standard Planning Report', 21.5, { bold: true }); T(118.8, 424, dateLong, 10.5);
@@ -427,10 +431,10 @@ let logoPopRefresh = null;
 $('#bWallLogo').onclick = () => {
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
-  ov.innerHTML = `<div role="dialog" aria-label="Logo" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)">
-    <h3 style="margin:0 0 8px">Logo</h3>
+  ov.innerHTML = `<div role="dialog" aria-label="Company logo" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <h3 style="margin:0 0 8px">Company logo</h3>
     <div id="lgPrev" style="height:90px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#555;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden"></div>
-    <div class="hint" style="margin:0 0 10px">Printed at the top left of the wall plot. PNG, JPEG or SVG.</div>
+    <div class="hint" style="margin:0 0 10px">Printed at the top left of the wall plot and on the cover of the drill plan. PNG, JPEG or SVG. A chosen file is kept in this browser; Default logo goes back to the built-in one.</div>
     <div class="toolbar" style="margin:0"><button class="primary" id="lgFile">Choose file…</button><button id="lgDef">Default logo</button><button id="lgNone">No logo</button></div>
     <div class="toolbar" style="margin:12px 0 0"><span class="grow"></span><button id="lgClose">Close</button></div></div>`;
   document.body.appendChild(ov);
