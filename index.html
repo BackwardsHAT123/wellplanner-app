@@ -234,7 +234,13 @@ textarea{font:12px ui-monospace,Menlo,monospace;min-height:80px;resize:vertical}
 #logPlot h4,#geoTvd h4{flex-wrap:nowrap;white-space:nowrap}#logPlot h4>span:first-of-type,#geoTvd h4>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 #pane-plots .plots .plot{height:300px;box-sizing:border-box;display:flex;flex-direction:column}   /* the four plot cards on the Plots tab are 300px high */
 #pane-plots .plots .plot canvas{flex:1;min-height:0;height:auto}
-#cvApPlan,#cvAp3d{height:306px}                /* Plan vs actual: 10% shorter than the other plots */
+#cvApPlan,#cvAp3d{height:420px}                /* Plan vs actual: taller than the other plots (the page scrolls anyway) */
+/* enlarged plot: fills the chart area below the KPI row until its ✕ (or Esc) is clicked; app_layout.js sets its box */
+.plot .pmax{margin-left:auto;flex:0 0 auto;padding:2px 6px;line-height:0}
+.plot .pmax .ic-close,.plot.max .pmax .ic-open{display:none}.plot.max .pmax .ic-close{display:inline}
+.plot.max{position:fixed;z-index:15;display:flex;flex-direction:column;box-sizing:border-box;margin:0!important;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.plot.max>canvas{flex:1 1 auto;min-height:0;height:auto!important}
+main.hasmax .pane.on{visibility:hidden}main.hasmax .plot.max{visibility:visible}   /* the rest of the page keeps its layout but is not shown */
 .tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--panel);max-height:calc(100vh - 230px)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:12px}
 th{font-family:var(--sans)}
@@ -828,17 +834,17 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=6e766bf010"></script>
+<script src="core.js?v=093a82121c"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=6e766bf010"></script>
-<script src="app_uncertainty.js?v=6e766bf010"></script>
-<script src="app_3d.js?v=6e766bf010"></script>
-<script src="app_charts.js?v=6e766bf010"></script>
-<script src="app_logs.js?v=6e766bf010"></script>
-<script src="app_wall.js?v=6e766bf010"></script>
-<script src="app_versions.js?v=6e766bf010"></script>
-<script src="app_td.js?v=6e766bf010"></script>
-<script src="app_project.js?v=6e766bf010"></script>
-<script src="app_layout.js?v=6e766bf010"></script>
+<script src="app_main.js?v=093a82121c"></script>
+<script src="app_uncertainty.js?v=093a82121c"></script>
+<script src="app_3d.js?v=093a82121c"></script>
+<script src="app_charts.js?v=093a82121c"></script>
+<script src="app_logs.js?v=093a82121c"></script>
+<script src="app_wall.js?v=093a82121c"></script>
+<script src="app_versions.js?v=093a82121c"></script>
+<script src="app_td.js?v=093a82121c"></script>
+<script src="app_project.js?v=093a82121c"></script>
+<script src="app_layout.js?v=093a82121c"></script>
 </body>
 </html>

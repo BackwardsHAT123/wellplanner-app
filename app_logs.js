@@ -179,6 +179,10 @@ function layoutGeo(hasLogs, hasTvd) {
   const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); $('#geoEmpty').hidden = n > 0; if (!n) return;
   const sec = Math.max(150, (avail - 5 * n) / n), inner = sec - 40;      // the log controls are in the Well logs panel, not the pane    // 40px for each section's title and padding
   GEO.logH = inner; GEO.tvdH = inner;
+  // an enlarged log or TVD chart (app_layout.js) takes the height of its box instead
+  const mx = typeof PMAX !== 'undefined' && PMAX.el;          // PMAX loads after this file
+  if (mx && mx.id === 'logPlot') GEO.logH = Math.max(150, mx.clientHeight - 50);
+  if (mx && mx.id === 'geoTvd') GEO.tvdH = Math.max(150, mx.clientHeight - 50);
 }
 function drawGeo() {
   if (!paneOn('geo')) return;
