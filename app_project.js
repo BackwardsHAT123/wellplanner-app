@@ -120,7 +120,7 @@ document.addEventListener('keydown', e => {
 });
 /* ---- unsaved-work tracking and dialog ---- */
 /* each well remembers what it looked like when last saved or opened; a well never saved counts as changed */
-const savedW = new WeakMap(), wSig = w => JSON.stringify(w);
+const savedW = new WeakMap(), wSig = w => JSON.stringify(w) + '|logs ' + logsStamp(w);
 const markSaved = w => savedW.set(w, wSig(w)), markAllSaved = () => project.wells.forEach(markSaved);
 const dirtyWells = () => project.wells.filter(w => savedW.get(w) !== wSig(w));
 let snoozeSig = null;
@@ -136,7 +136,7 @@ function dlg(msg, buttons) {                 // buttons: [{label, value, primary
 /* saves one well as its own file (with the pad and reference wells it needs), never the whole pad project */
 function saveWell(w) {
   syncVer(w);
-  const one = { v: 2, pad: project.pad, wells: [w], active: 0, refs: project.refs };
+  const one = { v: 2, pad: project.pad, wells: [withLogs(w)], active: 0, refs: project.refs.map(withLogs) };
   download((w.name || 'well').replace(/[^\w.-]+/g, '_') + '.wellplan.json', WP.compactJson(one), 'application/json');
   markSaved(w);
 }
@@ -190,7 +190,7 @@ $('#slotSel').onchange = e => {
 function createWellAtSlot(c, r) {
   const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r, state.crs);
   const dn = p.n - src.surface.n, de = p.e - src.surface.e;
-  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; delete w.noSlot; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });
+  w.name = 'Well ' + (project.wells.length + 1); w.slot = { c, r }; delete w.noSlot; w.api = ''; w.actual = null; w.wall = Object.assign(WALL_DEF(), { plan: (w.wall && w.wall.plan) || 'Design #1' });   // the copy starts without logs
   w.surface = { n: p.n, e: p.e };
   w.targets.forEach(t => { t.n += dn; t.e += de; });      // same geometry, moved with the surface location
   project.wells.push(w);
@@ -220,7 +220,7 @@ $('#impSurveyFile').onchange = async e => {
   const free = choice === 'new' ? WP.padSlots(project.pad, project.pad.cols, project.pad.rows, state.crs).find(sl => !wellAtSlot(sl.c, sl.r)) : null;
   const w = choice === 'here' ? state : JSON.parse(JSON.stringify(state));
   if (choice === 'new') {
-    w.name = fname; w.api = ''; w.actual = null; w.logs = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
+    w.name = fname; w.api = ''; w.actual = null; w.wall = Object.assign(WALL_DEF(), { plan: (state.wall && state.wall.plan) || 'Design #1' });
     if (free) { w.slot = { c: free.c, r: free.r }; delete w.noSlot; w.surface = { n: free.n, e: free.e }; }
     else { w.slot = null; w.noSlot = true; w.surface = { n: state.surface.n, e: state.surface.e }; }
   }
@@ -338,9 +338,9 @@ $('#fileOpen').onchange = async e => {
   if (!items.length) { await dlg('None of the selected files is a valid well plan:\n' + bad.join('\n'), [{ label: 'OK', value: 1, primary: true }]); return; }
   const pristine = project.wells.length === 1 && !project.refs.length && JSON.stringify(project.wells[0]) === JSON.stringify(DEFAULT());
   let base, queue = items.slice();
-  if (pristine) { const f = queue.shift(); base = JSON.parse(JSON.stringify(f.p)); } else base = project;
+  if (pristine) { const f = queue.shift(); base = f.p; } else base = project;                  // f.p is a fresh object from this file
   const incoming = [];
-  queue.forEach(it => it.p.wells.forEach(w => incoming.push({ w: JSON.parse(JSON.stringify(w)), samePad: JSON.stringify(it.p.pad) === JSON.stringify(base.pad) })));
+  queue.forEach(it => it.p.wells.forEach(w => incoming.push({ w: cloneWellKeepLogs(w), samePad: JSON.stringify(it.p.pad) === JSON.stringify(base.pad) })));
   const replaced = incoming.filter(x => base.wells.some(b => normName(b.name) === normName(x.w.name))).map(x => x.w.name);
   if (replaced.length && !(await dlg('These wells are already in the project and will be replaced by the file versions:\n' + replaced.join('\n'), [{ label: 'Cancel', value: false }, { label: 'Replace', value: true, primary: true }]))) return;
   let added = 0, repl = 0, firstIdx = pristine ? base.active : -1;

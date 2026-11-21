@@ -1,7 +1,7 @@
 'use strict';
 /* well logs, geosteering, actual survey entry (split from index.html; loaded in order, shares globals) */
 /* ================= well logs ================= */
-/* state.logs = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
+/* logsOf(state) = { curves: [{ name, unit, desc, src, trk, d0, dstep | md, v }] }; trk 0 = hidden, 1..6 = track (tracks are stacked, each with its own Y axis). */
 const LOG = { pending: null };
 const LOGT = { on: true };
 try { LOGT.on = localStorage.getItem('wellplanner.logTops') !== '0'; } catch (e) {}
@@ -39,9 +39,9 @@ $('#logHead').onclick = () => setLogOpen($('#logBody').hidden, true);
 $('#logHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLogOpen($('#logBody').hidden, true); } };
 { let o = true; try { o = localStorage.getItem('wellplanner.logOpen') !== '0'; } catch (e) {} setLogOpen(o, false); }
 function renderLogs() {
-  { const n = state.logs ? state.logs.curves.length : 0; $('#logCount').textContent = n ? n + ' curve' + (n === 1 ? '' : 's') : 'no logs'; }
+  { const L = logsOf(state), n = L ? L.curves.length : 0; $('#logCount').textContent = n ? n + ' curve' + (n === 1 ? '' : 's') : 'no logs'; }
   renderLogPick();
-  const L = state.logs, cs = L ? L.curves : [];
+  const L = logsOf(state), cs = L ? L.curves : [];
   $('#bLogClear').hidden = !cs.length;
   const opts = t => ['<option value="0">Hidden</option>'].concat([1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${k === t ? ' selected' : ''}>Track ${k}</option>`)).join('').replace('<option value="0">', `<option value="0"${t === 0 ? ' selected' : ''}>`);
   const col = logColors();
@@ -58,7 +58,7 @@ function geoHi(logHi, lo) {
   return top + Math.max(5, (top - Math.min(from, top)) * 0.02);
 }
 function drawLogs() {
-  const wrap = $('#logPlot'), box = $('#logTracks'), L = state.logs, cs = L ? L.curves.filter(c => c.trk > 0) : [];
+  const wrap = $('#logPlot'), box = $('#logTracks'), L = logsOf(state), cs = L ? L.curves.filter(c => c.trk > 0) : [];
   if (!cs.length) return;
   const tr = [...new Set(cs.map(c => c.trk))].sort((a, b) => a - b), key = tr.join(',');
   if (box.dataset.key === key) tr.forEach((t, i) => { box.children[i].style.height = GEO.trackH(i, tr.length) + 'px'; });
@@ -80,7 +80,7 @@ function fillCss(f, w, lo, hi) {            // CSS gradient of a colour ramp, sp
   return 'linear-gradient(to right,' + st.map(s => `${s.c} ${Math.max(0, Math.min(100, (s.v - a) / sp * 100)).toFixed(1)}%`).join(',') + ')';
 }
 function openScaleEditor(idx) {
-  const cv = state.logs.curves[idx], snap = JSON.stringify([cv.scale || null, cv.color || null]), sc = cv.scale || (cv.scale = {});
+  const cv = logsOf(state).curves[idx], snap = JSON.stringify([cv.scale || null, cv.color || null]), sc = cv.scale || (cv.scale = {});
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `<div style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.4)">
@@ -91,7 +91,7 @@ function openScaleEditor(idx) {
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:14px"><span>Line colour</span><input type="color" id="scCol" style="width:44px;height:30px;padding:0"><button class="small" id="scColDef">Use default</button></div>
     <div class="toolbar" style="margin-top:12px"><span class="grow"></span><button id="scCancel">Cancel</button><button class="primary" id="scDone">Done</button></div></div>`;
   document.body.appendChild(ov);
-  const $e = q => ov.querySelector(q), live = () => { autosave(); renderLogs(); drawGeo(); };
+  const $e = q => ov.querySelector(q), live = () => { touchLogs(state); autosave(); renderLogs(); drawGeo(); };
   $e('#scMin').value = sc.min != null ? sc.min : ''; $e('#scMax').value = sc.max != null ? sc.max : ''; $e('#scLog').checked = !!sc.log; $e('#scRev').checked = !!sc.rev;
   const curCol = () => { const c = logColor(cv, idx); return /^#[0-9a-f]{6}$/i.test(c) ? c : '#' + (c.match(/\d+/g) || [128, 128, 128]).slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join(''); };
   $e('#scCol').value = curCol();
@@ -103,7 +103,7 @@ function openScaleEditor(idx) {
   $e('#scDone').onclick = () => { if (sc.min == null && sc.max == null && !sc.log && !sc.rev) delete cv.scale; ov.remove(); live(); };
 }
 function openFillEditor(idx) {
-  const cv = state.logs.curves[idx], snap = JSON.stringify(cv.fill || null);
+  const cv = logsOf(state).curves[idx], snap = JSON.stringify(cv.fill || null);
   if (!cv.fill) cv.fill = Object.assign(defaultFill(cv, logGroup(cv.name) === 0 ? 0 : -1), { on: false });
   const f = cv.fill, g = logGroup(cv.name) === 0 ? 0 : -1;
   const ov = document.createElement('div');
@@ -119,7 +119,7 @@ function openFillEditor(idx) {
     <div class="toolbar" style="margin-top:12px"><button class="small" id="feAdd">Add marker</button><button class="small" id="feReset">Reset to default</button><span class="grow"></span><button id="feCancel">Cancel</button><button class="primary" id="feDone">Done</button></div></div>`;
   document.body.appendChild(ov);
   const $e = q => ov.querySelector(q), span = () => { const a = f.stops[0].v, b = f.stops[f.stops.length - 1].v, p = (b - a) * 0.12 || 5; return [a - p, b + p]; };
-  const live = () => { autosave(); renderLogs(); drawGeo(); };
+  const live = () => { touchLogs(state); autosave(); renderLogs(); drawGeo(); };
   function bar() {
     const [lo, hi] = span(); $e('#feBar').style.background = fillCss(f, 0, lo, hi);
     $e('#feMarks').innerHTML = f.stops.map(s => `<div title="${s.v}" style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${s.c};filter:drop-shadow(0 0 1px #000)"></div><div style="position:absolute;left:${(s.v - lo) / (hi - lo) * 100}%;top:0;transform:translateX(-50%);font-size:14px;color:var(--muted);padding-top:9px">${s.v}</div>`).join('');
@@ -181,7 +181,7 @@ function layoutGeo(hasLogs, hasTvd) {
 }
 function drawGeo() {
   if (!paneOn('geo')) return;
-  const L = state.logs, hasLogs = !!(L && L.curves.some(c => c.trk > 0)), hasTvd = !!(ACT.rows || M.survey);
+  const L = logsOf(state), hasLogs = !!(L && L.curves.some(c => c.trk > 0)), hasTvd = !!(ACT.rows || M.survey);
   $('#logPlot').hidden = !hasLogs; $('#geoTvd').hidden = !hasTvd;
   layoutGeo(hasLogs, hasTvd);
   if (hasLogs) drawLogs();
@@ -220,7 +220,7 @@ $('#logTracks').addEventListener('click', e => {
 });
 $('#logTopsOn').checked = LOGT.on;
 $('#logTopsOn').onchange = e => { LOGT.on = e.target.checked; try { localStorage.setItem('wellplanner.logTops', LOGT.on ? '1' : '0'); } catch (x) {} drawLogs(); };
-function logChanged() { autosave(); renderLogs(); drawGeo(); }
+function logChanged() { touchLogs(state); autosave(); renderLogs(); drawGeo(); }
 $('#bLogFile').onclick = () => $('#logFile').click();
 $('#logFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -232,14 +232,14 @@ $('#logCard').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'bLogCancel') { LOG.pending = null; renderLogPick(); return; }
   if (b.id === 'bLogAll' || b.id === 'bLogNone') { $$('#logPick [data-lp]').forEach(c => { c.checked = b.id === 'bLogAll'; }); return; }
-  if (b.id === 'bLogClear') { if (confirm('Remove all well logs from this well?')) { state.logs = null; logChanged(); logMsg(''); } return; }
+  if (b.id === 'bLogClear') { if (confirm('Remove all well logs from this well?')) { setLogs(state, null); logChanged(); logMsg(''); } return; }
   if (b.dataset.ls !== undefined) { openScaleEditor(+b.dataset.ls); return; }
   if (b.dataset.lf !== undefined) { openFillEditor(+b.dataset.lf); return; }
-  if (b.dataset.ld !== undefined) { state.logs.curves.splice(+b.dataset.ld, 1); if (!state.logs.curves.length) state.logs = null; logChanged(); return; }
+  if (b.dataset.ld !== undefined) { const L = logsOf(state); L.curves.splice(+b.dataset.ld, 1); if (!L.curves.length) setLogs(state, null); logChanged(); return; }
   if (b.id === 'bLogGo') {
     const p = LOG.pending, picks = $$('#logPick [data-lp]').filter(c => c.checked).map(c => +c.dataset.lp);
     if (!picks.length) { logMsg('Tick at least one curve to import.'); return; }
-    const L = state.logs || (state.logs = { curves: [] }), nm = x => String(x).trim().toLowerCase(); let added = 0, repl = 0;
+    const L = logsOf(state) || setLogs(state, { curves: [] }), nm = x => String(x).trim().toLowerCase(); let added = 0, repl = 0;
     picks.forEach(i => {
       const m = p.r.curves[i], c = WP.packLogCurve({ name: m.mnem, unit: m.unit, desc: m.desc, src: p.src, trk: 0 }, p.r.depth, p.r.cols[i]);
       const k = L.curves.findIndex(x => nm(x.name) === nm(c.name));
@@ -252,7 +252,7 @@ $('#logCard').addEventListener('click', e => {
 });
 $('#logCard').addEventListener('change', e => {
   const s = e.target.closest('[data-lt]'); if (!s) return;
-  state.logs.curves[+s.dataset.lt].trk = +s.value; logChanged();
+  logsOf(state).curves[+s.dataset.lt].trk = +s.value; logChanged();
 });
 function drawActual() {
   if (paneOn('geo')) drawGeo();

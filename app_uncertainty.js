@@ -90,7 +90,7 @@ function niceStep(range, target) {
 /* ================= PLSS sections (BLM) =================
  * Live: BLM National PLSS service, queried for the lateral's bounding box. Offline: tiles in ./sections made by
  * tools/fetch_sections.py (script files, so they also load from file://). */
-const SEC = { on: false, cache: new Map(), covered: [], tiles: {}, tileState: {}, grid: new Map(), gridCrs: '', src: '', msg: '', loading: false, nearKey: null, near: [] };
+const SEC = { on: false, cache: new Map(), covered: [], tiles: {}, tileState: {}, grid: new Map(), gridCrs: '', src: '', msg: '', loading: false, nearKey: null, nearSurvey: null, near: [] };
 try { SEC.on = localStorage.getItem('wellplanner.sections') === '1'; } catch (e) {}
 window.WPSEC = (tx, ty, rows) => { SEC.tiles[tx + '_' + ty] = rows; };
 $('#secOn').checked = SEC.on;
@@ -170,9 +170,10 @@ async function ensureSections() {
   if (STO.on) { STO.key = ''; recalc(); }
 }
 function secNear() {                          // sections within 1 mile of the lateral, in grid coordinates
-  const key = M.survey && (M.survey.length + '|' + M.survey[M.survey.length - 1].northing + '|' + state.crs + '|' + SEC.cache.size + '|' + state.d.type);
-  if (SEC.nearKey === key) return SEC.near;
-  SEC.nearKey = key; SEC.near = [];
+  // M.survey is a new array whenever the path changes (modelFor rebuilds it), so its identity is the path test
+  const key = state.crs + '|' + SEC.cache.size + '|' + state.d.type;
+  if (SEC.nearSurvey === M.survey && SEC.nearKey === key) return SEC.near;
+  SEC.nearSurvey = M.survey; SEC.nearKey = key; SEC.near = [];
   const box = secBox(MILE * 1.2), pts = secLateralPts(); if (!box || !pts.length) return SEC.near;
   if (SEC.gridCrs !== state.crs) { SEC.gridCrs = state.crs; SEC.grid = new Map(); }
   const cand = [];
@@ -322,7 +323,7 @@ $('#refCard').addEventListener('click', e => {
     const picks = $$('#refPick [data-pick]').filter(c => c.checked).map(c => REF.pending.wells[+c.dataset.pick]);
     const today = new Date().toISOString().slice(0, 10), norm = s => String(s || '').trim().toLowerCase();
     picks.forEach(w => {
-      const copy = Object.assign(JSON.parse(JSON.stringify(w)), { slot: null, asOffset: true, refSrc: REF.pending.src, refAdded: today });
+      const copy = Object.assign(cloneWellKeepLogs(w), { slot: null, asOffset: true, refSrc: REF.pending.src, refAdded: today });
       const k = project.refs.findIndex(r => norm(r.name) === norm(copy.name));
       if (k >= 0) project.refs[k] = copy; else project.refs.push(copy);
     });

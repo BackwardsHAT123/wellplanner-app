@@ -1,7 +1,22 @@
 'use strict';
 /* state, inputs, plan, 2D views (split from index.html; loaded in order, shares globals) */
 /* ================= state ================= */
-const LS_KEY = 'wellplanner.v1';
+const LS_KEY = 'wellplanner.v1', LS_LOGS = 'wellplanner.v1.logs';
+/* ---- well logs store ----
+ * Logs are large (hundreds of KB per well) and change rarely, so they are kept beside the well, not on it: copying,
+ * comparing and undo snapshots of a well never touch them. A saved .wellplan.json still carries them as w.logs
+ * (withLogs), and loading moves them back here (takeLogs). In the browser they are kept under their own key,
+ * rewritten only when some well's logs change. Undo does not cover log edits. */
+const LOGS = new WeakMap(), LOGREV = new WeakMap();      // well -> { curves: [...] }, well -> edit count
+let logsRev = 0;                                          // any log edit in the project
+const logsOf = w => LOGS.get(w) || null;
+function setLogs(w, L) { if (L && Array.isArray(L.curves)) LOGS.set(w, L); else LOGS.delete(w); touchLogs(w); return logsOf(w); }
+function touchLogs(w) { LOGREV.set(w, (LOGREV.get(w) || 0) + 1); logsRev++; }   // call after editing a well's logs in place
+const logsStamp = w => LOGREV.get(w) || 0;
+function takeLogs(w) { if (w && 'logs' in w) { const L = w.logs; delete w.logs; if (L) setLogs(w, L); } return w; }
+const withLogs = w => logsOf(w) ? Object.assign({}, w, { logs: logsOf(w) }) : w;
+/* deep copy of a well that keeps its logs (the copy shares the logs object: use only when the original is discarded) */
+const cloneWellKeepLogs = w => { const c = JSON.parse(JSON.stringify(w)); if (logsOf(w)) setLogs(c, logsOf(w)); return c; };
 const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs: 'crossed', setback: true, scale: '', tvdMin: '', tvdMax: '', wellId: true, company: '', project: '', site: '', wellbore: '', dpStep: '' });
 /* torque and drag inputs, per well (not per plan version: the same rig and string drill every version). Loads klbf / kft-lbf in the UI. */
 const TD_DEF = () => ({
@@ -11,7 +26,7 @@ const TD_DEF = () => ({
 const DEFAULT = () => {
   const s = WP.toGrid(43.70, -105.45, 'WY-E');            // sample surface location, Campbell Co. area
   return {
-    name: 'Sample 1H', api: '', actual: null, logs: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
+    name: 'Sample 1H', api: '', actual: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
     surface: { n: +s.n.toFixed(2), e: +s.e.toFixed(2) }, gl: 5080, kbOff: 27, kb: 5107, vsAzi: '',
     targets: [
       { name: 'Landing', n: +(s.n + 700).toFixed(2), e: +(s.e + 700).toFixed(2), tvd: 9800, tol: 10 },
@@ -51,6 +66,7 @@ function migrateProject(p) {
     const w = merge(DEFAULT(), migrate(p));
     proj = { v: 2, pad: newPad(w.surface), wells: [w], active: 0, refs: [] };
   }
+  proj.wells.forEach(takeLogs); proj.refs.forEach(takeLogs);   // logs move to the logs store
   return proj;
 }
 function merge(base, over) {
@@ -61,8 +77,21 @@ function merge(base, over) {
   return base;
 }
 function load() {
-  try { const t = localStorage.getItem(LS_KEY); if (t) return migrateProject(JSON.parse(t)); } catch (e) {}
+  try {
+    const t = localStorage.getItem(LS_KEY); if (!t) return null;
+    const p = migrateProject(JSON.parse(t)), lt = localStorage.getItem(LS_LOGS);   // older saves carry logs inside the project
+    if (p && lt) { const o = JSON.parse(lt) || {}; ['wells', 'refs'].forEach(k => (p[k] || []).forEach((w, i) => { if (o[k] && o[k][i]) setLogs(w, o[k][i]); })); }
+    return p;
+  } catch (e) {}
   return null;
+}
+/* browser copy of the logs: {wells: [...], refs: [...]} in project order; rewritten only when a log or the well list changes */
+let logsSaved = null;
+function saveLogsLocal() {
+  const wells = project.wells.map(logsOf), refs = (project.refs || []).map(logsOf), list = wells.concat([null], refs), sig = logsRev + '|' + wells.length + '|' + refs.length;
+  if (logsSaved && logsSaved.sig === sig && list.every((L, i) => L === logsSaved.list[i])) return;
+  localStorage.setItem(LS_LOGS, JSON.stringify({ wells, refs }));
+  logsSaved = { sig, list };
 }
 let project = load() || newProject();
 let state = project.wells[project.active];   // the well being edited
@@ -75,7 +104,7 @@ const padRotShown = () => { const v = +WP.norm360(-(project.pad.rot || 0)).toFix
 function autosave() {
   if (typeof syncVer === 'function') syncVer(state);
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} if (typeof histPush === 'function') histPush(); if (typeof renderVers === 'function') renderVers(); }, 300);
+  saveTimer = setTimeout(() => { try { saveLogsLocal(); localStorage.setItem(LS_KEY, JSON.stringify(project)); } catch (e) {} if (typeof histPush === 'function') histPush(); if (typeof renderVers === 'function') renderVers(); }, 300);
 }
 
 /* ================= helpers ================= */
@@ -512,7 +541,7 @@ function renderPlanSummary(mm) {
 /* every tab and plot; each skips itself when its tab is hidden */
 function renderViews() {
   if (typeof foldCounts === 'function') foldCounts();
-  renderSurvey(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
+  renderSurveySoon(); renderSections(); renderOffsetResults(); updateOffStats(); renderWellBar(); renderPad();
   drawAll();
   computeActual(); renderRef(); renderSto(); renderActual(); renderGeo(); if (typeof renderTDSoon === 'function') renderTDSoon();
   if (SEC.on || STO.on || WALL.on || ACT.rows) { updateSecInfo(); clearTimeout(SEC.timer); SEC.timer = setTimeout(ensureSections, 350); }
@@ -554,6 +583,9 @@ function renderSurvey(force) {
   $('#surveyTbl').innerHTML = h + '</tbody>';
 }
 $('#repInt').onchange = () => renderSurvey();
+/* After an edit the survey table (the slowest view) is rebuilt once typing pauses, not on every keystroke. */
+let surveyTimer = 0;
+function renderSurveySoon() { clearTimeout(surveyTimer); if (paneOn('survey')) surveyTimer = setTimeout(() => renderSurvey(), 150); }
 
 function download(name, text, type) {
   const a = document.createElement('a');
