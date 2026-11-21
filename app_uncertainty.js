@@ -14,15 +14,26 @@ function covOf(rows) {
   let c = covCache.get(rows); if (c && c.tool === ERR.tool) return c.cov;
   const cov = WP.errorModel(rows, WP.ERR_PRESETS[ERR.tool]); covCache.set(rows, { tool: ERR.tool, cov }); return cov;
 }
-function renderOffsetResults() {
-  if (!M.survey) return;
-  M.sep = null;
-  if (!$('#pane-offsets').classList.contains('on')) return;     // heavy: only when the tab is showing
+/* Offset stride: never skip stations of a sparse survey (chords across 300 ft misjudge distance). */
+const sepStride = rows => rows.length > 600 ? 3 : 1;
+/* Plan vs every other well, every 2nd plan station: computed once per recalc and shared by the warning banner,
+ * the Offsets table and the separation chart. recalc() clears M.sep; a change of error tool recomputes it. */
+function sepAll() {
+  if (!M.survey) return null;
+  if (M.sep && M.sepTool === ERR.tool) return M.sep;
   const pc = covOf(M.survey);
   M.sep = M.offs.map(o => {
-    const os = o.rows.length > 600 ? 3 : 1, oc = pc && covOf(o.rows);       // never skip stations of a sparse survey: chords across 300 ft misjudge distance
+    const os = sepStride(o.rows), oc = pc && covOf(o.rows);
     return oc ? WP.separationSF(M.survey, o.rows, pc, oc, 2, os) : WP.separation(M.survey, o.rows, 2, os);
   });
+  M.sepTool = ERR.tool;
+  return M.sep;
+}
+function renderOffsetResults() {
+  if (!M.survey) return;
+  if (!$('#pane-offsets').classList.contains('on')) return;     // only when the tab is showing
+  const pc = covOf(M.survey);
+  sepAll();
   const useSf = !!pc;
   let h = '<thead><tr><th class="l">Other well</th><th class="l">Kind</th><th>Min distance, all depths (ft)</th><th>Min distance below kickoff (ft)</th>' + (useSf ? '<th>Min separation factor</th>' : '') + '<th>At plan MD</th><th>At other well MD</th><th class="l">Status</th></tr></thead><tbody>';
   M.offs.forEach((o, i) => {
@@ -49,7 +60,7 @@ function renderActualClearance(useSf) {
   const rows = ACT.rows.concat(pj.proj.rows), lastMd = ACT.rows[ACT.rows.length - 1].md, pc = useSf && covOf(rows);
   let h = '<thead><tr><th class="l">Other well</th><th>Closest, drilled part (ft)</th><th>Closest, projected part (ft)</th>' + (pc ? '<th>Min separation factor</th>' : '') + '<th>At actual MD</th><th class="l">Status</th></tr></thead><tbody>';
   M.offs.forEach(o => {
-    const os = o.rows.length > 600 ? 3 : 1, oc = pc && covOf(o.rows), sp = oc ? WP.separationSF(rows, o.rows, pc, oc, 1, os) : WP.separation(rows, o.rows, 1, os);
+    const os = sepStride(o.rows), oc = pc && covOf(o.rows), sp = oc ? WP.separationSF(rows, o.rows, pc, oc, 1, os) : WP.separation(rows, o.rows, 1, os);
     const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity, ok0 = x => x.md >= start;
     const pick = (f, key) => { let b = null; sp.forEach(x => { if (f(x) && (!b || x[key] < b[key])) b = x; }); return b; };
     const dr = pick(x => ok0(x) && x.md <= lastMd, 'd'), pr = pick(x => ok0(x) && x.md > lastMd, 'd'), sf = pc && sp[0].sf !== undefined ? pick(ok0, 'sf') : null, worst = pick(ok0, 'd');

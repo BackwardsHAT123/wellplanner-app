@@ -60,7 +60,7 @@ document.addEventListener('input', e => {                 // pad settings
   if (k === 'pad.refCol' || k === 'pad.refRow') v = Math.max(1, Math.round(v));
   if (k === 'pad.dx' || k === 'pad.dy') v = Math.max(0, v);
   if (k === 'pad.rot') v = -v;                                // typed clockwise from north, stored counter-clockwise
-  setp(project, k, v); recalc();
+  setp(project, k, v); recalcSoon();
 });
 $('#bPadUse').onclick = () => {
   project.pad.ref = { n: state.surface.n, e: state.surface.e };

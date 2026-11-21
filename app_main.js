@@ -89,6 +89,10 @@ const D2R = Math.PI / 180;
 const OFF_COLORS = ['#8a877d', '#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#4f7fc0'];   // TAH grey, blue, green, purple, amber (orange is the planned well)
 let raf = 0;
 const later = fn => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fn); };
+/* Typing fires 'input' per keystroke; recalcSoon() folds those into one recalc per frame.
+ * A direct recalc() cancels a pending one, so callers that need the result at once still get it. */
+let recalcRaf = 0;
+const recalcSoon = () => { if (!recalcRaf) recalcRaf = requestAnimationFrame(() => { recalcRaf = 0; recalc(); }); };
 
 /* ================= form binding ================= */
 function writeInputs() {
@@ -129,7 +133,7 @@ document.addEventListener('input', e => {
   setp(state, k, v);
   if (k === 'd.type') { applyVisibility(); renderTargets(); }
   if (k === 'crs') { project.wells.forEach(w => { w.crs = v; }); cwFillAll(); }
-  recalc();
+  recalcSoon();
 });
 
 /* ================= coordinate entry: lat/long or X,Y ================= */
@@ -179,7 +183,7 @@ document.addEventListener('input', e => {
     const g = WP.toGrid(la, lo, state.crs); o.n = g.n; o.e = g.e;
     q('e').value = g.e.toFixed(2); q('n').value = g.n.toFixed(2);
   }
-  recalc();
+  recalcSoon();
 });
 
 /* ================= targets ================= */
@@ -215,7 +219,7 @@ $('#tgtList').addEventListener('input', e => {
   if (f === 'turn') { if (el.checked) t.turn = true; else { delete t.turn; delete t.turnDls; } renderTargets(); }
   else if (f === 'turnDls') { const v = parseFloat(el.value); if (isFinite(v) && v > 0) t.turnDls = v; else delete t.turnDls; }
   else if (f === 'name') t.name = el.value; else { const v = parseFloat(el.value); if (!isFinite(v)) return; t[f] = v; }
-  recalc();
+  recalcSoon();
 });
 $('#tgtList').addEventListener('click', e => {
   const b = e.target.closest('[data-tmv]'); if (!b) return;
@@ -295,7 +299,7 @@ $('#topsList').addEventListener('input', e => {
   if (f === 'name') t.name = el.value;
   else if (f === 'dip' || f === 'azi') { const v = parseFloat(el.value); if (isFinite(v)) t[f] = v; else delete t[f]; }
   else { const v = parseFloat(el.value); if (!isFinite(v)) return; t.tvd = v; }
-  shareTops(); refreshTopHints(); recalc();
+  shareTops(); refreshTopHints(); recalcSoon();
 });
 $('#topsList').addEventListener('click', e => {
   const b = e.target.closest('[data-deltop]'); if (!b) return;
@@ -407,6 +411,7 @@ function failPlan(err) {
 }
 
 function recalc() {
+  if (recalcRaf) { cancelAnimationFrame(recalcRaf); recalcRaf = 0; }
   if (typeof refreshPadTopsBtn === 'function') refreshPadTopsBtn();
   applyAllSlots();
   const s = state;
@@ -616,7 +621,7 @@ $('#offList').addEventListener('input', e => {
   const el = e.target.closest('[data-oi]'); if (!el) return;
   const o = state.offsets[+el.dataset.oi], f = el.dataset.of;
   if (f === 'name' || f === 'text') o[f] = el.value; else { const v = parseFloat(el.value); if (!isFinite(v)) return; o[f] = v; }
-  recalc();
+  recalcSoon();
 });
 $('#offList').addEventListener('click', e => {
   const b = e.target.closest('[data-deloff]'); if (!b) return;
@@ -628,7 +633,7 @@ $('#offList').addEventListener('change', e => {
   rd.onload = () => { state.offsets[i].text = String(rd.result); renderOffsetForms(); recalc(); };
   rd.readAsText(el.files[0]);
 });
-$('#minSep').addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) { state.minSep = v; recalc(); } });
+$('#minSep').addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) { state.minSep = v; recalcSoon(); } });
 
 const PAD_COLORS = ['#6a9ada', '#79bc76', '#a78bdc', '#eaa945', '#8a877d', '#4f7fc0', '#5a9a57', '#8466c4'];   // TAH blue, green, purple, amber, grey and darker variants
 function offsetRows(o) {
@@ -647,14 +652,13 @@ const minInRegion = (sp, start) => { let b = null; sp.forEach(x => { if (x.md >=
 /* Pad wells start one slot apart and stay parallel while both are vertical, so only distances from the
  * shallower of the two kickoffs down count toward the alert. */
 function offsetWarnings(mm, offs) {
-  const out = [], pc = covOf(mm.survey);
-  offs.forEach(o => {
+  const out = [], seps = sepAll() || [];
+  offs.forEach((o, i) => {
     const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(mm.kopMd, o.kopMd) : -Infinity;
     if (pad && !isFinite(start)) return;
-    const os = o.rows.length > 600 ? 3 : 1, oc = pc && covOf(o.rows);
-    const sp = oc ? WP.separationSF(mm.survey, o.rows, pc, oc, 5, os) : WP.separation(mm.survey, o.rows, 5, os);
+    const sp = seps[i]; if (!sp || !sp.length) return;
     const dm = minInRegion(sp, start); if (!dm) return;
-    let sm = null; if (oc) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
+    let sm = null; if (sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
     const label = o.kind === 'state' ? o.name + ' (state survey)' : o.name, parts = [];
     if (dm.d < state.minSep) parts.push(`center distance ${fmt(dm.d, 0)} ft at MD ${fmt(dm.md, 0)} (alert ${fmt(state.minSep, 0)} ft)`);
     if (sm && sm.sf < ERR.sf) parts.push(`separation factor ${fmt(sm.sf, 2)} at MD ${fmt(sm.md, 0)} with ${fmt(sm.d, 0)} ft between centers (alert below ${fmt(ERR.sf, 1)})` + (sm.sf < 1 ? ', error ellipses overlap' : ''));

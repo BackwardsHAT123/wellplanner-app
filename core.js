@@ -412,17 +412,38 @@
    * station: d = centre-to-centre distance to the offset path, offMd = offset MD at the closest point. */
   function separation(plan, off, ps, os) {
     ps = ps > 1 ? ps : 1; os = os > 1 ? os : 1;
-    const P = s => ({ x: s.easting, y: s.northing, z: s.tvdss });
-    const pick = (arr, k) => { const out = []; for (let i = 0; i < arr.length; i += k) out.push(i); if (out[out.length - 1] !== arr.length - 1) out.push(arr.length - 1); return out; };
-    const oi = pick(off, os), o = oi.map(i => P(off[i]));
+    const pick = (n, k) => { const out = []; for (let i = 0; i < n; i += k) out.push(i); if (out[out.length - 1] !== n - 1) out.push(n - 1); return out; };
+    // sampled offset points in flat arrays (x = easting, y = northing, z = tvdss)
+    const oi = pick(off.length, os), m = oi.length;
+    const X = new Float64Array(m), Y = new Float64Array(m), Z = new Float64Array(m), OM = new Float64Array(m);
+    oi.forEach((j, k) => { X[k] = off[j].easting; Y[k] = off[j].northing; Z[k] = off[j].tvdss; OM[k] = off[j].md; });
+    // Segments grouped in runs of CH with a bounding box per run. A run whose box is no closer than the best
+    // distance found so far cannot hold the closest point, so it is skipped. The answer is the same as checking every segment.
+    const CH = 16, runs = [];
+    for (let s = 0; s + 1 < m; s += CH) {
+      const e = Math.min(m - 1, s + CH), b = { s, e, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+      for (let k = s; k <= e; k++) {
+        if (X[k] < b.x0) b.x0 = X[k]; if (X[k] > b.x1) b.x1 = X[k];
+        if (Y[k] < b.y0) b.y0 = Y[k]; if (Y[k] > b.y1) b.y1 = Y[k];
+        if (Z[k] < b.z0) b.z0 = Z[k]; if (Z[k] > b.z1) b.z1 = Z[k];
+      }
+      runs.push(b);
+    }
     const res = [];
-    for (const i of pick(plan, ps)) {
-      const p = P(plan[i]);
-      let best = Infinity, om = off[0].md;
-      if (o.length === 1) { best = Math.hypot(p.x - o[0].x, p.y - o[0].y, p.z - o[0].z); }
-      for (let k = 0; k + 1 < o.length; k++) {
-        const r = ptSegDist(p, o[k], o[k + 1]);
-        if (r.d < best) { best = r.d; om = off[oi[k]].md + r.t * (off[oi[k + 1]].md - off[oi[k]].md); }
+    for (const i of pick(plan.length, ps)) {
+      const px = plan[i].easting, py = plan[i].northing, pz = plan[i].tvdss;
+      let best = Infinity, om = OM[0];
+      if (m === 1) best = Math.hypot(px - X[0], py - Y[0], pz - Z[0]);
+      for (const b of runs) {
+        const bx = Math.max(b.x0 - px, 0, px - b.x1), by = Math.max(b.y0 - py, 0, py - b.y1), bz = Math.max(b.z0 - pz, 0, pz - b.z1);
+        if (bx * bx + by * by + bz * bz >= best * best) continue;
+        for (let k = b.s; k < b.e; k++) {
+          const ax = X[k], ay = Y[k], az = Z[k], dx = X[k + 1] - ax, dy = Y[k + 1] - ay, dz = Z[k + 1] - az, l2 = dx * dx + dy * dy + dz * dz;
+          let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / l2 : 0;
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const qx = px - ax - t * dx, qy = py - ay - t * dy, qz = pz - az - t * dz, d = Math.sqrt(qx * qx + qy * qy + qz * qz);
+          if (d < best) { best = d; om = OM[k] + t * (OM[k + 1] - OM[k]); }
+        }
       }
       res.push({ i, md: plan[i].md, tvd: plan[i].tvd, d: best, offMd: om });
     }
