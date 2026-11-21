@@ -23,9 +23,10 @@ function wallFootage() {
   else { const m = { fnlfel: ['fnl', 'fel'], fnlfwl: ['fnl', 'fwl'], fslfel: ['fsl', 'fel'], fslfwl: ['fsl', 'fwl'] }[w.foot] || ['fnl', 'fel']; a = pick[m[0]]; b = pick[m[1]]; }
   return [a, b].filter(x => x[1] !== null).map(x => `${x[1].toFixed(1)} ${x[0]}`).join('   ');
 }
-/* Target line under each design target (wall plot and drill plan): "hits" only when the closest approach rounds to 0.0 ft,
- * otherwise how far the plan passes from the target point. ms = one of M.misses ({d: ft}). */
-const missText = ms => !ms ? '' : ms.d < 0.05 ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`;
+/* Target line under each design target (wall plot and drill plan): within 0.3 ft of the target point counts as a hit (Tom's
+ * call), otherwise how far the plan passes from it. ms = one of M.misses ({d: ft}). */
+const HIT_FT = 0.3;
+const missText = ms => !ms ? '' : ms.d <= HIT_FT ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`;
 function wallSvg() {
   if (!M.survey) return '';
   const s = state, w = s.wall, sv = M.survey, surf = s.surface, F = 'Helvetica, Arial, sans-serif';
