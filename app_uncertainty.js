@@ -52,7 +52,29 @@ function renderOffsetResults() {
   });
   if (!M.offs.length) h += '<tr><td class="l" colspan="8" style="color:var(--muted)">No other wells or offsets.</td></tr>';
   $('#sepTbl').innerHTML = h + '</tbody>';
+  renderOffsetKpis(useSf);
   renderActualClearance(useSf);
+}
+/* KPI row on the Offsets tab: wells checked, closest approach (below kickoff for pad wells), lowest separation factor, alerts */
+function renderOffsetKpis(useSf) {
+  const st = (k, v, unit, note, bad) => `<div class="stat${bad ? ' bad' : ''}"><div class="k">${k}</div><div class="v">${v}${unit ? ` <small>${unit}</small>` : ''}</div>${note ? `<div class="n" title="${note}">${note}</div>` : ''}</div>`;
+  if (!M.offs.length) { $('#offStats').innerHTML = st('Wells checked', '0', '', 'no other wells or offsets'); return; }
+  let close = null, sfMin = null, alerts = 0;
+  M.offs.forEach((o, i) => {
+    const sp = M.sep[i]; if (!sp || !sp.length) return;
+    const pad = o.kind === 'pad' || o.kind === 'ref', start = pad ? Math.min(M.kopMd, o.kopMd) : -Infinity;
+    const reg = minInRegion(sp, start); let sm = null;
+    if (useSf && sp[0].sf !== undefined) sp.forEach(x => { if (x.md >= start && (!sm || x.sf < sm.sf)) sm = x; });
+    if (reg && (!close || reg.d < close.r.d)) close = { r: reg, o };
+    if (sm && (!sfMin || sm.sf < sfMin.r.sf)) sfMin = { r: sm, o };
+    if ((reg && reg.d < state.minSep) || (sm && sm.sf < ERR.sf)) alerts++;
+  });
+  let h = st('Wells checked', fmt(M.offs.length, 0));
+  if (close) h += st('Closest approach', fmt(close.r.d, 1), 'ft', `${esc(close.o.name)} · MD ${fmt(close.r.md, 0)}`, close.r.d < state.minSep);
+  if (sfMin) h += st('Lowest sep. factor', isFinite(sfMin.r.sf) ? fmt(sfMin.r.sf, 2) : '∞', '', `${esc(sfMin.o.name)} · MD ${fmt(sfMin.r.md, 0)}`, sfMin.r.sf < ERR.sf);
+  h += st('Wells in alert', fmt(alerts, 0), `of ${fmt(M.offs.length, 0)}`, '', alerts > 0);
+  h += st('Alert limits', fmt(state.minSep, 0), 'ft', useSf ? `separation factor ${fmt(ERR.sf, 1)}` : 'no separation factor (tool off)');
+  $('#offStats').innerHTML = h;
 }
 /* The drilled path (plus its projection to the bit) against every other well: closest approach, separation factor, status. */
 function renderActualClearance(useSf) {

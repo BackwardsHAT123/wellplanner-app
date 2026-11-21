@@ -313,7 +313,7 @@ function drawWall() {
   const box = $('#wallPrev'); if (!M.survey) { box.innerHTML = '<div class="hint">The plan does not build right now.</div>'; return; }
   box.innerHTML = wallSvg().replace('width="792" height="612"', 'style="width:100%;height:auto;border:1px solid var(--line)"');
   const note = [];
-  if (isLL() && !wallFootage()) note.push('No footage call yet: the section data is not loaded (turn on Show sections on the Plots tab once, or type the footage below).');
+  if (isLL() && !wallFootage()) note.push('No footage call yet: the section data is not loaded (turn on Show sections once in Sections and state wells on the Plots tab, or type the footage in the Wall plot panel).');
   $('#wallNote').textContent = note.join(' ');
   drillPreview();
 }

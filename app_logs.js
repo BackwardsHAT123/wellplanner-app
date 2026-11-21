@@ -176,8 +176,8 @@ function layoutGeo(hasLogs, hasTvd) {
   const top = pane.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop;
   const avail = Math.max(420, main.clientHeight - top - 24);       // main keeps 40px of padding at the bottom, less the pane's -20px margin, less a little slack
   pane.style.height = avail + 'px';
-  const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); if (!n) return;
-  const sec = Math.max(150, (avail - $('#logCard').getBoundingClientRect().height - 5 * n) / n), inner = sec - 40;    // 40px for each section's title and padding
+  const n = (hasLogs ? 1 : 0) + (hasTvd ? 1 : 0); $('#geoEmpty').hidden = n > 0; if (!n) return;
+  const sec = Math.max(150, (avail - 5 * n) / n), inner = sec - 40;      // the log controls are in the Well logs panel, not the pane    // 40px for each section's title and padding
   GEO.logH = inner; GEO.tvdH = inner;
 }
 function drawGeo() {
@@ -281,7 +281,8 @@ function renderActual() {
   { const k = state.actual && state.actual.kind === 'plan'; $('#actTitle').textContent = k ? 'Other plan survey' : 'Actual survey'; }
   if (!paneOn('actual')) return;
   const a = state.actual, has = !!ACT.rows;
-  $('#actBody').hidden = !has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
+  $('#actBody').hidden = !has; $('#actEmpty').hidden = has; $('#bActClear').hidden = !a; $('#actOpts').hidden = !a;
+  if (!has) $('#actStats').innerHTML = $('#actAhead').innerHTML = '';     // KPI row: nothing to show yet
   if (a) { $('#actTie').value = a.tie || 'auto'; $('#actTrue').checked = !!a.trueNorth; $('#actKind').value = a.kind === 'plan' ? 'plan' : 'drilled'; }
   if (!a) { if (!$('#actMsg').dataset.keep) $('#actMsg').textContent = 'Import the as-drilled survey (MD, inclination, azimuth), full or partial, to compare it with this well’s plan.'; return; }
   if (!M.survey) { $('#actMsg').textContent = 'The plan does not build right now, so there is nothing to compare with.'; return; }

@@ -71,8 +71,47 @@ button.primary:active:not(:disabled){background:var(--accent-pressed);border-col
 button.small{padding:2px 10px;font-size:14px}
 button.ghost{border-color:transparent;background:transparent;color:var(--accent-text)}
 button.ghost:hover:not(:disabled){background:var(--panel);border-color:transparent;text-decoration:underline}
-.app{display:grid;grid-template-columns:350px minmax(0,1fr);height:calc(100vh - 50px)}
-aside{overflow:auto;padding:12px;border-right:1px solid var(--line)}
+.app{display:grid;grid-template-columns:52px var(--dockw,0px) minmax(0,1fr);height:calc(100vh - 50px)}
+/* left icon rail: global input panels on top, the open module's panels below the divider */
+#rail{grid-column:1}#dock{grid-column:2}main{grid-column:3}
+#rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0;border-right:1px solid var(--line);background:var(--panel);z-index:30}
+.railbtn{position:relative;width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted)}
+.railbtn:hover{color:var(--ink);background:var(--bg)}
+.railbtn.on{color:var(--accent);background:var(--bg);border-color:var(--line)}
+.railbtn[data-tip]:hover::after,.railbtn[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:var(--ink);color:var(--bg);padding:5px 9px;border-radius:6px;font-size:13px;font-weight:500;white-space:nowrap;pointer-events:none;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.railsep{width:28px;height:1px;background:var(--line);margin:6px 0}
+/* docked input panel: pushes the charts narrower while open */
+#dock{overflow:auto;padding:0 12px 12px;border-right:1px solid var(--line);background:var(--bg)}
+.panel .phead{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:6px;padding:10px 0 8px;background:var(--bg)}
+.panel .phead h2{margin:0;font-size:16px;font-weight:700}
+.panel.showhelp .phelp{color:var(--accent);border-color:var(--accent)}
+.panel .card>h3[role=button]{cursor:default!important}
+.panel #padArrow,.panel #lsArrow,.panel #tgtFArrow,.panel #dsgFArrow,.panel #topFArrow,.panel #refArrow,.panel #errArrow,.panel #stoArrow,.panel #actArrow,.panel #logArrow,.panel #wallCArrow,.panel #drillCArrow,.panel #tdsArrow,.panel #tdhArrow{display:none!important}
+.panel #padBody,.panel #lsBody,.panel #tgtFBody,.panel #dsgFBody,.panel #topFBody,.panel #refBody,.panel #errBody,.panel #stoBody,.panel #actCardBody,.panel #logBody,.panel #wallCBody,.panel #drillCBody,.panel #tdsBody,.panel #tdhBody{display:block!important}
+.panel .g3.w3,.panel .g3.d3{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* explanations: hidden until the panel's ? (or the page ? on the tab row) is clicked */
+.panel:not(.showhelp) .help,body:not(.panehelp) main .help{display:none!important}
+body.panehelp #bPaneHelp{color:var(--accent);border-color:var(--accent)}
+/* KPI row for the open module, with the alerts chip at its end */
+#kpis{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+#kpis .kpiset{flex:1;min-width:0;margin-bottom:0}
+#kpis .kpiset>.stats{margin-bottom:6px}#kpis .kpiset>.stats:last-child{margin-bottom:0}
+.warnwrap{position:relative;flex:0 0 auto}
+#warnChip{cursor:pointer;font-size:13px;padding:6px 10px;white-space:nowrap}
+#warnList{position:absolute;right:0;top:calc(100% + 6px);width:min(640px,80vw);max-height:60vh;overflow:auto;z-index:40;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px}
+#warnList ul{margin:0;padding-left:18px}#warnList li{margin:4px 0}
+.empty{color:var(--muted);padding:30px 10px;text-align:center}
+/* module tabs stay on one line (scroll sideways when a panel makes the page narrow) */
+.stickytop .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.stickytop .tabs::-webkit-scrollbar{display:none}
+.stickytop .tab{flex:0 0 auto;padding:1.7px 13px}
+/* KPI note line (which well, at what MD) under the value */
+.stat .n{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Plan vs actual: the measured and projected KPIs flow as one row */
+#kpis .kpiset[data-mods="actual"]{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+#kpis .kpiset[data-mods="actual"]>.stats{display:contents}
+.panel .actopts{grid-template-columns:1fr}
+#panel-logs #logCurves>div{grid-template-columns:auto minmax(0,1fr) auto auto auto auto!important;gap:6px 8px!important}
+#panel-logs #logCurves .mut{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 main{overflow:auto;padding:12px 12px 20px}
 .card{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:5px;background:var(--panel)}
 .card h3{margin:0 0 8px;font-size:14px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:8px}
@@ -217,10 +256,10 @@ td.bad{color:var(--warn);font-weight:700}
 .tgt.unused{opacity:.55}
 .tmiss{font-size:14px;margin-top:6px;color:var(--muted);font-variant-numeric:tabular-nums}
 @media (max-width:1100px){.plots{grid-template-columns:1fr}}
-@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr);height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr);height:auto}#rail,#dock,main{grid-column:1}#rail{flex-direction:row;overflow-x:auto;padding:6px 8px;border-right:0;border-bottom:1px solid var(--line)}.railsep{width:1px;height:28px;margin:0 6px}.railbtn[data-tip]:hover::after{display:none}#dock{border-right:0;border-bottom:1px solid var(--line);max-height:70vh}}
 /* phone and small tablet: one column, finger-sized controls, tables and tab bar scroll sideways instead of overflowing */
 @media (max-width:860px){
-  .app{height:auto}main{overflow:visible;min-width:0}aside{min-width:0}
+  .app{height:auto}main{overflow:visible;min-width:0}#dock{min-width:0}
   .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;padding:6px 14px}
   .tblwrap{max-height:70vh}
@@ -228,7 +267,7 @@ td.bad{color:var(--warn);font-weight:700}
 }
 @media (max-width:640px){
   header{padding:6px 10px}header h1{font-size:16px}
-  aside,main{padding:8px}.stickytop{margin:-8px -8px 5px;padding:8px 8px 0;top:0}
+  #dock{padding:0 8px 8px}main{padding:8px}.stickytop{margin:-8px -8px 5px;padding:8px 8px 0;top:0}
   .card{padding:8px 10px}
   .g2,.g3{grid-template-columns:1fr 1fr}
   .stats{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
@@ -239,7 +278,7 @@ td.bad{color:var(--warn);font-weight:700}
 }
 @media print{
   .printonly{display:block!important;font-size:16px;font-weight:700;margin:0 0 8px}
-  header .btns,aside,.tabs,.toolbar button,.hint,.noprint{display:none!important}
+  header .btns,aside,#rail,#kpis .warnwrap,.tabs,.toolbar button,.hint,.noprint{display:none!important}
   .app{display:block;height:auto}.pane{display:block!important;margin-bottom:16px}
   .tblwrap{max-height:none;overflow:visible}body{background:#fff;color:#000}
   .plot canvas{height:300px}
@@ -270,20 +309,28 @@ td.bad{color:var(--warn);font-weight:700}
 </header>
 
 <div class="app">
-<aside>
-  <div class="card" id="verBox">
-    <h3>Plan version</h3>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <select id="verSel" style="flex:1;min-width:120px" title="Alternative plans for this well. Switching loads that version's targets and path design."></select>
-      <button class="small" id="bVerNew" title="Copy the current plan into a new version and switch to it, so the original is kept while you move targets or change the path">New version</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-      <button class="small ghost" id="bVerName" hidden>Rename</button><button class="small ghost" id="bVerPick" hidden title="Mark this version as the one chosen to drill">☆ Select</button><button class="small ghost" id="bVerDel" hidden>Delete</button>
-    </div>
-    <input id="verNote" type="text" placeholder="Note for this version (why it differs)" style="margin-top:6px" hidden>
-    <label class="chk" id="verOvRow" hidden style="margin:8px 0 0;font-size:14px;gap:6px;flex-direction:row;align-items:center" title="Draw the other versions as dashed lines on the Plan view, Section view and 3D view. They are not included in the clearance checks."><input type="checkbox" id="verOvOn" style="width:15px;height:15px;margin:0"><span>Show other versions on plots</span></label>
-    <div id="verCmp" hidden style="margin-top:8px"></div>
-  </div>
+<nav id="rail" aria-label="Input panels">
+  <button class="railbtn" data-panel="well" data-tip="Well: name, API, coordinate system, surface location, elevations" aria-label="Well: name, API, coordinate system, surface location, elevations" aria-controls="panel-well" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 7 21M12 3l5 18M8.6 15h6.8M10 9h4M5 21h14"/></svg></button>
+  <button class="railbtn" data-panel="versions" data-tip="Plan versions: alternative plans for this well" aria-label="Plan versions: alternative plans for this well" aria-controls="panel-versions" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></button>
+  <button class="railbtn" data-panel="pad" data-tip="Pad: slot template and lateral spacing" aria-label="Pad: slot template and lateral spacing" aria-controls="panel-pad" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="18" cy="7" r="1.6"/><circle cx="6" cy="13" r="1.6"/><circle cx="12" cy="13" r="1.6"/><circle cx="18" cy="13" r="1.6"/><path d="M4 19h16"/></svg></button>
+  <button class="railbtn" data-panel="targets" data-tip="Targets: landing, lateral and toe points" aria-label="Targets: landing, lateral and toe points" aria-controls="panel-targets" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button class="railbtn" data-panel="design" data-tip="Design: well type, kickoff, build and landing rates, DLS alarm" aria-label="Design: well type, kickoff, build and landing rates, DLS alarm" aria-controls="panel-design" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v6c0 6 4 9.5 14 11"/><circle cx="6" cy="9" r="1.5"/><circle cx="20" cy="20" r="1.5"/></svg></button>
+  <button class="railbtn" data-panel="tops" data-tip="Formation tops" aria-label="Formation tops" aria-controls="panel-tops" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7c3-1.5 6 1.5 9 0s6-1.5 9 0"/><path d="M3 12c3-1.5 6 1.5 9 0s6-1.5 9 0"/><path d="M3 17c3-1.5 6 1.5 9 0s6-1.5 9 0"/></svg></button>
+  <div class="railsep" id="railSep"></div>
+  <button class="railbtn" data-panel="sections" data-mod="plots" data-tip="PLSS sections, setbacks and drilled wells from state records" aria-label="PLSS sections, setbacks and drilled wells from state records" aria-controls="panel-sections" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18M3 12h18" stroke-dasharray="2.5 2"/><path d="M7 19 17 6" /></svg></button>
+  <button class="railbtn" data-panel="offwells" data-mod="offsets" data-tip="Offset wells: reference wells, outside offsets, state records" aria-label="Offset wells: reference wells, outside offsets, state records" aria-controls="panel-offwells" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3v8c0 4 2 7 6 10"/><path d="M12 3v7c0 4 3 7 8 11"/><path d="M19 3v4"/></svg></button>
+  <button class="railbtn" data-panel="clearance" data-mod="offsets" data-tip="Clearance alerts and survey uncertainty" aria-label="Clearance alerts and survey uncertainty" aria-controls="panel-clearance" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="5"/><path d="M12 7v10"/><path d="M8.5 12h7"/></svg></button>
+  <button class="railbtn" data-panel="actual" data-mod="actual" data-tip="Actual survey: import, paste or add stations; projection ahead" aria-label="Actual survey: import, paste or add stations; projection ahead" aria-controls="panel-actual" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3v6c0 5 4 9 14 12" stroke-dasharray="1 3.2"/><circle cx="5" cy="5" r="1.4"/><circle cx="7" cy="13" r="1.4"/><circle cx="12" cy="18" r="1.4"/><circle cx="18" cy="20.5" r="1.4"/></svg></button>
+  <button class="railbtn" data-panel="logs" data-mod="geo" data-tip="Well logs: import LAS, choose tracks" aria-label="Well logs: import LAS, choose tracks" aria-controls="panel-logs" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3v18M20 3v18"/><path d="M12 3l-3 3 4 3-5 3 4 3-3 3 3 3"/></svg></button>
+  <button class="railbtn" data-panel="wall" data-mod="wall" data-tip="Wall plot settings and print" aria-label="Wall plot settings and print" aria-controls="panel-wall" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M7 8v5c0 3 3 5 10 5"/><path d="M14 8h4M14 11h4"/></svg></button>
+  <button class="railbtn" data-panel="drill" data-mod="wall" data-tip="Drill plan (survey report PDF)" aria-label="Drill plan (survey report PDF)" aria-controls="panel-drill" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 15h7M9 18h4"/></svg></button>
+  <button class="railbtn" data-panel="string" data-mod="td" data-tip="Drill string components" aria-label="Drill string components" aria-controls="panel-string" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2h4v4h-4zM10.6 6h2.8v11h-2.8z"/><path d="m9.5 17 2.5 5 2.5-5z"/></svg></button>
+  <button class="railbtn" data-panel="hole" data-mod="td" data-tip="Hole, mud and operating values" aria-label="Hole, mud and operating values" aria-controls="panel-hole" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3s6 6.5 6 10.5a6 6 0 0 1-12 0C6 9.5 12 3 12 3z"/><path d="M9 14.5a3 3 0 0 0 3 3"/></svg></button>
+</nav>
+<aside id="dock" hidden>
+<section class="panel" id="panel-well" data-pw="360" hidden>
+  <div class="phead"><h2>Well</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well">✕</button></div>
+  <div class="pbody">
   <div class="card">
     <h3>Well</h3>
     <div class="g2">
@@ -306,11 +353,33 @@ td.bad{color:var(--warn);font-weight:700}
     </div>
     <div class="derived" id="crsInfo" style="font-size:14px"></div>
   </div>
-
+  </div>
+</section>
+<section class="panel" id="panel-versions" data-pw="360" hidden>
+  <div class="phead"><h2>Plan versions</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Plan versions">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Plan versions">✕</button></div>
+  <div class="pbody">
+  <div class="card" id="verBox">
+    <h3>Plan version</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <select id="verSel" style="flex:1;min-width:120px" title="Alternative plans for this well. Switching loads that version's targets and path design."></select>
+      <button class="small" id="bVerNew" title="Copy the current plan into a new version and switch to it, so the original is kept while you move targets or change the path">New version</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="small ghost" id="bVerName" hidden>Rename</button><button class="small ghost" id="bVerPick" hidden title="Mark this version as the one chosen to drill">☆ Select</button><button class="small ghost" id="bVerDel" hidden>Delete</button>
+    </div>
+    <input id="verNote" type="text" placeholder="Note for this version (why it differs)" style="margin-top:6px" hidden>
+    <label class="chk" id="verOvRow" hidden style="margin:8px 0 0;font-size:14px;gap:6px;flex-direction:row;align-items:center" title="Draw the other versions as dashed lines on the Plan view, Section view and 3D view. They are not included in the clearance checks."><input type="checkbox" id="verOvOn" style="width:15px;height:15px;margin:0"><span>Show other versions on plots</span></label>
+    <div id="verCmp" hidden style="margin-top:8px"></div>
+  </div>
+  </div>
+</section>
+<section class="panel" id="panel-pad" data-pw="380" hidden>
+  <div class="phead"><h2>Pad</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Pad">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Pad">✕</button></div>
+  <div class="pbody">
   <div class="card">
     <h3 id="padHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="padArrow" style="display:inline-block;width:10px">▸</span>Pad template <span class="grow"></span><span id="padCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
     <div id="padBody" hidden style="margin-top:8px">
-    <div class="hint" style="margin:0 0 6px">Enter one known surface point, say which slot it is, then set the spacing and rotation.</div>
+    <div class="hint help" style="margin:0 0 6px">Enter one known surface point, say which slot it is, then set the spacing and rotation.</div>
     <div id="padRef"></div>
     <button class="small" id="bPadUse" style="margin:6px 0">Use this well’s surface as the known point</button>
     <div class="g3" style="align-items:end">
@@ -326,14 +395,14 @@ td.bad{color:var(--warn);font-weight:700}
     </div>
     <div class="derived" id="padInfo"></div>
     <canvas id="cvPad" style="width:100%;height:230px;display:block;margin-top:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer"></canvas>
-    <div class="hint">Click an empty slot to plan a new well there. It copies this well’s design and moves its targets by the same offset as the surface. Click a filled slot to open that well.</div>
+    <div class="hint help">Click an empty slot to plan a new well there. It copies this well’s design and moves its targets by the same offset as the surface. Click a filled slot to open that well.</div>
     </div>
   </div>
 
   <div class="card">
     <h3 id="lsHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="lsArrow" style="display:inline-block;width:10px">▸</span>Lateral spacing</h3>
     <div id="lsBody" hidden style="margin-top:8px">
-    <div class="hint" style="margin:0 0 6px">Sets the distance between laterals. The reference well keeps its targets. Every other horizontal well gets a copy of them, moved sideways by a multiple of the spacing, in the same order as the surface locations.</div>
+    <div class="hint help" style="margin:0 0 6px">Sets the distance between laterals. The reference well keeps its targets. Every other horizontal well gets a copy of them, moved sideways by a multiple of the spacing, in the same order as the surface locations.</div>
     <div class="g3">
       <label class="f">Reference well<select id="lsRef"></select></label>
       <label class="f">Spacing (ft)<input type="number" step="any" min="0" id="lsSp" value="660"></label>
@@ -342,10 +411,14 @@ td.bad{color:var(--warn);font-weight:700}
     <label class="f" style="margin-top:6px">Direction<select id="lsDir"><option value="1">Right of the reference, looking toward the toe</option><option value="-1">Left of the reference, looking toward the toe</option></select></label>
     <div class="derived" id="lsInfo"></div>
     <button class="small" id="bLsApply" style="margin:6px 0">Apply to pad wells</button>
-    <div class="hint">Stagger moves every other lateral (1st, 3rd… from the reference) deeper by that many feet; use a negative number for shallower. This overwrites the target positions of the other wells.</div>
+    <div class="hint help">Stagger moves every other lateral (1st, 3rd… from the reference) deeper by that many feet; use a negative number for shallower. This overwrites the target positions of the other wells.</div>
     </div>
   </div>
-
+  </div>
+</section>
+<section class="panel" id="panel-targets" data-pw="400" hidden>
+  <div class="phead"><h2>Targets</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Targets">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Targets">✕</button></div>
+  <div class="pbody">
   <div class="card">
     <h3 id="tgtFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tgtFArrow" style="display:inline-block;width:10px">▾</span>Targets <span class="grow"></span><span id="tgtCount" style="font-weight:400;text-transform:none;letter-spacing:0;margin-right:6px"></span><button class="small" id="bAddTgt">+ Add target</button></h3>
     <div id="tgtFBody" style="margin-top:8px">
@@ -358,11 +431,15 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
       <button class="small" id="bExtend" style="margin-top:6px">Add target from last by az / length / dip</button>
     </div>
-    <div class="hint" id="tgtHint"></div>
+    <div class="hint help" id="tgtHint"></div>
     <div class="derived" id="derived"></div>
     </div>
   </div>
-
+  </div>
+</section>
+<section class="panel" id="panel-design" data-pw="380" hidden>
+  <div class="phead"><h2>Design</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Design">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Design">✕</button></div>
+  <div class="pbody">
   <div class="card">
     <h3 id="dsgFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="dsgFArrow" style="display:inline-block;width:10px">▾</span>Design <span class="grow"></span><span id="modeBadge" class="pill"></span></h3>
     <div id="dsgFBody" style="margin-top:8px">
@@ -390,38 +467,26 @@ td.bad{color:var(--warn);font-weight:700}
       </div>
       <label class="f" data-show="slant,scurve,vertical">Hold past target (ft)<input type="number" step="any" min="0" data-k="d.ext"></label>
     </div>
-    <div class="hint" id="designHint"></div>
+    <div class="hint help" id="designHint"></div>
     </div>
   </div>
-
+  </div>
+</section>
+<section class="panel" id="panel-tops" data-pw="420" hidden>
+  <div class="phead"><h2>Formation tops</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Formation tops">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Formation tops">✕</button></div>
+  <div class="pbody">
   <div class="card">
     <h3 id="topFHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="topFArrow" style="display:inline-block;width:10px">▾</span>Formation tops <span class="grow"></span><span id="topCount" style="font-weight:400;text-transform:none;letter-spacing:0;margin-right:6px"></span><button class="small" id="bPadTops" title="Copy the tops from the other wells on this pad into this well" style="margin-right:4px">Use pad tops</button><button class="small" id="bAddTop">+ Add</button></h3>
     <div id="topFBody" style="margin-top:8px">
     <div id="topsList"></div>
-    <div class="hint">TVD from KB. Drawn as lines on the section view. Wells in a pad slot share one set of tops: an edit here applies to every other pad well.</div>
+    <div class="hint help">TVD from KB. Drawn as lines on the section view. Wells in a pad slot share one set of tops: an edit here applies to every other pad well.</div>
     </div>
   </div>
-</aside>
-
-<main>
-  <div id="printId" class="printonly"></div>
-  <div id="banner"></div>
-  <div class="stickytop">
-  <div class="tabs">
-    <button class="tab on" data-tab="plots">Plots</button>
-    <button class="tab" data-tab="survey">Survey</button>
-    <button class="tab" data-tab="sections">Sections</button>
-    <button class="tab" data-tab="offsets">Offsets &amp; clearance</button>
-    <button class="tab" data-tab="actual">Plan vs actual</button>
-    <button class="tab" data-tab="geo">Geosteering</button>
-    <button class="tab" data-tab="wall">Wall plot</button>
-    <button class="tab" data-tab="td">Torque &amp; drag</button>
   </div>
-  <div class="stats" id="stats"></div>
-  </div>
-
-  <div class="pane on" id="pane-plots">
-  <div class="geo">
+</section>
+<section class="panel" id="panel-sections" data-pw="360" hidden>
+  <div class="phead"><h2>Sections and state wells</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Sections and state wells">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Sections and state wells">✕</button></div>
+  <div class="pbody">
     <div id="secWrap" class="card">
       <h3>Sections</h3>
       <label class="chk"><input type="checkbox" id="secOn"><span>Show sections within 1 mile of the lateral</span></label>
@@ -437,9 +502,229 @@ td.bad{color:var(--warn);font-weight:700}
       <label class="chk"><input type="checkbox" id="stoTrue"><span>Filed survey azimuths are true north (convert to grid)</span></label>
     </div>
     <div class="toolbar" style="margin:8px 0 0"><input type="file" id="stoFile" accept=".js" hidden><span id="stoFileMsg" class="hint" style="margin:0"></span></div>
-    <div class="hint" style="margin:6px 0 0">Tracks are drawn on the plots. The well list and clearance are on the Offsets &amp; clearance tab.</div>
+    <div class="hint help" style="margin:6px 0 0">Tracks are drawn on the plots. The well list and clearance are on the Offsets &amp; clearance tab.</div>
   </div>
   </div>
+</section>
+<section class="panel" id="panel-offwells" data-pw="420" hidden>
+  <div class="phead"><h2>Offset wells</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Offset wells">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Offset wells">✕</button></div>
+  <div class="pbody">
+    <div class="toolbar" style="margin:0 0 6px"><button id="bAddOff">+ Add outside offset well</button></div>
+    <div id="offList"></div>
+    <div class="card" id="refCard" style="margin-bottom:5px">
+      <h3 id="refHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="refArrow" style="display:inline-block;width:10px">▾</span>Wells from this tool as offsets <span class="grow"></span><span id="refCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="refBody" style="margin-top:8px">
+      <div class="hint help" style="margin:0 0 6px">Wells in this project are always compared with each other. Add wells from another saved plan (for example, ones not on the state’s layer yet) as reference copies: they are drawn on the plots and checked for clearance like any other offset. A reference is a frozen copy, so adding the same well again replaces it.</div>
+      <div id="refList"></div>
+      <div class="toolbar" style="margin-top:6px"><button class="small" id="bRefAdd">+ Add wells from a saved plan…</button><input type="file" id="refFile" accept=".json,application/json" hidden></div>
+      <div id="refPick"></div>
+      </div>
+    </div>
+    <div class="card" id="stoListCard" style="margin-bottom:5px">
+      <h3 id="stoHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="stoArrow" style="display:inline-block;width:10px">▸</span>Drilled wells from state records <span class="grow"></span><span id="stoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="stoBody" style="margin-top:8px" hidden>
+      <div id="stoInfo" class="derived" style="margin-top:0"></div>
+      <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; in <b>Sections and state wells</b> (left menu on the Plots tab) to list them here.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-clearance" data-pw="380" hidden>
+  <div class="phead"><h2>Clearance</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Clearance">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Clearance">✕</button></div>
+  <div class="pbody">
+    <div class="card"><label class="f">Alert when closer than (ft, center to center)<input id="minSep" type="number" step="any" min="0"></label>
+    <div class="hint help">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</div></div>
+    <div class="card" id="errCard" style="margin-bottom:5px">
+      <h3 id="errHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="errArrow" style="display:inline-block;width:10px">▾</span>Survey uncertainty (screening) <span class="grow"></span><span id="errSum" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="errBody" style="margin-top:8px">
+      <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
+      <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
+      <div class="chkcol"><label class="chk"><input type="checkbox" id="errEll"><span>Draw error ellipses every 1,000 ft at 2.79 standard deviations (plan view: this well; 3D view: this well and the offsets)</span></label></div>
+      <div class="derived help" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-actual" data-pw="440" hidden>
+  <div class="phead"><h2>Actual survey</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Actual survey">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Actual survey">✕</button></div>
+  <div class="pbody">
+    <div class="card" id="actCard">
+      <h3 id="actHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="actArrow" style="display:inline-block;width:10px">▾</span><span id="actTitle">Actual survey</span> <span class="grow"></span><span id="actCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="actCardBody" style="margin-top:8px">
+      <div class="toolbar">
+        <button id="bActFile">Import survey file…</button><input type="file" id="actFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
+        <button id="bActPaste">Paste survey…</button>
+        <button id="bActClear" class="ghost">Remove actual survey</button>
+        <button id="bActCsv" class="small">Export actual vs plan CSV</button><button id="bActSum" class="small">Export summary</button>
+      </div>
+      <div class="hint help" style="margin:0 0 4px">Importing or pasting a survey here replaces the whole actual survey, so use it to refresh after the crew has drilled a lot. For a few new points use Add stations below.</div>
+      <div id="actPasteBox" hidden>
+        <textarea id="actPaste" rows="6" placeholder="MD, Inc, Azi  (one station per line; a header line naming the columns is fine)"></textarea>
+        <div class="toolbar" style="margin-top:6px"><button id="bActUse" class="small">Use pasted survey</button><button id="bActPasteCancel" class="small">Cancel</button></div>
+      </div>
+      <div id="actAdd" style="margin-top:10px">
+        <h3 style="margin-bottom:6px">Add stations</h3>
+        <div class="addrow">
+          <label class="f">MD (ft)<input type="number" step="any" id="actMd" min="0"></label>
+          <label class="f">Inc (°)<input type="number" step="any" id="actInc" min="0" max="180"></label>
+          <label class="f">Azi (°)<input type="number" step="any" id="actAzi"></label>
+          <button id="bActAdd" class="primary">Add station</button>
+          <button id="bActUndo">Remove last station</button>
+        </div>
+        <label class="f" style="margin-top:8px">Or paste new stations, one per line as MD, Inc, Azi<textarea id="actAddPaste" rows="3" placeholder="12080, 90.2, 181.4&#10;12170, 90.5, 181.9"></textarea></label>
+        <div class="toolbar" style="margin-top:6px"><button id="bActAddPaste" class="small">Add pasted stations</button></div>
+        <div id="actAddMsg" class="hint" style="margin-top:4px"></div>
+        <div class="hint help" style="margin-top:2px">A station at an MD that is already in the survey replaces it, so pasting a few rows that overlap is safe.</div>
+      </div>
+      <div id="actOpts" class="g2 actopts" style="margin-top:8px">
+        <label class="f">This survey is<select id="actKind"><option value="drilled">As drilled (actual)</option><option value="plan">Another plan (for example from COMPASS)</option></select></label>
+        <label class="f">Tie-in of the first station<select id="actTie"><option value="auto">Automatic (surface if it starts at 0, else the plan)</option><option value="plan">On the plan at the first MD</option><option value="surface">Surface, vertical to the first MD</option></select></label>
+        <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span title="Tick if the azimuths are referenced to true north; they are converted to grid using the convergence at the surface location">Azimuths are true north</span></label></div>
+      </div>
+      <div id="actMsg" class="derived"></div>
+      </div>
+    </div>
+    <div class="card"><h3>Projection to the bit</h3>
+      <div class="g2" style="align-items:end">
+        <label class="f">Project ahead (ft, at the last two stations’ build and turn rates)<input type="number" id="actProj" min="10" step="10" value="100"></label>
+        <label class="f">Rejoin the plan this many ft of plan MD further on<input type="number" id="actRej" min="50" step="50" value="300"></label>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-logs" data-pw="560" hidden>
+  <div class="phead"><h2>Well logs</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well logs">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well logs">✕</button></div>
+  <div class="pbody">
+    <div class="card" id="logCard">
+      <h3 id="logHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="logArrow" style="display:inline-block;width:10px">▾</span>Well logs <span class="grow"></span><span id="logCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
+      <div id="logBody" style="margin-top:8px">
+      <div class="toolbar">
+        <button id="bLogFile">Import LAS…</button><input type="file" id="logFile" accept=".las,.LAS,.txt,text/*" hidden>
+        <button id="bLogClear" class="ghost">Remove all logs</button>
+      </div>
+      <div id="logPick" hidden></div>
+      <div id="logMsg" class="hint" style="margin:6px 0 0"></div>
+      <div id="logCurves"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-wall" data-pw="440" hidden>
+  <div class="phead"><h2>Wall plot</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Wall plot">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Wall plot">✕</button></div>
+  <div class="pbody">
+    <div class="card">
+      <h3 id="wallCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="wallCArrow" style="display:inline-block;width:10px">▾</span>Wall plot</h3>
+      <div id="wallCBody" style="margin-top:8px">
+      <div class="g3 w3">
+        <label class="f">Plan name<input data-w="plan" placeholder="Design #1"></label>
+        <label class="f">Footage reference<select data-w="foot"><option value="fnlfel">FNL / FEL</option><option value="fnlfwl">FNL / FWL</option><option value="fslfel">FSL / FEL</option><option value="fslfwl">FSL / FWL</option><option value="auto">Nearest lines</option></select></label>
+        <label class="f" title="Blank = taken from the section lines">Footage text<input data-w="footText" placeholder="547.0 FNL   2668.0 FEL"></label>
+        <label class="f" title="Blank = automatic">Plan scale (usft/in)<input type="number" step="any" min="1" data-w="scale" placeholder="auto"></label>
+        <label class="f">Plan view sections<select data-w="secs"><option value="crossed">Crossed</option><option value="near">Within 1 mile</option><option value="none">None</option></select></label>
+        <label class="f" title="Section view TVD range; blank = automatic">Section TVD from (ft)<input type="number" step="any" data-w="tvdMin" placeholder="auto"></label>
+        <label class="f" title="Section view TVD range; blank = automatic">Section TVD to (ft)<input type="number" step="any" data-w="tvdMax" placeholder="auto"></label>
+      </div>
+      <div class="chkcol" style="margin-top:8px">
+        <label class="chk"><input type="checkbox" data-w="setback"><span>Draw setback lines (setback set in Sections and state wells on the Plots tab)</span></label>
+        <label class="chk"><input type="checkbox" data-w="wellId"><span>Add the well number to target names (Landing - 21-12-13 PH)</span></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <button id="bWallPrint" class="primary">Print / save as PDF</button>
+        <button id="bWallSvg">Download SVG</button>
+        <button id="bWallLogo" title="Logo…" aria-label="Logo" style="padding:4px 10px;line-height:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></button><input type="file" id="wallLogoFile" accept="image/png,image/jpeg,image/svg+xml" hidden>
+      </div>
+      <div id="wallNote" class="hint"></div>
+      <div class="hint help">Page is Letter landscape. In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-drill" data-pw="420" hidden>
+  <div class="phead"><h2>Drill plan</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Drill plan">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Drill plan">✕</button></div>
+  <div class="pbody">
+    <div class="card">
+      <h3 id="drillCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="drillCArrow" style="display:inline-block;width:10px">▾</span>Drill plan (survey report PDF)</h3>
+      <div id="drillCBody" style="margin-top:8px">
+      <div class="g3 d3">
+        <label class="f">Company<input data-w="company" placeholder="Company name"></label>
+        <label class="f">Project<input data-w="project" placeholder="Project name"></label>
+        <label class="f">Site (blank = well name)<input data-w="site"></label>
+        <label class="f">Wellbore<input data-w="wellbore" placeholder="Wellbore #1"></label>
+        <label class="f">Survey interval (ft MD)<input type="number" step="any" min="10" data-w="dpStep" placeholder="100"></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px"><button id="bDrillPrint" class="primary">Print / save as PDF</button></div>
+      <div class="hint help">Portrait Letter pages in the Planning Report format: cover, well information, plan sections, planned survey every interval (plus section ends, tops and targets), design targets, formations and annotations. The plan name and the dip/direction of tops come from the Wall plot settings and the Formation tops list.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-string" data-pw="620" hidden>
+  <div class="phead"><h2>Drill string</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Drill string">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Drill string">✕</button></div>
+  <div class="pbody">
+    <div class="card" id="tdsCard">
+      <h3 id="tdsHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdsArrow" style="display:inline-block;width:10px">▾</span>Drill string <span class="grow"></span><button class="small" id="bTdAdd">+ Add component</button></h3>
+      <div id="tdsBody" style="margin-top:8px">
+      <div class="tblwrap" style="max-height:none"><table class="sectbl" id="tdComps"></table></div>
+      <div class="hint help">Listed from the bit up. The last row runs to surface, so its length is not used. Weight is the adjusted weight in air, tool joints included. Torque uses the tool joint OD as the contact radius.</div>
+      <div class="toolbar" style="margin-top:6px"><button class="small" id="bTdAll" title="Copy this well's drill string, hole and operating values to every other well in the project">Use for all wells in the project</button><button class="small ghost" id="bTdReset">Reset to defaults</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-hole" data-pw="440" hidden>
+  <div class="phead"><h2>Hole, mud and operating values</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Hole, mud and operating values">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Hole, mud and operating values">✕</button></div>
+  <div class="pbody">
+    <div class="card" id="tdhCard">
+      <h3 id="tdhHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdhArrow" style="display:inline-block;width:10px">▾</span>Hole, mud and operating values</h3>
+      <div id="tdhBody" style="margin-top:8px">
+      <div class="g3">
+        <label class="f">Path<select id="tdPath" data-td="path"><option value="plan">Planned survey</option><option value="actual">Actual survey (rest from plan)</option></select></label>
+        <label class="f" title="Leave blank to use the Landing point (or 0 for wells without one)">Casing shoe MD (ft)<input type="number" step="any" min="0" data-td="shoe" placeholder="landing"></label>
+        <label class="f">Casing ID (in)<input type="number" step="any" min="1" data-td="csgId"></label>
+        <label class="f">Open hole size (in)<input type="number" step="any" min="1" data-td="hole"></label>
+        <label class="f">Mud weight (ppg)<input type="number" step="any" min="0" data-td="mw"></label>
+        <label class="f">Block weight (klbf)<input type="number" step="any" min="0" data-td="block"></label>
+        <label class="f">Friction, cased hole<input type="number" step="0.01" min="0" data-td="ffC"></label>
+        <label class="f">Friction, open hole<input type="number" step="0.01" min="0" data-td="ffO"></label>
+        <label class="f" title="Open-hole friction factors drawn as extra (dashed) lines on the bit-depth plots">Open hole sensitivity<input type="text" data-td="ffList" placeholder="0.2, 0.4"></label>
+        <label class="f">Weight on bit (klbf)<input type="number" step="any" min="0" data-td="wob"></label>
+        <label class="f">Bit torque (kft-lbf)<input type="number" step="any" min="0" data-td="tob"></label>
+        <label class="f" title="Tension the string can take: pipe body or connection rating with your design factor applied">Tensile limit (klbf)<input type="number" step="any" min="0" data-td="tenLim"></label>
+        <label class="f" title="Make-up torque of the drill pipe connections">Torque limit (kft-lbf)<input type="number" step="any" min="0" data-td="tqLim"></label>
+        <label class="f" title="A planned path is smooth, so it under-predicts torque and drag. Add sine-wave tortuosity of this many degrees to inclination and azimuth (1° is common).">Tortuosity (°)<input type="number" step="0.1" min="0" data-td="tortAmp"></label>
+        <label class="f">Tortuosity period (ft)<input type="number" step="any" min="50" data-td="tortPer"></label>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+</aside>
+
+<main>
+  <div id="printId" class="printonly"></div>
+  <div id="banner"></div>
+  <div class="stickytop">
+  <div class="tabs">
+    <button class="tab on" data-tab="plots">Plots</button>
+    <button class="tab" data-tab="survey">Survey</button>
+    <button class="tab" data-tab="sections">Sections</button>
+    <button class="tab" data-tab="offsets">Offsets &amp; clearance</button>
+    <button class="tab" data-tab="actual">Plan vs actual</button>
+    <button class="tab" data-tab="geo">Geosteering</button>
+    <button class="tab" data-tab="wall">Wall plot</button>
+    <button class="tab" data-tab="td">Torque &amp; drag</button>
+    <span class="grow"></span><button id="bPaneHelp" class="small ghost" title="Show or hide the explanations on this page" aria-pressed="false">?</button>
+  </div>
+  <div id="kpis">
+    <div class="stats kpiset" id="stats" data-mods="plots survey sections geo wall"></div>
+    <div class="stats kpiset" id="offStats" data-mods="offsets"></div>
+    <div class="kpiset" data-mods="actual"><div class="stats" id="actStats"></div><div class="stats" id="actAhead"></div></div>
+    <div class="stats kpiset" id="tdStats" data-mods="td"></div>
+    <div class="warnwrap"><button id="warnChip" class="pill warn" hidden aria-expanded="false" title="Show the alerts for this plan"></button><div id="warnList" hidden></div></div>
+  </div>
+  </div>
+
+  <div class="pane on" id="pane-plots">
     <div class="plots">
       <div class="plot"><h4>Plan view <span title="North up · drag to pan · wheel to zoom · double-click to reset">N up · drag · wheel · double-click</span><span class="grow"></span><label class="chk" style="display:flex;margin:0;gap:8px;flex-direction:row;align-items:center;flex:0 0 auto" title="Show the names of the other wells on the plan and section views"><input type="checkbox" id="namesOn"><span>Well names</span></label></h4><canvas id="cvPlan"></canvas></div>
       <div class="plot"><h4>Section view <span id="secLbl"></span></h4><canvas id="cvSec"></canvas></div>
@@ -464,7 +749,7 @@ td.bad{color:var(--warn);font-weight:700}
           <option value="1000">every 1,000 ft</option>
           <option value="0">section ends only</option>
         </select></label>
-      <span class="hint" style="margin:0">Section ends and TD are always shown (bold). DLS above the alarm is red.</span>
+      <span class="hint help" style="margin:0">Section ends and TD are always shown (bold). DLS above the alarm is red.</span>
     </div>
     <div class="tblwrap"><table id="surveyTbl"></table></div>
   </div>
@@ -472,202 +757,43 @@ td.bad{color:var(--warn);font-weight:700}
   <div class="pane" id="pane-sections">
     <div class="toolbar" id="secBar"></div>
     <div class="tblwrap" style="max-height:none"><table class="sectbl" id="secTbl"></table></div>
-    <div class="hint">Target-driven mode solves these sections from your targets. Switch to manual to edit holds and curves directly (like building a plan by section in COMPASS); the curve “target inc/azi” is where the section ends, built at the DLS you enter.</div>
+    <div class="hint help">Target-driven mode solves these sections from your targets. Switch to manual to edit holds and curves directly (like building a plan by section in COMPASS); the curve “target inc/azi” is where the section ends, built at the DLS you enter.</div>
   </div>
 
   <div class="pane" id="pane-actual">
-    <div class="card" id="actCard">
-      <h3 id="actHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="actArrow" style="display:inline-block;width:10px">▾</span><span id="actTitle">Actual survey</span> <span class="grow"></span><span id="actCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
-      <div id="actCardBody" style="margin-top:8px">
-      <div class="toolbar">
-        <button id="bActFile">Import survey file…</button><input type="file" id="actFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
-        <button id="bActPaste">Paste survey…</button>
-        <button id="bActClear" class="ghost">Remove actual survey</button>
-        <button id="bActCsv" class="small">Export actual vs plan CSV</button><button id="bActSum" class="small">Export summary</button>
-      </div>
-      <div class="hint" style="margin:0 0 4px">Importing or pasting a survey here replaces the whole actual survey, so use it to refresh after the crew has drilled a lot. For a few new points use Add stations below.</div>
-      <div id="actPasteBox" hidden>
-        <textarea id="actPaste" rows="6" placeholder="MD, Inc, Azi  (one station per line; a header line naming the columns is fine)"></textarea>
-        <div class="toolbar" style="margin-top:6px"><button id="bActUse" class="small">Use pasted survey</button><button id="bActPasteCancel" class="small">Cancel</button></div>
-      </div>
-      <div id="actAdd" style="margin-top:10px">
-        <h3 style="margin-bottom:6px">Add stations</h3>
-        <div class="addrow">
-          <label class="f">MD (ft)<input type="number" step="any" id="actMd" min="0"></label>
-          <label class="f">Inc (°)<input type="number" step="any" id="actInc" min="0" max="180"></label>
-          <label class="f">Azi (°)<input type="number" step="any" id="actAzi"></label>
-          <button id="bActAdd" class="primary">Add station</button>
-          <button id="bActUndo">Remove last station</button>
-        </div>
-        <label class="f" style="margin-top:8px">Or paste new stations, one per line as MD, Inc, Azi<textarea id="actAddPaste" rows="3" placeholder="12080, 90.2, 181.4&#10;12170, 90.5, 181.9"></textarea></label>
-        <div class="toolbar" style="margin-top:6px"><button id="bActAddPaste" class="small">Add pasted stations</button></div>
-        <div id="actAddMsg" class="hint" style="margin-top:4px"></div>
-        <div class="hint" style="margin-top:2px">A station at an MD that is already in the survey replaces it, so pasting a few rows that overlap is safe.</div>
-      </div>
-      <div id="actOpts" class="g2 actopts" style="margin-top:8px">
-        <label class="f">This survey is<select id="actKind"><option value="drilled">As drilled (actual)</option><option value="plan">Another plan (for example from COMPASS)</option></select></label>
-        <label class="f">Tie-in of the first station<select id="actTie"><option value="auto">Automatic (surface if it starts at 0, else the plan)</option><option value="plan">On the plan at the first MD</option><option value="surface">Surface, vertical to the first MD</option></select></label>
-        <div class="chkcol" style="justify-content:flex-end"><label class="chk"><input type="checkbox" id="actTrue"><span title="Tick if the azimuths are referenced to true north; they are converted to grid using the convergence at the surface location">Azimuths are true north</span></label></div>
-      </div>
-      <div id="actMsg" class="derived"></div>
-      </div>
-    </div>
+    <div class="empty" id="actEmpty">No survey to compare yet. Open <b>Actual survey</b> in the left menu to import, paste or add stations.</div>
     <div id="actBody">
-      <div class="stats" id="actStats"></div>
-      <div class="g2" style="margin:6px 0 2px;align-items:end">
-        <label class="f">Project ahead (ft, at the last two stations’ build and turn rates)<input type="number" id="actProj" min="10" step="10" value="100"></label>
-        <label class="f">Rejoin the plan this many ft of plan MD further on<input type="number" id="actRej" min="50" step="50" value="300"></label>
-      </div>
-      <div class="stats" id="actAhead"></div>
       <div class="plots">
         <div class="plot"><h4>Plan view <span>plan vs actual · drag pan · wheel zoom · double-click reset</span></h4><canvas id="cvApPlan"></canvas></div>
         <div class="plot"><h4>3D <span>drag rotate · Shift or right-drag pans · wheel zooms at the pointer · double-click reset</span><span class="grow"></span><button class="small" id="b3dPan" title="Make a plain drag pan the view instead of rotating it">Pan</button></h4><canvas id="cvAp3d"></canvas></div>
         <div class="plot" style="grid-column:1/-1"><h4>Actual minus plan vs actual MD <span>ft</span></h4><canvas id="cvApDist"></canvas></div>
       </div>
-      <div class="hint" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
+      <div class="hint help" style="margin:8px 0">Distance is to the closest point on the plan path. Right and high are measured at that point: positive is right of the plan heading and above the plan inclination, negative is left and below.</div>
       <div class="tblwrap" style="max-height:none"><table id="actTbl"></table></div>
     </div>
   </div>
 
   <div class="pane" id="pane-geo">
-    <div class="card" id="logCard">
-      <h3 id="logHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="logArrow" style="display:inline-block;width:10px">▾</span>Well logs <span class="grow"></span><span id="logCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
-      <div id="logBody" style="margin-top:8px">
-      <div class="toolbar">
-        <button id="bLogFile">Import LAS…</button><input type="file" id="logFile" accept=".las,.LAS,.txt,text/*" hidden>
-        <button id="bLogClear" class="ghost">Remove all logs</button>
-      </div>
-      <div id="logPick" hidden></div>
-      <div id="logMsg" class="hint" style="margin:6px 0 0"></div>
-      <div id="logCurves"></div>
-      </div>
-    </div>
+    <div class="empty" id="geoEmpty" hidden>No logs or survey to show yet. Open <b>Well logs</b> in the left menu to import a LAS file.</div>
     <div class="plot" id="logPlot" hidden><h4>Well logs <span>vs MD · hover to mark the same spot on the TVD chart and on the Plan vs actual views</span><span class="grow"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center"><input type="checkbox" id="logTopsOn" style="width:15px;height:15px;margin:0"><span>Tops</span></label><span class="zwrap" style="position:relative;display:inline-block;overflow:visible"><button class="small" id="bLogZoom" title="Zoom the log tracks: the entire lateral, or an interval you pick with two clicks">Zoom ▾</button><div id="logZoomMenu" hidden style="position:absolute;right:0;top:100%;margin-top:4px;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-sm);padding:4px;display:flex;flex-direction:column;gap:2px;min-width:170px"><button class="small ghost" data-zm="lat" style="text-align:left" title="From 400 ft above the Landing point (or the first target) to the last measured depth">Entire lateral</button><button class="small ghost" data-zm="int" style="text-align:left" title="Click a start point, then an end point, on any log track">Interval</button></div></span><button class="small ghost" id="bLogZoomReset" hidden>Show all</button></h4><div id="logTracks"></div></div>
     <div class="plot" id="geoTvd" hidden><h4 style="flex-wrap:wrap;align-items:center">TVD vs MD <span>actual survey and plan · same MD axis as the logs above</span><span class="grow"></span><span id="geoZoneStat" style="font-weight:400;min-width:0"></span><label class="chk" style="margin:0;font-size:14px;gap:6px;flex-direction:row;align-items:center;flex:0 0 auto">Target zone <select id="geoZone" style="width:auto;max-width:200px;padding:1px 6px;font-size:14px"></select></label></h4><canvas id="cvGeoTvd" style="cursor:crosshair"></canvas></div>
   </div>
 
   <div class="pane" id="pane-wall">
-    <div class="wallcards">
-    <div class="card">
-      <h3 id="wallCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="wallCArrow" style="display:inline-block;width:10px">▾</span>Wall plot</h3>
-      <div id="wallCBody" style="margin-top:8px">
-      <div class="g3 w3">
-        <label class="f">Plan name<input data-w="plan" placeholder="Design #1"></label>
-        <label class="f">Footage reference<select data-w="foot"><option value="fnlfel">FNL / FEL</option><option value="fnlfwl">FNL / FWL</option><option value="fslfel">FSL / FEL</option><option value="fslfwl">FSL / FWL</option><option value="auto">Nearest lines</option></select></label>
-        <label class="f" title="Blank = taken from the section lines">Footage text<input data-w="footText" placeholder="547.0 FNL   2668.0 FEL"></label>
-        <label class="f" title="Blank = automatic">Plan scale (usft/in)<input type="number" step="any" min="1" data-w="scale" placeholder="auto"></label>
-        <label class="f">Plan view sections<select data-w="secs"><option value="crossed">Crossed</option><option value="near">Within 1 mile</option><option value="none">None</option></select></label>
-        <label class="f" title="Section view TVD range; blank = automatic">Section TVD from (ft)<input type="number" step="any" data-w="tvdMin" placeholder="auto"></label>
-        <label class="f" title="Section view TVD range; blank = automatic">Section TVD to (ft)<input type="number" step="any" data-w="tvdMax" placeholder="auto"></label>
-      </div>
-      <div class="chkcol" style="margin-top:8px">
-        <label class="chk"><input type="checkbox" data-w="setback"><span>Draw setback lines (uses the setback on the Plots tab)</span></label>
-        <label class="chk"><input type="checkbox" data-w="wellId"><span>Add the well number to target names (Landing - 21-12-13 PH)</span></label>
-      </div>
-      <div class="toolbar" style="margin-top:10px">
-        <button id="bWallPrint" class="primary">Print / save as PDF</button>
-        <button id="bWallSvg">Download SVG</button>
-        <button id="bWallLogo" title="Logo…" aria-label="Logo" style="padding:4px 10px;line-height:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></button><input type="file" id="wallLogoFile" accept="image/png,image/jpeg,image/svg+xml" hidden>
-      </div>
-      <div id="wallNote" class="hint"></div>
-      <div class="hint">Page is Letter landscape. In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</div>
-      </div>
-    </div>
-    <div class="card">
-      <h3 id="drillCHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="drillCArrow" style="display:inline-block;width:10px">▾</span>Drill plan (survey report PDF)</h3>
-      <div id="drillCBody" style="margin-top:8px">
-      <div class="g3 d3">
-        <label class="f">Company<input data-w="company" placeholder="Company name"></label>
-        <label class="f">Project<input data-w="project" placeholder="Project name"></label>
-        <label class="f">Site (blank = well name)<input data-w="site"></label>
-        <label class="f">Wellbore<input data-w="wellbore" placeholder="Wellbore #1"></label>
-        <label class="f">Survey interval (ft MD)<input type="number" step="any" min="10" data-w="dpStep" placeholder="100"></label>
-      </div>
-      <div class="toolbar" style="margin-top:10px"><button id="bDrillPrint" class="primary">Print / save as PDF</button></div>
-      <div class="hint">Portrait Letter pages in the Planning Report format: cover, well information, plan sections, planned survey every interval (plus section ends, tops and targets), design targets, formations and annotations. The plan name and the dip/direction of tops come from the Wall plot settings and the Formation tops list.</div>
-      <details id="dpDet" style="margin-top:8px"><summary>Preview pages</summary><div id="drillPrev" style="display:flex;flex-wrap:wrap;margin-top:8px"></div></details>
-      </div>
-    </div>
-    </div>
     <div id="wallPrev"></div>
+      <details id="dpDet" style="margin-top:10px"><summary>Preview pages</summary><div id="drillPrev" style="display:flex;flex-wrap:wrap;margin-top:8px"></div></details>
   </div>
 
   <div class="pane" id="pane-offsets">
-    <div class="toolbar">
-      <button id="bAddOff">+ Add outside offset well</button>
-      <label>Alert when closer than <input id="minSep" type="number" step="any" min="0" style="width:80px"> ft</label>
-      <span class="hint" style="margin:0">Other wells on the pad are included automatically (for those, the alert only counts below the shallower of the two kickoffs, since parallel vertical holes sit one slot apart). The distance alert is center-to-center; the separation factor comes from the simplified survey-uncertainty model below.</span>
-    </div>
-    <div class="offrow" id="offRow">
-    <div class="card" id="refCard" style="margin-bottom:5px">
-      <h3 id="refHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="refArrow" style="display:inline-block;width:10px">▾</span>Wells from this tool as offsets <span class="grow"></span><span id="refCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
-      <div id="refBody" style="margin-top:8px">
-      <div class="hint" style="margin:0 0 6px">Wells in this project are always compared with each other. Add wells from another saved plan (for example, ones not on the state’s layer yet) as reference copies: they are drawn on the plots and checked for clearance like any other offset. A reference is a frozen copy, so adding the same well again replaces it.</div>
-      <div id="refList"></div>
-      <div class="toolbar" style="margin-top:6px"><button class="small" id="bRefAdd">+ Add wells from a saved plan…</button><input type="file" id="refFile" accept=".json,application/json" hidden></div>
-      <div id="refPick"></div>
-      </div>
-    </div>
-    <div class="card" id="errCard" style="margin-bottom:5px">
-      <h3 id="errHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="errArrow" style="display:inline-block;width:10px">▾</span>Survey uncertainty (screening) <span class="grow"></span><span id="errSum" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
-      <div id="errBody" style="margin-top:8px">
-      <label class="f">Survey tool, all wells<select id="errTool"><option value="mwd">MWD (typical)</option><option value="gyro">Gyro (typical)</option><option value="off">Off: center-to-center only</option></select></label>
-      <label class="f">Alert when separation factor is below<input type="number" id="errSf" min="0.5" step="0.1"></label>
-      <div class="chkcol"><label class="chk"><input type="checkbox" id="errEll"><span>Draw error ellipses every 1,000 ft at 2.79 standard deviations (plan view: this well; 3D view: this well and the offsets)</span></label></div>
-      <div class="derived" style="margin-top:6px">Simplified model: random and systematic inclination and azimuth error plus depth scale error, with rounded values for typical tools. It is not an ISCWSA tool-code calculation and the values are not checked against one. Use it to flag wells for a proper anti-collision run, not to replace it. Separation factor = center distance / (2.79 × combined 1-sigma error along the line between the wells).</div>
-      </div>
-    </div>
-    </div>
-    <div class="card" id="stoListCard" style="margin-bottom:5px">
-      <h3 id="stoHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="false"><span id="stoArrow" style="display:inline-block;width:10px">▸</span>Drilled wells from state records <span class="grow"></span><span id="stoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h3>
-      <div id="stoBody" style="margin-top:8px" hidden>
-      <div id="stoInfo" class="derived" style="margin-top:0"></div>
-      <div class="hint" id="stoOffHint">Turn on &ldquo;Include wells drilled in the sections&rdquo; at the top of the Plots tab to list them here.</div>
-      </div>
-    </div>
-    <div id="offList"></div>
     <div class="plot" style="margin-bottom:5px"><h4>Center-to-center distance vs plan MD</h4><canvas id="cvSep" style="cursor:default;height:260px"></canvas></div>
     <div class="tblwrap" style="max-height:none"><table id="sepTbl"></table></div>
     <div id="actSepBox" hidden>
-      <div class="hint" style="margin:10px 0 4px"><b>As drilled</b>: the actual survey, carried ahead at its last two stations’ build and turn rates (length set on the Plan vs actual tab), against the same wells. The projected part is only a guess at where the bit is heading.</div>
+      <div class="hint" style="margin:10px 0 4px"><b>As drilled</b>: the actual survey, carried ahead at its last two stations’ build and turn rates (length set under Projection to the bit in the Actual survey panel), against the same wells. The projected part is only a guess at where the bit is heading.</div>
       <div class="tblwrap" style="max-height:none"><table id="actSepTbl"></table></div>
     </div>
   </div>
   <div class="pane" id="pane-td">
-    <div class="tdrow">
-    <div class="card" id="tdsCard">
-      <h3 id="tdsHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdsArrow" style="display:inline-block;width:10px">▾</span>Drill string <span class="grow"></span><button class="small" id="bTdAdd">+ Add component</button></h3>
-      <div id="tdsBody" style="margin-top:8px">
-      <div class="tblwrap" style="max-height:none"><table class="sectbl" id="tdComps"></table></div>
-      <div class="hint">Listed from the bit up. The last row runs to surface, so its length is not used. Weight is the adjusted weight in air, tool joints included. Torque uses the tool joint OD as the contact radius.</div>
-      <div class="toolbar" style="margin-top:6px"><button class="small" id="bTdAll" title="Copy this well's drill string, hole and operating values to every other well in the project">Use for all wells in the project</button><button class="small ghost" id="bTdReset">Reset to defaults</button></div>
-      </div>
-    </div>
-    <div class="card" id="tdhCard">
-      <h3 id="tdhHead" style="cursor:pointer;user-select:none;margin-bottom:0" role="button" tabindex="0" aria-expanded="true"><span id="tdhArrow" style="display:inline-block;width:10px">▾</span>Hole, mud and operating values</h3>
-      <div id="tdhBody" style="margin-top:8px">
-      <div class="g3">
-        <label class="f">Path<select id="tdPath" data-td="path"><option value="plan">Planned survey</option><option value="actual">Actual survey (rest from plan)</option></select></label>
-        <label class="f" title="Leave blank to use the Landing point (or 0 for wells without one)">Casing shoe MD (ft)<input type="number" step="any" min="0" data-td="shoe" placeholder="landing"></label>
-        <label class="f">Casing ID (in)<input type="number" step="any" min="1" data-td="csgId"></label>
-        <label class="f">Open hole size (in)<input type="number" step="any" min="1" data-td="hole"></label>
-        <label class="f">Mud weight (ppg)<input type="number" step="any" min="0" data-td="mw"></label>
-        <label class="f">Block weight (klbf)<input type="number" step="any" min="0" data-td="block"></label>
-        <label class="f">Friction, cased hole<input type="number" step="0.01" min="0" data-td="ffC"></label>
-        <label class="f">Friction, open hole<input type="number" step="0.01" min="0" data-td="ffO"></label>
-        <label class="f" title="Open-hole friction factors drawn as extra (dashed) lines on the bit-depth plots">Open hole sensitivity<input type="text" data-td="ffList" placeholder="0.2, 0.4"></label>
-        <label class="f">Weight on bit (klbf)<input type="number" step="any" min="0" data-td="wob"></label>
-        <label class="f">Bit torque (kft-lbf)<input type="number" step="any" min="0" data-td="tob"></label>
-        <label class="f" title="Tension the string can take: pipe body or connection rating with your design factor applied">Tensile limit (klbf)<input type="number" step="any" min="0" data-td="tenLim"></label>
-        <label class="f" title="Make-up torque of the drill pipe connections">Torque limit (kft-lbf)<input type="number" step="any" min="0" data-td="tqLim"></label>
-        <label class="f" title="A planned path is smooth, so it under-predicts torque and drag. Add sine-wave tortuosity of this many degrees to inclination and azimuth (1° is common).">Tortuosity (°)<input type="number" step="0.1" min="0" data-td="tortAmp"></label>
-        <label class="f">Tortuosity period (ft)<input type="number" step="any" min="50" data-td="tortPer"></label>
-      </div>
-      </div>
-    </div>
-    </div>
     <div id="tdMsg"></div>
-    <div class="stats" id="tdStats"></div>
     <div class="plots">
       <div class="plot"><h4>Hookload vs bit depth <span id="tdHookSub">klbf</span></h4><canvas id="cvTdHook" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdHookRd"></div></div>
       <div class="plot"><h4>Surface torque vs bit depth <span id="tdTqSub">kft-lbf</span></h4><canvas id="cvTdTq" style="cursor:crosshair"></canvas><div class="hint tdread" id="tdTqRd"></div></div>
@@ -677,23 +803,24 @@ td.bad{color:var(--warn);font-weight:700}
     <div id="tdVer" style="margin-top:8px"></div>
     <div class="toolbar" style="margin:10px 0 6px"><span class="hint" style="margin:0">Every 500 ft of bit depth, open-hole friction <span id="tdTblFf"></span></span><span class="grow" style="flex:1"></span><button class="small" id="bTdCsv">Export CSV</button></div>
     <div class="tblwrap" style="max-height:none"><table id="tdTbl"></table></div>
-    <div class="derived" style="margin-top:8px">Soft-string model (Johancsik, Friesen and Dawson, 1984): the string has no bending stiffness and lies against the wall, so the contact force comes from its buoyed weight and from axial load carried round the curves. Friction opposes the motion: pulling out (pick-up), running in (slack-off) and sliding (weight on bit applied without rotation). Rotating off bottom has no axial drag. Sinusoidal buckling (Dawson-Paslay; Lubinski in vertical hole) and helical buckling (Chen; Wu in vertical hole) limits are shown, and helically buckled pipe adds wall force of r F²/4EI (sinusoidal r F²/8EI). Surge, swab, viscous drag and stiff-string effects are not modelled. Calibrate the friction factors on offset wells’ pick-up and slack-off weights before relying on the numbers.</div>
+    <div class="derived help" style="margin-top:8px">Soft-string model (Johancsik, Friesen and Dawson, 1984): the string has no bending stiffness and lies against the wall, so the contact force comes from its buoyed weight and from axial load carried round the curves. Friction opposes the motion: pulling out (pick-up), running in (slack-off) and sliding (weight on bit applied without rotation). Rotating off bottom has no axial drag. Sinusoidal buckling (Dawson-Paslay; Lubinski in vertical hole) and helical buckling (Chen; Wu in vertical hole) limits are shown, and helically buckled pipe adds wall force of r F²/4EI (sinusoidal r F²/8EI). Surge, swab, viscous drag and stiff-string effects are not modelled. Calibrate the friction factors on offset wells’ pick-up and slack-off weights before relying on the numbers.</div>
   </div>
 </main>
 </div>
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=735fc0b2a0"></script>
+<script src="core.js?v=2cd212eb22"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=735fc0b2a0"></script>
-<script src="app_uncertainty.js?v=735fc0b2a0"></script>
-<script src="app_3d.js?v=735fc0b2a0"></script>
-<script src="app_charts.js?v=735fc0b2a0"></script>
-<script src="app_logs.js?v=735fc0b2a0"></script>
-<script src="app_wall.js?v=735fc0b2a0"></script>
-<script src="app_versions.js?v=735fc0b2a0"></script>
-<script src="app_td.js?v=735fc0b2a0"></script>
-<script src="app_project.js?v=735fc0b2a0"></script>
+<script src="app_main.js?v=2cd212eb22"></script>
+<script src="app_uncertainty.js?v=2cd212eb22"></script>
+<script src="app_3d.js?v=2cd212eb22"></script>
+<script src="app_charts.js?v=2cd212eb22"></script>
+<script src="app_logs.js?v=2cd212eb22"></script>
+<script src="app_wall.js?v=2cd212eb22"></script>
+<script src="app_versions.js?v=2cd212eb22"></script>
+<script src="app_td.js?v=2cd212eb22"></script>
+<script src="app_project.js?v=2cd212eb22"></script>
+<script src="app_layout.js?v=2cd212eb22"></script>
 </body>
 </html>

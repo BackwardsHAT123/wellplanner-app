@@ -351,8 +351,12 @@ $('#topsList').addEventListener('click', e => {
 function showBanner(err, notes, warns) {
   let h = '';
   if (err) h += `<div class="msg err"><b>Can’t build this plan.</b> ${esc(err)} Plots and tables are cleared until the plan builds.</div>`;
-  if (warns && warns.length) h += `<div class="msg note"><ul>${warns.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
-  $('#banner').innerHTML = h;
+  $('#banner').innerHTML = h;                    // only a plan that fails to build takes the banner
+  // alerts go to the chip at the end of the KPI row; its list opens on click
+  const n = warns ? warns.length : 0, chip = $('#warnChip');
+  chip.hidden = !n; chip.textContent = `⚠ ${n} alert${n === 1 ? '' : 's'}`;
+  $('#warnList').innerHTML = n ? `<ul>${warns.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  if (!n) $('#warnList').hidden = true;
   $('#planNotes').innerHTML = notes && notes.length ? `<ul>${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '';
 }
 
