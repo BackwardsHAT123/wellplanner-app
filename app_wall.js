@@ -26,7 +26,7 @@ function wallFootage() {
 /* Target line under each design target (wall plot and drill plan): within 0.3 ft of the target point counts as a hit (Tom's
  * call), otherwise how far the plan passes from it. ms = one of M.misses ({d: ft}). */
 const HIT_FT = 0.3;
-const missText = ms => !ms ? '' : ms.d <= HIT_FT ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(1)}usft from target center`;
+const missText = ms => !ms ? '' : ms.d <= HIT_FT ? '- plan hits target center' : `- plan passes ${ms.d.toFixed(ms.d < 1 ? 2 : 1)}usft from target center`;   // 0.31 must not print as 0.3
 function wallSvg() {
   if (!M.survey) return '';
   const s = state, w = s.wall, sv = M.survey, surf = s.surface, F = 'Helvetica, Arial, sans-serif';
