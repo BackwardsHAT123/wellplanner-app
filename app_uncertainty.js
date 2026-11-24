@@ -48,7 +48,7 @@ function renderOffsetResults() {
     const why = v && v.dBad ? (v.padClosing ? `closes in more than ${fmt(ERR.padClose, 0)} ft from the ${fmt(v.spacing, 0)} ft surface spacing` : 'closer than ' + fmt(state.minSep, 0) + ' ft')
       : 'separation factor below ' + fmt(ERR.sf, 1);
     const clearTxt = 'clear' + (padNote(v) ? ` · ${padNote(v)}` : '');
-    h += `<tr><td class="l"><b style="color:${o.color}">●</b> ${esc(o.name)}</td><td class="l">${o.kind === 'pad' ? 'pad well' : o.kind === 'ref' ? 'reference well' : o.kind === 'state' ? 'state record' : 'outside offset'}</td><td>${fmt(all.d, 1)}</td><td>${pad ? (reg ? fmt(reg.d, 1) : '–') : '–'}</td>` +
+    h += `<tr><td class="l"><b style="color:${o.color}">●</b> ${esc(o.name)}</td><td class="l">${o.kind === 'pad' ? (onThisPad(o) ? 'pad well' : 'project well') : o.kind === 'ref' ? 'reference well' : o.kind === 'state' ? 'state record' : 'outside offset'}</td><td>${fmt(all.d, 1)}</td><td>${pad ? (reg ? fmt(reg.d, 1) : '–') : '–'}</td>` +
       (useSf ? `<td>${sfMin ? (isFinite(sfMin.sf) ? fmt(sfMin.sf, 2) : '∞') + ` <span style="color:var(--muted)">at MD ${fmt(sfMin.md, 0)}</span>` : '–'}</td>` : '') +
       `<td>${fmt(at.md, 0)}</td><td>${fmt(at.offMd, 0)}</td>` +
       `<td class="l"><span class="pill ${ok ? 'ok' : 'warn'}">${!judged ? 'no kickoff to compare' : ok ? clearTxt : why}</span></td></tr>`;

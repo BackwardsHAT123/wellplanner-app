@@ -474,12 +474,18 @@ function buildModel(w) {
 }
 
 /* other wells on the pad plus any hand-entered outside offsets, all as survey rows */
+/* Every other well in the project has kind 'pad', but a project can hold wells from several pads. An offset is on this well's
+ * pad when both are on the pad template (onPad, the rule that shares tops) or their surfaces are within PAD_SHL ft
+ * (wells opened from other files lose their slots; separate pads are a quarter mile or more apart). */
+const PAD_SHL = 500;
+const onThisPad = o => o.kind === 'pad' && !!o.w && ((onPad(state) && onPad(o.w)) ||
+  Math.hypot(o.w.surface.n - state.surface.n, o.w.surface.e - state.surface.e) <= PAD_SHL);
 function buildOffs() {
   const list = [];
   project.wells.forEach((w, i) => {
     if (w === state || w.asOffset === false) return;
     const m = modelFor(w); if (m.err) return;
-    list.push({ name: w.name || 'Unnamed', rows: m.survey, kind: 'pad', color: PAD_COLORS[i % PAD_COLORS.length], kopMd: m.kopMd });
+    list.push({ name: w.name || 'Unnamed', rows: m.survey, kind: 'pad', w, color: PAD_COLORS[i % PAD_COLORS.length], kopMd: m.kopMd });
   });
   (project.refs || []).forEach((r, i) => {
     if (r.asOffset === false) return;
