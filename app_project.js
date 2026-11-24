@@ -134,18 +134,31 @@ function selectWell(i) { project.active = i; state = project.wells[i]; adoptPadT
 const HIST = new WeakMap(), HIST_MAX = 40;
 let histBusy = false;
 function histOf(w) { let h = HIST.get(w); if (!h) { h = { s: [JSON.stringify(w)], i: 0 }; HIST.set(w, h); } return h; }
-function histPush() {
-  if (histBusy) return; const h = histOf(state), j = JSON.stringify(state);
+function histPush(w) {
+  w = w || state;
+  if (histBusy) return; const h = histOf(w), j = JSON.stringify(w);
   if (j === h.s[h.i]) return;
-  h.s.length = h.i + 1; h.s.push(j); if (h.s.length > HIST_MAX) h.s.shift(); h.i = h.s.length - 1; histUi();
+  h.s.length = h.i + 1; h.s.push(j); if (h.s.length > HIST_MAX) h.s.shift(); h.i = h.s.length - 1; if (w === state) histUi();
 }
 function histGo(d) {
   clearTimeout(saveTimer); histPush();                            // fold any edit still waiting for its autosave into history first
   const h = histOf(state), k = h.i + d; if (k < 0 || k >= h.s.length) return;
   h.i = k; const snap = JSON.parse(h.s[k]); histBusy = true;
+  const was = { slot: state.slot, surface: Object.assign({}, state.surface) };
   Object.keys(state).forEach(key => delete state[key]); Object.assign(state, snap);
+  slotUndoOther(was);
   try { wellSig = ''; init(); } finally { histBusy = false; }
   histUi(); autosave();
+}
+/* undo or redo of a slot swap: undo is per well, so if this well goes back into a slot another well now holds,
+ * that well takes the slot (or custom location) this one is leaving, and both wells stay where the swap had them */
+function slotUndoOther(was) {
+  if (!state.slot) return;
+  const o = project.wells.find(w => w !== state && w.slot && w.slot.c === state.slot.c && w.slot.r === state.slot.r); if (!o) return;
+  histOf(o);                                                 // its history starts from before the move
+  if (was.slot) { o.slot = { c: was.slot.c, r: was.slot.r }; delete o.noSlot; }
+  else { o.slot = null; o.noSlot = true; o.surface.n = was.surface.n; o.surface.e = was.surface.e; }
+  histPush(o);
 }
 function histUi() { const h = histOf(state); $('#bUndo').disabled = h.i <= 0; $('#bRedo').disabled = h.i >= h.s.length - 1; }
 $('#bUndo').onclick = () => histGo(-1); $('#bRedo').onclick = () => histGo(1);
@@ -212,22 +225,35 @@ function renderSlotSel() {
   const P = project.pad, have = new Set(), opts = ['<option value="custom">Custom location (type coordinates)</option>'];
   WP.padSlots(P, P.cols, P.rows, state.crs).forEach(sl => {
     const o = wellAtSlot(sl.c, sl.r), taken = o && o !== state; have.add(sl.id);
-    opts.push(`<option value="${sl.c}-${sl.r}"${taken ? ' disabled' : ''}>Pad slot ${sl.id}${o ? ' (' + esc(o.name) + ')' : ''}</option>`);
+    opts.push(`<option value="${sl.c}-${sl.r}">Pad slot ${sl.id}${o ? ' (' + esc(o.name || 'Unnamed') + ')' + (taken ? ': swap with it' : '') : ''}</option>`);
   });
   if (state.slot && !have.has(slotId(state.slot.c, state.slot.r))) opts.push(`<option value="${state.slot.c}-${state.slot.r}">Pad slot ${slotId(state.slot.c, state.slot.r)} (outside the grid)</option>`);
   const el = $('#slotSel'); el.innerHTML = opts.join('');
   el.value = state.slot ? state.slot.c + '-' + state.slot.r : 'custom';
 }
-$('#slotSel').onchange = e => {
+$('#slotSel').onchange = async e => {
   const v = e.target.value;
   if (v === 'custom') { state.slot = null; state.noSlot = true; }
   else {
     const [c, r] = v.split('-').map(Number), o = wellAtSlot(c, r);
-    if (o && o !== state) { alert('Slot ' + slotId(c, r) + ' already holds ' + o.name + '.'); renderSlotSel(); return; }
+    if (o && o !== state && !(await swapSlots(o))) { renderSlotSel(); return; }
     state.slot = { c, r }; delete state.noSlot;
   }
   recalc(); cwFill($('#surfCoord .cw'));
 };
+/* the chosen slot holds another well: after an OK, that well takes this well's slot (or its custom location) */
+async function swapSlots(o) {
+  const here = state.slot ? 'slot ' + slotId(state.slot.c, state.slot.r) : 'this well\'s custom surface location';
+  const ok = await dlg(`Slot ${slotId(o.slot.c, o.slot.r)} holds ${o.name || 'Unnamed'}. Swap the two wells?\n\n• ${state.name || 'This well'} moves to slot ${slotId(o.slot.c, o.slot.r)}\n• ${o.name || 'Unnamed'} moves to ${here}\n\nOnly the surface locations change: both wells keep their targets, so their builds and turns are re-solved from the new slots. Check the DLS and clearance of both afterwards. Undo swaps them back.`,
+    [{ label: 'Cancel', value: false }, { label: 'Swap', value: true, primary: true }]);
+  if (!ok) return false;
+  histOf(o);                                                 // its history starts from before the swap
+  if (state.slot) { o.slot = { c: state.slot.c, r: state.slot.r }; delete o.noSlot; }
+  else { o.slot = null; o.noSlot = true; o.surface.n = state.surface.n; o.surface.e = state.surface.e; }
+  if (o.slot) { const p = WP.padSlot(project.pad, o.slot.c, o.slot.r, o.crs || state.crs); o.surface.n = p.n; o.surface.e = p.e; }
+  histPush(o);
+  return true;
+}
 
 function createWellAtSlot(c, r) {
   const src = state, w = JSON.parse(JSON.stringify(src)), p = WP.padSlot(project.pad, c, r, state.crs);

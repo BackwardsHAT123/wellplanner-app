@@ -377,7 +377,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-well" data-pw="360" hidden>
   <div class="phead"><h2>Well</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well">✕</button></div>
   <div class="pbody">
-    <div class="card hint help" style="margin-top:0">Name and API number of the well; county, target formation and T/R/S (used to search the Plan library; left blank they come from the API number, the tops below the last target and the PLSS sections); the coordinate system all coordinates are in, and the surface location: pick a pad slot, or choose a custom location and type X / Y or latitude / longitude. KB elevation = ground elevation + KB above ground; every TVD is measured from KB. Leave VS azimuth blank to use the plan’s own direction (the azimuth of the lateral plane, or surface to target 1).</div>
+    <div class="card hint help" style="margin-top:0">Name and API number of the well; county, target formation and T/R/S (used to search the Plan library; left blank they come from the API number, the tops below the last target and the PLSS sections); the coordinate system all coordinates are in, and the surface location: pick a pad slot, or choose a custom location and type X / Y or latitude / longitude. Picking a slot that holds another well swaps the two wells (that well takes this one's slot); only surface locations move, the targets stay. KB elevation = ground elevation + KB above ground; every TVD is measured from KB. Leave VS azimuth blank to use the plan’s own direction (the azimuth of the lateral plane, or surface to target 1).</div>
   <div class="card">
     <h3>Well</h3>
     <div class="g2">
@@ -907,19 +907,19 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=6744c14348"></script>
+<script src="core.js?v=89bed04821"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=6744c14348"></script>
-<script src="app_uncertainty.js?v=6744c14348"></script>
-<script src="app_3d.js?v=6744c14348"></script>
-<script src="app_charts.js?v=6744c14348"></script>
-<script src="app_logs.js?v=6744c14348"></script>
-<script src="app_wall.js?v=6744c14348"></script>
-<script src="app_versions.js?v=6744c14348"></script>
-<script src="app_td.js?v=6744c14348"></script>
-<script src="app_project.js?v=6744c14348"></script>
-<script src="app_layout.js?v=6744c14348"></script>
-<script src="app_library.js?v=6744c14348"></script>
-<script src="app_sync.js?v=6744c14348"></script>
+<script src="app_main.js?v=89bed04821"></script>
+<script src="app_uncertainty.js?v=89bed04821"></script>
+<script src="app_3d.js?v=89bed04821"></script>
+<script src="app_charts.js?v=89bed04821"></script>
+<script src="app_logs.js?v=89bed04821"></script>
+<script src="app_wall.js?v=89bed04821"></script>
+<script src="app_versions.js?v=89bed04821"></script>
+<script src="app_td.js?v=89bed04821"></script>
+<script src="app_project.js?v=89bed04821"></script>
+<script src="app_layout.js?v=89bed04821"></script>
+<script src="app_library.js?v=89bed04821"></script>
+<script src="app_sync.js?v=89bed04821"></script>
 </body>
 </html>
