@@ -352,40 +352,50 @@ function syncWallInputs() {
 }
 document.addEventListener('input', e => { const el = e.target.closest('[data-w]'); if (!el || el.type === 'checkbox' || el.tagName === 'SELECT') return; state.wall[el.dataset.w] = el.value; autosave(); drawWall(); });
 document.addEventListener('change', e => { const el = e.target.closest('[data-w]'); if (!el) return; state.wall[el.dataset.w] = el.type === 'checkbox' ? el.checked : el.value; autosave(); drawWall(); });
-/* ---- offset wells on the wall plot plan view: state.wall.offOn, and offPick = null (every offset) or a list of well names ---- */
+/* ---- offset wells on the wall plot plan view: state.wall.offOn, and offPick = null (every offset), 'pad' (every pad well)
+ * or a list of well names. null and 'pad' also take in wells added to the project later. ---- */
 const wallOffAll = () => (M.offs || []).filter(x => x.rows && x.rows.length > 1);
 function wallOffChosen() {
   const w = state.wall; if (!w.offOn) return [];
-  const all = wallOffAll(); return Array.isArray(w.offPick) ? all.filter(x => w.offPick.includes(x.name)) : all;
+  return wallOffPicked(wallOffAll(), w.offPick);
 }
+const wallOffPicked = (all, pick) => pick === 'pad' ? all.filter(x => x.kind === 'pad') : Array.isArray(pick) ? all.filter(x => pick.includes(x.name)) : all;
 function wallOffInfo() {
   const el = $('#wallOffInfo'); if (!el) return;
-  const w = state.wall, n = wallOffAll().length, k = Array.isArray(w.offPick) ? wallOffAll().filter(x => w.offPick.includes(x.name)).length : n;
-  el.textContent = !n ? 'no offset wells in this project' : !w.offOn ? '' : k === n ? `all ${n}` : `${k} of ${n}`;
+  const w = state.wall, all = wallOffAll(), n = all.length, k = wallOffPicked(all, w.offPick).length;
+  el.textContent = !n ? 'no offset wells in this project' : !w.offOn ? '' : w.offPick === 'pad' ? `all pad wells (${k})` : k === n ? `all ${n}` : `${k} of ${n}`;
   $('#bWallOffPick').disabled = !n;
 }
 const OFF_KIND = { pad: 'Pad well', ref: 'Reference well', manual: 'Outside offset', state: 'State record' };
 function wallOffDialog(fromSwitch) {                // fromSwitch: opened by ticking Show offset wells, so Cancel unticks it
   const all = wallOffAll(), w = state.wall;
   if (!all.length) { dlg('This project has no offset wells to show. Add pad wells, reference wells or outside offsets first (Offsets & clearance).', [{ label: 'OK', value: 1, primary: true }]); return; }
-  const on = new Set(Array.isArray(w.offPick) ? w.offPick : all.map(x => x.name));
+  const on = new Set(wallOffPicked(all, w.offPick).map(x => x.name)), nPad = all.filter(x => x.kind === 'pad').length;
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML = `<div role="dialog" aria-label="Offset wells on the wall plot" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:440px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
     <h3 style="margin:0">Offset wells on the plan view</h3>
     <label class="chk" style="font-weight:600"><input type="checkbox" id="woAll"><span>All offset wells (${all.length})</span></label>
+    <label class="chk" style="font-weight:600"${nPad ? '' : ' title="This project has no other wells on the pad"'}><input type="checkbox" id="woPad"${nPad ? '' : ' disabled'}><span>All wells on this pad (${nPad})</span></label>
     <div id="woList" style="overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;padding-left:4px;border-top:1px solid var(--line);padding-top:6px">${all.map((x, i) =>
       `<label class="chk"><input type="checkbox" data-wo="${i}"${on.has(x.name) ? ' checked' : ''}><span><span style="display:inline-block;width:14px;height:3px;background:${x.color};vertical-align:middle;margin-right:6px"></span>${esc(x.name)} <span class="mut" style="font-size:12px">${OFF_KIND[x.kind] || ''}</span></span></label>`).join('')}</div>
-    <div class="hint" style="margin:0">Pick All to include wells added to the project later as well.</div>
+    <div class="hint" style="margin:0">All offset wells, or All wells on this pad, also takes in wells added to the project later.</div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button id="woCancel">Cancel</button><button class="primary" id="woOk">Done</button></div></div>`;
   const q = s => ov.querySelector(s), boxes = [...ov.querySelectorAll('[data-wo]')];
-  const sync = () => { const k = boxes.filter(b => b.checked).length; q('#woAll').checked = k === boxes.length; q('#woAll').indeterminate = k > 0 && k < boxes.length; };
+  const isPad = b => all[+b.dataset.wo].kind === 'pad', padBoxes = boxes.filter(isPad);
+  const padOnly = () => padBoxes.length && boxes.every(b => b.checked === isPad(b));       // exactly the pad wells ticked
+  const sync = () => {
+    const k = boxes.filter(b => b.checked).length, kp = padBoxes.filter(b => b.checked).length;
+    q('#woAll').checked = k === boxes.length; q('#woAll').indeterminate = k > 0 && k < boxes.length;
+    q('#woPad').checked = !!padBoxes.length && kp === padBoxes.length; q('#woPad').indeterminate = kp > 0 && kp < padBoxes.length;
+  };
   q('#woAll').onchange = e => { boxes.forEach(b => { b.checked = e.target.checked; }); sync(); };
+  q('#woPad').onchange = e => { padBoxes.forEach(b => { b.checked = e.target.checked; }); sync(); };
   boxes.forEach(b => { b.onchange = sync; }); sync();
   const close = ok => {
     if (ok) {
       const pick = boxes.filter(b => b.checked).map(b => all[+b.dataset.wo].name);
-      w.offPick = pick.length === all.length ? null : pick;
+      w.offPick = pick.length === all.length ? null : padOnly() ? 'pad' : pick;
       w.offOn = pick.length > 0;
     } else if (fromSwitch) w.offOn = false;
     ov.remove(); document.removeEventListener('keydown', onKey, true);
