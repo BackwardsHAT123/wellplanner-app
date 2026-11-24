@@ -72,23 +72,21 @@ $('#bPadUse').onclick = () => {
 };
 
 /* pop-up table of every pad slot's computed position (lat/long and grid X / Y), to check the template against the survey plats */
-const dmsOf = (v, pos, neg) => { const t = Math.round(Math.abs(v) * 360000), d = Math.floor(t / 360000), m = Math.floor(t % 360000 / 6000), sec = t % 6000 / 100;   // rounded to 0.01″ first, so 59.999″ never prints as 60.00″
-  return `${d}° ${String(m).padStart(2, '0')}′ ${sec.toFixed(2).padStart(5, '0')}″ ${v < 0 ? neg : pos}`; };
 function showSlotTable() {
   const P = project.pad, ll = isLL(), slots = WP.padSlots(P, P.cols, P.rows, state.crs);
   const rows = slots.map(sl => {
     const w = wellAtSlot(sl.c, sl.r), g = ll ? WP.toLatLon(sl.n, sl.e, state.crs) : null;
     return { id: sl.id, well: w ? w.name || 'Unnamed' : '', known: sl.c === P.refCol && sl.r === P.refRow, lat: g && g.lat, lon: g && g.lon, x: sl.e, y: sl.n };
   });
-  const td = 'style="padding:3px 8px;white-space:nowrap;text-align:left"', tdr = 'style="padding:3px 8px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums"';
-  const body = rows.map(r => `<tr><td ${td}><b>${r.id}</b>${r.known ? ' <span title="The known point the other slots are measured from" style="color:var(--muted)">(known)</span>' : ''}</td><td ${td}>${esc(r.well)}</td>` +
-    (ll ? `<td ${tdr}>${r.lat.toFixed(6)}<br><span style="color:var(--muted)">${dmsOf(r.lat, 'N', 'S')}</span></td><td ${tdr}>${r.lon.toFixed(6)}<br><span style="color:var(--muted)">${dmsOf(r.lon, 'E', 'W')}</span></td>` : '') +
+  const td = 'style="padding:3px 6px;text-align:left;overflow-wrap:anywhere"', tdr = 'style="padding:3px 6px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums"';
+  const body = rows.map(r => `<tr><td ${td}><b>${r.id}</b>${r.known ? '<br><span title="The known point the other slots are measured from" style="color:var(--muted)">(known)</span>' : ''}</td><td ${td}>${esc(r.well)}</td>` +
+    (ll ? `<td ${tdr}>${r.lat.toFixed(6)}</td><td ${tdr}>${r.lon.toFixed(6)}</td>` : '') +
     `<td ${tdr}>${fmt(r.x, 1)}</td><td ${tdr}>${fmt(r.y, 1)}</td></tr>`).join('');
-  const th = (t, r) => `<th style="padding:4px 8px;text-align:${r ? 'right' : 'left'};border-bottom:1px solid var(--line);white-space:nowrap">${t}</th>`;
+  const th = (t, r) => `<th style="padding:4px 6px;text-align:${r ? 'right' : 'left'};border-bottom:1px solid var(--line);white-space:nowrap">${t}</th>`;
   const datum = ll ? esc(WP.CRS[state.crs].name) : 'local coordinates (no coordinate system set, so no lat/longs)';
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
-  ov.innerHTML = `<div role="dialog" aria-label="Pad slot locations" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:760px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+  ov.innerHTML = `<div role="dialog" aria-label="Pad slot locations" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:640px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35)">
     <h3 style="margin:0 0 4px">Pad slot locations</h3>
     <div class="hint" style="margin:0 0 10px">${P.cols} × ${P.rows} slots, ${datum}. Measured from the known point (${slotId(P.refCol, P.refRow)}) by ground footages. X / Y are grid feet.</div>
     <div style="overflow:auto;flex:1;min-height:0"><table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>${th('Slot')}${th('Well')}${ll ? th('Latitude', 1) + th('Longitude', 1) : ''}${th('X (ft)', 1)}${th('Y (ft)', 1)}</tr></thead><tbody>${body}</tbody></table></div>
@@ -99,8 +97,8 @@ function showSlotTable() {
   ov.onclick = e => { if (e.target === ov) close(); };
   ov.querySelector('#slotClose').onclick = close;
   ov.querySelector('#slotCopy').onclick = () => {
-    const head = ['Slot', 'Well'].concat(ll ? ['Latitude', 'Longitude', 'Latitude DMS', 'Longitude DMS'] : [], ['X (ft)', 'Y (ft)']);
-    const lines = [head].concat(rows.map(r => [r.id, r.well].concat(ll ? [r.lat.toFixed(6), r.lon.toFixed(6), dmsOf(r.lat, 'N', 'S'), dmsOf(r.lon, 'E', 'W')] : [], [r.x.toFixed(1), r.y.toFixed(1)])));
+    const head = ['Slot', 'Well'].concat(ll ? ['Latitude', 'Longitude'] : [], ['X (ft)', 'Y (ft)']);
+    const lines = [head].concat(rows.map(r => [r.id, r.well].concat(ll ? [r.lat.toFixed(6), r.lon.toFixed(6)] : [], [r.x.toFixed(1), r.y.toFixed(1)])));
     const txt = lines.map(l => l.join('\t')).join('\n'), msg = ov.querySelector('#slotCopied');
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { msg.textContent = 'Copied.'; }, () => { msg.textContent = 'Copy failed: select the table and copy it by hand.'; });
   };
