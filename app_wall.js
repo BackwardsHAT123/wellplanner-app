@@ -91,7 +91,10 @@ function wallSvg() {
 
   /* ---- plan view (right) ---- */
   const PX0 = 506, PX1 = 738, PY0 = 40, PY1 = plotTop - 12, pw = PX1 - PX0, ph = PY1 - PY0;
-  const pathPts = sv.map(r => [r.easting - surf.e, r.northing - surf.n]).concat(tg.map(t => [t.e - surf.e, t.n - surf.n]));
+  // the automatic scale fits this well, its targets and the shown offset wells on the same pad (other offsets may run off the edge)
+  const offShown = wallOffChosen();
+  const pathPts = sv.map(r => [r.easting - surf.e, r.northing - surf.n]).concat(tg.map(t => [t.e - surf.e, t.n - surf.n]),
+    ...offShown.filter(onThisPad).map(x => x.rows.map(q => [q.easting - surf.e, q.northing - surf.n])));
   const bx0 = Math.min(...pathPts.map(p => p[0])), bx1 = Math.max(...pathPts.map(p => p[0])), by0 = Math.min(...pathPts.map(p => p[1])), by1 = Math.max(...pathPts.map(p => p[1]));
   const scaleList = [100, 200, 250, 300, 400, 500, 600, 750, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 8000, 10000];
   const fit = Math.max((bx1 - bx0) / (pw / 72 * .86), (by1 - by0) / (ph / 72 * .86), 1);
@@ -115,12 +118,18 @@ function wallSvg() {
     const cn = x.ring.reduce((a, q) => a + q.n, 0) / x.ring.length, ce = x.ring.reduce((a, q) => a + q.e, 0) / x.ring.length;
     T(PXf(ce - surf.e), PYf(cn - surf.n), WP.plssName(x.s.id, x.s.sec), 7.3, { anchor: 'middle', bold: true });
   });
-  // offset wells chosen in the Wall plot panel: thin lines in their colours, name at the toe (the scale stays fitted to this well)
-  wallOffChosen().forEach(x => {
+  // offset wells chosen in the Wall plot panel: thin lines in their colours, name at the toe
+  const placed = [];                                   // label boxes already used, so toes close together get stacked names
+  offShown.forEach(x => {
     const r = x.rows, step = Math.max(1, Math.floor(r.length / 300)), pts = r.filter((_, i) => i % step === 0 || i === r.length - 1).map(q => [PXf(q.easting - surf.e), PYf(q.northing - surf.n)]);
     PL(pts, x.color, .9);
     const [ex, ey] = pts[pts.length - 1];
-    if (ex >= PX0 && ex <= PX1 && ey >= PY0 && ey <= PY1) T(ex + (ex > PX1 - 60 ? -3 : 3), ey - 3, x.name, 6.2, { anchor: ex > PX1 - 60 ? 'end' : 'start', fill: x.color });
+    if (!(ex >= PX0 && ex <= PX1 && ey >= PY0 && ey <= PY1)) return;
+    const right = ex > PX1 - 60, wd = x.name.length * 3.3, x0 = right ? ex - 3 - wd : ex + 3;
+    const hit = y => placed.some(b => x0 < b.x1 && x0 + wd > b.x0 && Math.abs(y - b.y) < 7);
+    let ly = ey - 3; for (let k = 1; k < 12 && hit(ly); k++) ly = ey - 3 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 7.5;
+    placed.push({ x0, x1: x0 + wd, y: ly });
+    T(right ? ex - 3 : ex + 3, ly, x.name, 6.2, { anchor: right ? 'end' : 'start', fill: x.color });
   });
   PL(sv.filter((_, i) => i % 3 === 0 || i === sv.length - 1).map(r => [PXf(r.easting - surf.e), PYf(r.northing - surf.n)]), '#0000ff', 1.6);
   // rig at the surface location
