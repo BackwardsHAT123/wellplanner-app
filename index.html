@@ -156,6 +156,7 @@ main{overflow:auto;padding:12px 12px 20px}
 .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
 .full{grid-column:1/-1}
 label.f{display:flex;flex-direction:column;font-size:14px;font-weight:500;color:var(--muted);gap:2px}
+label.f>input,label.f>select{margin-top:auto}   /* a label that wraps to two lines must not push its box below its neighbour's */
 input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--edge);border-radius:var(--r-sm);padding:4px 6px;width:100%;min-width:0}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--focus) solid var(--ink);outline-offset:var(--focus-off)}
 input:disabled{opacity:.65;font-style:italic}
