@@ -179,7 +179,7 @@ async function tileSections(b) {
   return got.flat().map(r => ({ id: r[0], sec: String(r[1]), dup: '0', ll: r[2] }));
 }
 async function ensureSections() {
-  if (!(SEC.on || STO.on || WALL.on || ACT.rows) || !M.survey || SEC.loading) return;
+  if (!(SEC.on || STO.on || WALL.on || ACT.rows || SEC.want) || !M.survey || SEC.loading) return;   // SEC.want: T/R/S asked for (Well panel)
   if (!isLL()) { SEC.msg = 'needs a State Plane zone (a local grid has no lat/long)'; updateSecInfo(); return; }
   const need = secBox(MILE * 1.2); if (!need) return;
   if (SEC.covered.some(c => need.w >= c.w && need.e <= c.e && need.s >= c.s && need.n <= c.n)) { updateSecInfo(); return; }

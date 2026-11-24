@@ -84,6 +84,16 @@ button.ghost:hover:not(:disabled){background:var(--panel);border-color:transpare
 .railsep{width:28px;height:1px;background:var(--line);margin:6px 0}
 /* docked input panel: pushes the charts narrower while open */
 #dock{overflow:auto;padding:0 12px 12px;border-right:1px solid var(--line);background:var(--bg)}
+.libtbl{width:100%;border-collapse:collapse;font-size:13px}
+.libtbl th{text-align:left;font-weight:600;color:var(--muted);padding:4px 6px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+.libtbl th.on{color:var(--ink)}
+.libtbl td{text-align:left;white-space:normal;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:break-word}
+.libtbl td .mut{font-size:12px}
+.libtbl tbody tr{cursor:pointer}.libtbl tbody tr:hover td{background:var(--hover,rgba(127,127,127,.12))}
+.libtbl tr.isopen td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+#saveToast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:1100;font-size:13px}
+.libbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}.libbar #libQ{flex:1 1 100%;min-width:0}.libbar select{width:auto;flex:1}.libbar[hidden]{display:none}
+.trsrow{display:flex;gap:6px;align-items:center}.trsrow input{flex:1;min-width:0}
 .panel .phead{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:6px;padding:10px 0 8px;background:var(--bg)}
 .panel .phead h2{margin:0;font-size:16px;font-weight:700}
 .panel.showhelp .phelp{color:var(--accent);border-color:var(--accent)}
@@ -333,17 +343,19 @@ td.bad{color:var(--warn);font-weight:700}
     <button id="bImpSurvey" title="Start a new well from a planned survey exported from COMPASS (or any MD / inclination / azimuth list). The path is fitted with editable hold and curve sections.">Import survey…</button><input type="file" id="impSurveyFile" accept=".csv,.txt,.tsv,.dat,.prn,.lis,text/*" hidden>
     <button id="bOpen" title="Open one or more saved plans (.wellplan.json). Select several files at once to bring all their wells into this project.">Open…</button>
     <button id="bUndo" class="ghost" title="Undo (Cmd/Ctrl+Z)" disabled>Undo</button><button id="bRedo" class="ghost" title="Redo (Shift+Cmd/Ctrl+Z)" disabled>Redo</button>
-    <button id="bSave">Save</button>
+    <button id="bSave" title="Save this well: into the plans folder when one is connected (Plan library), otherwise as a download">Save</button>
     <button id="bCsv" class="primary" title="Export the planned survey as a CSV file">Export survey</button>
     <button id="bPrint">Print</button>
     <button id="bTheme" class="ghost" title="Switch light / dark mode" aria-label="Switch light / dark mode"></button>
   </span>
   <input type="file" id="fileOpen" accept=".json,application/json" multiple hidden>
+  <div id="saveToast" role="status" hidden></div>
 </header>
 
 <div class="app">
 <nav id="rail" aria-label="Input panels">
   <button class="railbtn" data-panel="well" data-tip="Well: name, API, coordinate system, surface location, elevations" aria-label="Well: name, API, coordinate system, surface location, elevations" aria-controls="panel-well" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 7 21M12 3l5 18M8.6 15h6.8M10 9h4M5 21h14"/></svg></button>
+  <button class="railbtn" data-panel="library" data-tip="Plan library: every saved plan in your plans folder, searchable" aria-label="Plan library: every saved plan in your plans folder, searchable" aria-controls="panel-library" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16 5 3.6-1 3 15.6-3.6 1z"/></svg></button>
   <button class="railbtn" data-panel="versions" data-tip="Plan versions: alternative plans for this well" aria-label="Plan versions: alternative plans for this well" aria-controls="panel-versions" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></button>
   <button class="railbtn" data-panel="pad" data-tip="Pad: slot template and lateral spacing" aria-label="Pad: slot template and lateral spacing" aria-controls="panel-pad" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="1.6"/><circle cx="12" cy="7" r="1.6"/><circle cx="18" cy="7" r="1.6"/><circle cx="6" cy="13" r="1.6"/><circle cx="12" cy="13" r="1.6"/><circle cx="18" cy="13" r="1.6"/><path d="M4 19h16"/></svg></button>
   <button class="railbtn" data-panel="targets" data-tip="Targets: landing, lateral and toe points" aria-label="Targets: landing, lateral and toe points" aria-controls="panel-targets" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
@@ -365,12 +377,15 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-well" data-pw="360" hidden>
   <div class="phead"><h2>Well</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Well">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Well">✕</button></div>
   <div class="pbody">
-    <div class="card hint help" style="margin-top:0">Name and API number of the well, the coordinate system all coordinates are in, and the surface location: pick a pad slot, or choose a custom location and type X / Y or latitude / longitude. KB elevation = ground elevation + KB above ground; every TVD is measured from KB. Leave VS azimuth blank to use the plan’s own direction (the azimuth of the lateral plane, or surface to target 1).</div>
+    <div class="card hint help" style="margin-top:0">Name and API number of the well; county, target formation and T/R/S (used to search the Plan library; left blank they come from the API number, the tops below the last target and the PLSS sections); the coordinate system all coordinates are in, and the surface location: pick a pad slot, or choose a custom location and type X / Y or latitude / longitude. KB elevation = ground elevation + KB above ground; every TVD is measured from KB. Leave VS azimuth blank to use the plan’s own direction (the azimuth of the lateral plane, or surface to target 1).</div>
   <div class="card">
     <h3>Well</h3>
     <div class="g2">
       <label class="f full">Name<input data-k="name" data-t="text"></label>
       <label class="f full">API #<input data-k="api" data-t="text" placeholder="49-005-00000" autocomplete="off"></label>
+      <label class="f">County<input id="inCounty" data-k="county" data-t="text" autocomplete="off"></label>
+      <label class="f">Target formation<input id="inFormation" data-k="formation" data-t="text" autocomplete="off"></label>
+      <label class="f full">T/R/S <span class="trsrow"><input id="inTrs" data-k="trs" data-t="text" autocomplete="off" title="Township, range and sections the wellbore passes through, e.g. T45N R72W S13, S24"><button class="small" id="bTrsFill" type="button" title="Fill in from the PLSS sections the wellbore passes through (loads them if needed)">From sections</button></span></label>
       <label class="f full">Project coordinate system
         <select data-k="crs">
           <option value="WY-E">NAD83 / Wyoming East (4901), US ft</option>
@@ -387,6 +402,22 @@ td.bad{color:var(--warn);font-weight:700}
       <label class="f">VS azimuth (° blank = auto)<input type="number" step="any" data-k="vsAzi" data-t="opt"></label>
     </div>
     <div class="derived" id="crsInfo" style="font-size:14px"></div>
+  </div>
+  </div>
+</section>
+<section class="panel" id="panel-library" data-pw="560" hidden>
+  <div class="phead"><h2>Plan library</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Plan library">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Plan library">✕</button></div>
+  <div class="pbody">
+  <div class="card hint help" style="margin-top:0">The library is a folder of plan files on your computer (for example your <b>wellplans</b> folder, or a Dropbox / OneDrive folder). Every .wellplan.json in it and its subfolders is listed. Click a well to open it: its wells join the project, as with Open…. While a folder is connected, <b>Save</b> writes the well straight into it (back to the file it came from, or a new file named after the well) instead of downloading. Search by name, API, county, T/R/S or formation; several words must all match. County, formation and T/R/S are set on the Well panel; left blank they come from the API number, the tops and the PLSS sections, and are stored in the file when you save. Click a column heading to sort.</div>
+  <div class="card">
+    <div class="hint" id="libState" style="margin:0"></div>
+    <div id="libBar" hidden class="libbar">
+      <input id="libQ" type="search" placeholder="Search, e.g. Campbell T45N Niobrara" aria-label="Search the plan library">
+      <select id="libField" aria-label="Search in" title="Which field to search"><option value="all">All fields</option><option value="name">Name</option><option value="api">API</option><option value="county">County</option><option value="trs">T/R/S</option><option value="formation">Formation</option></select>
+      <button class="small" id="bLibRefresh" title="Read the folder again (after adding or changing files outside the planner)">Refresh</button>
+      <button class="small ghost" id="bLibChoose" title="Use a different folder">Folder…</button>
+    </div>
+    <div id="libList" style="margin-top:8px"></div>
   </div>
   </div>
 </section>
@@ -868,17 +899,18 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=10ebe4f8da"></script>
+<script src="core.js?v=82cd94331e"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=10ebe4f8da"></script>
-<script src="app_uncertainty.js?v=10ebe4f8da"></script>
-<script src="app_3d.js?v=10ebe4f8da"></script>
-<script src="app_charts.js?v=10ebe4f8da"></script>
-<script src="app_logs.js?v=10ebe4f8da"></script>
-<script src="app_wall.js?v=10ebe4f8da"></script>
-<script src="app_versions.js?v=10ebe4f8da"></script>
-<script src="app_td.js?v=10ebe4f8da"></script>
-<script src="app_project.js?v=10ebe4f8da"></script>
-<script src="app_layout.js?v=10ebe4f8da"></script>
+<script src="app_main.js?v=82cd94331e"></script>
+<script src="app_uncertainty.js?v=82cd94331e"></script>
+<script src="app_3d.js?v=82cd94331e"></script>
+<script src="app_charts.js?v=82cd94331e"></script>
+<script src="app_logs.js?v=82cd94331e"></script>
+<script src="app_wall.js?v=82cd94331e"></script>
+<script src="app_versions.js?v=82cd94331e"></script>
+<script src="app_td.js?v=82cd94331e"></script>
+<script src="app_project.js?v=82cd94331e"></script>
+<script src="app_layout.js?v=82cd94331e"></script>
+<script src="app_library.js?v=82cd94331e"></script>
 </body>
 </html>

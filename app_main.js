@@ -27,7 +27,7 @@ const TD_DEF = () => ({
 const DEFAULT = () => {
   const s = WP.toGrid(43.70, -105.45, 'WY-E');            // sample surface location, Campbell Co. area
   return {
-    name: 'Sample 1H', api: '', actual: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
+    name: 'Sample 1H', api: '', county: '', formation: '', trs: '', actual: null, wall: WALL_DEF(), crs: 'WY-E', slot: null,
     surface: { n: +s.n.toFixed(2), e: +s.e.toFixed(2) }, gl: 5080, kbOff: 27, kb: 5107, vsAzi: '',
     targets: [
       { name: 'Landing', n: +(s.n + 700).toFixed(2), e: +(s.e + 700).toFixed(2), tvd: 9800, tol: 10 },
@@ -468,6 +468,7 @@ function recalc() {
   setModel(mm);
   renderPlanSummary(mm);
   renderViews();
+  if (typeof renderLibHints === "function") renderLibHints();   // app_library.js loads after the first recalc
 }
 
 /* derived values on the well, autosave, title and slot-driven surface location */

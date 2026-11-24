@@ -170,11 +170,16 @@ function dlg(msg, buttons) {                 // buttons: [{label, value, primary
   });
 }
 /* saves one well as its own file (with the pad and reference wells it needs), never the whole pad project */
-function saveWell(w) {
+/* With a plan library folder connected it writes into that folder (app_library.js), otherwise it downloads the file.
+ * The file also carries the library search values in use (lib: county, formation, T/R/S). */
+async function saveWell(w) {
   syncVer(w);
-  const one = { v: 2, pad: project.pad, wells: [withLogs(w)], active: 0, refs: project.refs.map(withLogs) };
-  download((w.name || 'well').replace(/[^\w.-]+/g, '_') + '.wellplan.json', WP.compactJson(one), 'application/json');
-  markSaved(w);
+  const one = { v: 2, pad: project.pad, wells: [Object.assign({}, withLogs(w), { lib: libFields(w) })], active: 0, refs: project.refs.map(withLogs) };
+  const text = WP.compactJson(one), sig = wSig(w);             // what is written, taken before any wait
+  let done = false;
+  try { done = await libSave(w, text); } catch (e) { await dlg('Could not write to the plans folder (' + e.message + '). The plan is downloaded instead.', [{ label: 'OK', value: 1, primary: true }]); }
+  if (!done) download((w.name || 'well').replace(/[^\w.-]+/g, '_') + '.wellplan.json', text, 'application/json');
+  savedW.set(w, sig);
 }
 const doSave = () => saveWell(state);
 /* true when it is fine to carry on (saved, or user chose not to); forNew: New always asks, switching asks once per set of edits */
@@ -184,7 +189,7 @@ async function confirmLeave(what, forNew) {
   const names = dirty.map(w => '"' + (w.name || 'Unnamed') + '"').join(', ');
   const r = await dlg('You have unsaved changes to ' + names + '.\nDo you want to save ' + (dirty.length > 1 ? 'each as its own file' : 'it') + ' before ' + what + '?', [{ label: 'Cancel', value: 'cancel' }, { label: "Don't save", value: 'discard' }, { label: 'Save', value: 'save', primary: true }]);
   if (r === 'cancel') return false;
-  if (r === 'save') dirty.forEach(saveWell); else if (!forNew) snoozeSig = sig;
+  if (r === 'save') { for (const w of dirty) await saveWell(w); } else if (!forNew) snoozeSig = sig;
   return true;
 }
 async function trySelectWell(i) {
@@ -372,11 +377,17 @@ $('#fileOpen').onchange = async e => {
     catch (err) { bad.push(f.name + ' (' + err.message + ')'); }
   }
   if (!items.length) { await dlg('None of the selected files is a valid well plan:\n' + bad.join('\n'), [{ label: 'OK', value: 1, primary: true }]); return; }
+  await openProjects(items, bad);
+};
+/* Bring the wells of opened files into the project (Open… and the plan library). items = [{name, p, src?}]; src = the
+ * library file, remembered per well so Save writes back to it. A blank project is replaced by the first file. */
+async function openProjects(items, bad = []) {
   const pristine = project.wells.length === 1 && !project.refs.length && JSON.stringify(project.wells[0]) === JSON.stringify(DEFAULT());
   let base, queue = items.slice();
   if (pristine) { const f = queue.shift(); base = f.p; } else base = project;                  // f.p is a fresh object from this file
   const incoming = [];
-  queue.forEach(it => it.p.wells.forEach(w => incoming.push({ w: cloneWellKeepLogs(w), samePad: JSON.stringify(it.p.pad) === JSON.stringify(base.pad) })));
+  if (pristine && items[0].src) base.wells.forEach(w => FILEOF.set(w, items[0].src));
+  queue.forEach(it => it.p.wells.forEach(w => { const c = cloneWellKeepLogs(w); if (it.src) FILEOF.set(c, it.src); incoming.push({ w: c, samePad: JSON.stringify(it.p.pad) === JSON.stringify(base.pad) }); }));
   const replaced = incoming.filter(x => base.wells.some(b => normName(b.name) === normName(x.w.name))).map(x => x.w.name);
   if (replaced.length && !(await dlg('These wells are already in the project and will be replaced by the file versions:\n' + replaced.join('\n'), [{ label: 'Cancel', value: false }, { label: 'Replace', value: true, primary: true }]))) return;
   let added = 0, repl = 0, firstIdx = pristine ? base.active : -1;
@@ -391,7 +402,7 @@ $('#fileOpen').onchange = async e => {
   project = base; state = project.wells[project.active]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
   markAllSaved(); snoozeSig = null;
   if (items.length > 1 || bad.length || repl) await dlg('Opened ' + items.length + ' file' + (items.length === 1 ? '' : 's') + '. The project now has ' + project.wells.length + ' wells' + (repl ? ' (' + repl + ' replaced)' : '') + '.' + (bad.length ? '\n\nSkipped:\n' + bad.join('\n') : ''), [{ label: 'OK', value: 1, primary: true }]);
-};
+}
 $('#bNew').onclick = async () => {
   if (!(await confirmLeave('starting a new project', true))) return;
   project = newProject(); state = project.wells[0]; wellSig = ''; P2.plan.view = P2.sec.view = P2.apPlan.view = null; init();
