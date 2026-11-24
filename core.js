@@ -779,6 +779,51 @@
   /* Reads MD / Inc / Azi from pasted or file text. If a header line names the columns (md|measured, inc|incl|inclination,
    * azi|azim|azimuth) those columns are used, otherwise the first three numbers on each line. Comma, tab, semicolon or
    * spaces. Rows are sorted by MD; repeated MDs are dropped. Returns {rows, skipped, byHeader}. */
+  /* Formation tops pasted from a spreadsheet (tab separated) or typed (commas, semicolons or spaces): one top per line,
+   * a name and a TVD, optionally dip and dip direction. A header row (no numbers) names the columns: TVD / depth, subsea /
+   * SS (converted with kb: TVD = KB elevation - subsea, subsea positive above sea level), dip, dir / azimuth, and the name
+   * (formation, top, name...). Without a header the text cell is the name and the numbers are TVD, dip, direction in order.
+   * Returns {tops: [{name, tvd, dip?, azi?}] sorted by TVD, skipped: [lines not understood], subsea: bool}. */
+  function parseTopsText(text, kb) {
+    const lines = String(text || '').split(/\r?\n/).filter(l => l.trim());
+    const num = x => { const t = String(x).trim().replace(/^\+/, ''); if (!/^-?[\d,]*\.?\d+$/.test(t)) return NaN; return parseFloat(t.replace(/,(?=\d{3}(\D|$))/g, '')); };
+    const split = l => {
+      if (/\t/.test(l)) return l.split('\t').map(x => x.trim().replace(/^"|"$/g, ''));
+      if (/[;]/.test(l) || /,\s*\D/.test(l) || /\D\s*,/.test(l)) return l.split(/[;,]/).map(x => x.trim().replace(/^"|"$/g, ''));
+      // spaces only: the trailing numbers are the values, everything before them the name ("Base of Coal 1079 -1.2")
+      const w = l.trim().split(/\s+/); let k = w.length; while (k > 0 && isFinite(num(w[k - 1]))) k--;
+      return k === 0 ? w : [w.slice(0, k).join(' ')].concat(w.slice(k));
+    };
+    let col = null, subsea = false; const tops = [], skipped = [];
+    for (const l of lines) {
+      const c = split(l), isNum = c.map(x => x !== '' && isFinite(num(x)));
+      if (!isNum.some(Boolean)) {                              // a header row (or a title line): read column names if any match
+        const m = {}; c.forEach((h, i) => {
+          const t = h.toLowerCase();
+          if (/\b(ss|sstvd|tvdss)\b|sub\s*-?\s*sea/.test(t)) { if (m.tvd === undefined || !m.ss) { m.tvd = i; m.ss = true; } }
+          else if (/tvd|depth/.test(t)) { if (m.tvd === undefined) m.tvd = i; }
+          else if (/dir|az/.test(t)) { if (m.azi === undefined) m.azi = i; }
+          else if (/dip/.test(t)) { if (m.dip === undefined) m.dip = i; }
+          else if (/name|formation|fm|top|horizon|zone|marker/.test(t)) { if (m.name === undefined) m.name = i; }
+        });
+        if (m.tvd !== undefined) { if (m.name === undefined) m.name = c.findIndex((_, i) => i !== m.tvd && i !== m.dip && i !== m.azi); col = m; subsea = !!m.ss; }
+        else if (tops.length) skipped.push(l);
+        continue;
+      }
+      let name, v, dip, azi;
+      if (col) { name = c[col.name]; v = num(c[col.tvd]); if (col.dip !== undefined) dip = num(c[col.dip]); if (col.azi !== undefined) azi = num(c[col.azi]); }
+      else { const ni = isNum.indexOf(false); name = ni >= 0 ? c[ni] : ''; const ns = c.filter((x, i) => isNum[i]).map(num); [v, dip, azi] = ns; }
+      name = String(name || '').trim();
+      if (!name || !isFinite(v)) { skipped.push(l); continue; }
+      const tvd = col && col.ss ? (isFinite(kb) ? kb - v : NaN) : v;
+      if (!isFinite(tvd)) { skipped.push(l); continue; }
+      const t = { name, tvd: Math.round(tvd * 100) / 100 };
+      if (isFinite(dip)) t.dip = dip; if (isFinite(azi)) t.azi = azi;
+      tops.push(t);
+    }
+    tops.sort((a, b) => a.tvd - b.tvd);
+    return { tops, skipped, subsea };
+  }
   function parseActualText(text) {
     const lines = String(text || '').split(/\r?\n/);
     const split = l => (/\t/.test(l) ? l.replace(/(\d),(?=\d{3}(\D|$))/g, '$1').trim().split(/\t/) : /[,;]/.test(l) ? l.trim().split(/[,;]/) : l.trim().split(/\s+/)).map(x => x.trim().replace(/^"|"$/g, '')).filter(x => x !== '');
@@ -1194,7 +1239,7 @@
     return lo;
   }
 
-  const api = { tdPrep, tdRun, torqueDrag, maxSlideWob, TD_OPS, resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, surveyToSections, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
+  const api = { parseTopsText, tdPrep, tdRun, torqueDrag, maxSlideWob, TD_OPS, resolveTops, actualCsv, compactJson, colorAt, inZone, projectAhead, rejoinPlan, parseLAS, packLogCurve, logDepth, logRange, logSeries, ringFootage, formationMds, topTvdAt, toolFace, wallSectionRows, parseActualText, surveyToSections, actualSurvey, planAtMd, planVsActual, ERR_PRESETS, errorModel, sigmaAlong, separationSF, D2R, R2D, norm360, radius, dirVec, buildStations, computeSurvey, geom, solve2D,
     plssName, ptRingDist, sectionsNear, insetRing, ptInRing, pathFootage,
     planFromTargets, lateralSections, offsetGround, lastAtSection, parseSurveyText, separation, ptSegDist, padSlot, padSlots, spaceLaterals,
     CRS, FT_PER_M, toGrid, toLatLon, convergence, parsePair };

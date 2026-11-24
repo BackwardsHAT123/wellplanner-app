@@ -347,6 +347,53 @@ $('#topsList').addEventListener('click', e => {
   state.tops.splice(+b.dataset.deltop, 1); shareTops(); renderTops(); recalc();
 });
 
+/* ---- paste tops from a spreadsheet: preview, then replace the list or add to it ---- */
+function pasteTopsDialog(text) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div role="dialog" aria-label="Paste formation tops" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:560px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <h3 style="margin:0">Paste formation tops</h3>
+    <div class="hint" style="margin:0">Copy the rows in Excel (name and TVD, plus dip and direction if you have them; a header row is fine) and paste them here. A <b>Subsea</b> column is converted with KB ${fmt(state.kb, 0)} ft: TVD = KB − subsea.</div>
+    <textarea id="ptText" rows="6" style="width:100%;font-family:inherit;font-size:13px;resize:vertical" placeholder="Formation&#9;TVD&#10;Niobrara&#9;7,410&#10;Turner&#9;7,655"></textarea>
+    <div id="ptPrev" style="overflow:auto;flex:1;min-height:60px;max-height:40vh"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="chk" title="Replace: the pasted list becomes the tops. Add: pasted tops are added, and a top with the same name is updated."><input type="checkbox" id="ptReplace" ${state.tops.length ? '' : 'checked'}><span>Replace the ${state.tops.length} existing top${state.tops.length === 1 ? '' : 's'}</span></label>
+      <span class="grow" style="flex:1"></span><button id="ptCancel">Cancel</button><button class="primary" id="ptOk" disabled>Add tops</button>
+    </div></div>`;
+  const q = s => ov.querySelector(s); let res = { tops: [] };
+  const show = () => {
+    res = WP.parseTopsText(q('#ptText').value, state.kb);
+    const n = res.tops.length, rep = q('#ptReplace').checked;
+    q('#ptOk').disabled = !n; q('#ptOk').textContent = n ? (rep ? 'Replace with ' : 'Add ') + n + ' top' + (n === 1 ? '' : 's') : 'Add tops';
+    const th = (t, r) => `<th style="padding:3px 8px;text-align:${r ? 'right' : 'left'};border-bottom:1px solid var(--line)">${t}</th>`, td = (v, r) => `<td style="padding:3px 8px;text-align:${r ? 'right' : 'left'}">${v}</td>`;
+    q('#ptPrev').innerHTML = !q('#ptText').value.trim() ? '' : !n ? '<div class="hint" style="color:var(--warn)">No tops found: each line needs a name and a TVD.</div>' :
+      `<table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr>${th('Name')}${th('TVD (ft)', 1)}${th('Dip°', 1)}${th('Dir°', 1)}</tr></thead><tbody>` +
+      res.tops.map(t => `<tr>${td(esc(t.name))}${td(fmt(t.tvd, t.tvd % 1 ? 1 : 0), 1)}${td(t.dip ?? '', 1)}${td(t.azi ?? '', 1)}</tr>`).join('') + '</tbody></table>' +
+      (res.subsea ? `<div class="hint">Subsea column read: TVD = ${fmt(state.kb, 0)} − subsea.</div>` : '') +
+      (res.skipped.length ? `<div class="hint" style="color:var(--warn)">Skipped ${res.skipped.length} line${res.skipped.length === 1 ? '' : 's'}: ${res.skipped.slice(0, 3).map(esc).join(' · ')}${res.skipped.length > 3 ? ' …' : ''}</div>` : '');
+  };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  q('#ptText').addEventListener('input', show); q('#ptReplace').onchange = show;
+  q('#ptCancel').onclick = close; ov.onclick = e => { if (e.target === ov) close(); };
+  q('#ptOk').onclick = () => {
+    if (!res.tops.length) return;
+    if (q('#ptReplace').checked) state.tops = res.tops.map(t => Object.assign({}, t));
+    else res.tops.forEach(t => { const k = state.tops.findIndex(x => normName(x.name) === normName(t.name)); if (k >= 0) state.tops[k] = Object.assign({}, state.tops[k], t); else state.tops.push(Object.assign({}, t)); });
+    state.tops.sort((a, b) => a.tvd - b.tvd);
+    close(); shareTops(); renderTops(); recalc();
+  };
+  document.body.appendChild(ov); q('#ptText').value = text || ''; show(); q('#ptText').focus();
+}
+$('#bPasteTops').onclick = e => { e.stopPropagation(); pasteTopsDialog(''); };
+/* pasting several lines (or tab-separated cells) into any top's box opens the paste dialog with them */
+$('#panel-tops').addEventListener('paste', e => {
+  const t = (e.clipboardData || window.clipboardData).getData('text');
+  if (!/\n.*\S/.test(t.trim()) && !/\t/.test(t)) return;          // a single value: normal paste
+  e.preventDefault(); pasteTopsDialog(t);
+});
+
 /* ================= calculation ================= */
 function showBanner(err, notes, warns) {
   let h = '';
