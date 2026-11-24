@@ -18,7 +18,7 @@ function takeLogs(w) { if (w && 'logs' in w) { const L = w.logs; delete w.logs; 
 const withLogs = w => logsOf(w) ? Object.assign({}, w, { logs: logsOf(w) }) : w;
 /* deep copy of a well that keeps its logs (the copy shares the logs object: use only when the original is discarded) */
 const cloneWellKeepLogs = w => { const c = JSON.parse(JSON.stringify(w)); if (logsOf(w)) setLogs(c, logsOf(w)); return c; };
-const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs: 'crossed', setback: true, scale: '', tvdMin: '', tvdMax: '', wellId: true, company: '', project: '', site: '', wellbore: '', dpStep: '' });
+const WALL_DEF = () => ({ plan: 'Design #1', foot: 'fnlfel', footText: '', secs: 'crossed', setback: true, scale: '', tvdMin: '', tvdMax: '', wellId: true, offOn: false, offPick: null, company: '', project: '', site: '', wellbore: '', dpStep: '' });
 /* torque and drag inputs, per well (not per plan version: the same rig and string drill every version). Loads klbf / kft-lbf in the UI. */
 const TD_DEF = () => ({
   comps: [{ name: 'BHA: bit, motor, MWD', len: 120, od: 4.75, id: 2.25, wt: 47, tj: 4.75 }, { name: 'Drill pipe 4in 14# S-135 XT39', len: 0, od: 4, id: 3.34, wt: 15.5, tj: 4.875 }],

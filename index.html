@@ -698,6 +698,7 @@ td.bad{color:var(--warn);font-weight:700}
       <div class="chkcol" style="margin-top:8px">
         <label class="chk"><input type="checkbox" data-w="setback"><span>Draw setback lines (setback set in Sections and state wells on the Plots tab)</span></label>
         <label class="chk"><input type="checkbox" data-w="wellId"><span>Add the well number to target names (Landing - 21-12-13 PH)</span></label>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><label class="chk"><input type="checkbox" data-w="offOn" id="wallOffOn"><span>Show offset wells on the plan view</span></label><button class="small" id="bWallOffPick" title="Choose which offset wells the plan view shows">Choose wells…</button><span class="mut" id="wallOffInfo" style="font-size:12px"></span></div>
       </div>
       <div class="toolbar" style="margin-top:10px">
         <button id="bWallPrint" class="primary">Print / save as PDF</button>
@@ -859,7 +860,7 @@ td.bad{color:var(--warn);font-weight:700}
   </div>
 
   <div class="pane" id="pane-wall">
-    <div class="card help pagehelp"><h3>About the Wall plot page</h3><ul><li>A Letter landscape wall plot of this well: plan view with section lines and setbacks, section view with tops, the well header, formation tops, targets and the plan sections.</li><li>Set the plan name, footage call, scales and options, print it or download an SVG in the <b>Wall plot</b> panel. <b>Edit layout</b> (above the preview) outlines each block: drag one to move it, untick one to leave it off; the layout is saved with the well and used for printing and the SVG. <b>Reset layout</b> puts everything back. The <b>Drill plan</b> panel makes the portrait survey report PDF; the page icon at the bottom of the left bar shows its pages in place of the wall plot.</li><li>In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
+    <div class="card help pagehelp"><h3>About the Wall plot page</h3><ul><li>A Letter landscape wall plot of this well: plan view with section lines and setbacks, section view with tops, the well header, formation tops, targets and the plan sections.</li><li>Set the plan name, footage call, scales, offset wells on the plan view (Show offset wells, then Choose wells…) and options, print it or download an SVG in the <b>Wall plot</b> panel. <b>Edit layout</b> (above the preview) outlines each block: drag one to move it, untick one to leave it off; the layout is saved with the well and used for printing and the SVG. <b>Reset layout</b> puts everything back. The <b>Drill plan</b> panel makes the portrait survey report PDF; the page icon at the bottom of the left bar shows its pages in place of the wall plot.</li><li>In the print dialog choose Save as PDF, scale 100%, and turn off headers and footers.</li></ul><div class="mut">Click ? again to hide these notes. Inputs are in the icons down the left side.</div></div>
     <div id="wallView">
     <div class="toolbar" style="margin:0 0 6px"><button id="bWallEdit" class="small">Edit layout</button><button id="bWallReset" class="small ghost" title="Put every block back where it started and show them all">Reset layout</button>
       <span id="wallEditBar" hidden class="wl-bar"><span class="mut">Drag a block to move it. Show:</span><span id="wallShow" class="wl-show"><label class="chk"><input type="checkbox" data-wb="header" checked><span>Well header</span></label><label class="chk"><input type="checkbox" data-wb="logo" checked><span>Logo</span></label><label class="chk"><input type="checkbox" data-wb="tops" checked><span>Formation tops</span></label><label class="chk"><input type="checkbox" data-wb="targets" checked><span>Design targets</span></label><label class="chk"><input type="checkbox" data-wb="secdet" checked><span>Section details</span></label><label class="chk"><input type="checkbox" data-wb="plan" checked><span>Plan view</span></label><label class="chk"><input type="checkbox" data-wb="section" checked><span>Section view</span></label></span></span></div>
@@ -899,18 +900,18 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=030c135373"></script>
+<script src="core.js?v=0a03ae8434"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=030c135373"></script>
-<script src="app_uncertainty.js?v=030c135373"></script>
-<script src="app_3d.js?v=030c135373"></script>
-<script src="app_charts.js?v=030c135373"></script>
-<script src="app_logs.js?v=030c135373"></script>
-<script src="app_wall.js?v=030c135373"></script>
-<script src="app_versions.js?v=030c135373"></script>
-<script src="app_td.js?v=030c135373"></script>
-<script src="app_project.js?v=030c135373"></script>
-<script src="app_layout.js?v=030c135373"></script>
-<script src="app_library.js?v=030c135373"></script>
+<script src="app_main.js?v=0a03ae8434"></script>
+<script src="app_uncertainty.js?v=0a03ae8434"></script>
+<script src="app_3d.js?v=0a03ae8434"></script>
+<script src="app_charts.js?v=0a03ae8434"></script>
+<script src="app_logs.js?v=0a03ae8434"></script>
+<script src="app_wall.js?v=0a03ae8434"></script>
+<script src="app_versions.js?v=0a03ae8434"></script>
+<script src="app_td.js?v=0a03ae8434"></script>
+<script src="app_project.js?v=0a03ae8434"></script>
+<script src="app_layout.js?v=0a03ae8434"></script>
+<script src="app_library.js?v=0a03ae8434"></script>
 </body>
 </html>

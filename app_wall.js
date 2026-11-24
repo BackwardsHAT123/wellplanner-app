@@ -115,6 +115,13 @@ function wallSvg() {
     const cn = x.ring.reduce((a, q) => a + q.n, 0) / x.ring.length, ce = x.ring.reduce((a, q) => a + q.e, 0) / x.ring.length;
     T(PXf(ce - surf.e), PYf(cn - surf.n), WP.plssName(x.s.id, x.s.sec), 7.3, { anchor: 'middle', bold: true });
   });
+  // offset wells chosen in the Wall plot panel: thin lines in their colours, name at the toe (the scale stays fitted to this well)
+  wallOffChosen().forEach(x => {
+    const r = x.rows, step = Math.max(1, Math.floor(r.length / 300)), pts = r.filter((_, i) => i % step === 0 || i === r.length - 1).map(q => [PXf(q.easting - surf.e), PYf(q.northing - surf.n)]);
+    PL(pts, x.color, .9);
+    const [ex, ey] = pts[pts.length - 1];
+    if (ex >= PX0 && ex <= PX1 && ey >= PY0 && ey <= PY1) T(ex + (ex > PX1 - 60 ? -3 : 3), ey - 3, x.name, 6.2, { anchor: ex > PX1 - 60 ? 'end' : 'start', fill: x.color });
+  });
   PL(sv.filter((_, i) => i % 3 === 0 || i === sv.length - 1).map(r => [PXf(r.easting - surf.e), PYf(r.northing - surf.n)]), '#0000ff', 1.6);
   // rig at the surface location
   const rx = PXf(0), ry = PYf(0); PL([[rx - 5, ry], [rx + 5, ry], [rx + 2, ry - 14], [rx - 2, ry - 14]], '#000', .8, null, true); L(rx - 5, ry, rx + 2, ry - 14, '#000', .6); L(rx + 5, ry, rx - 2, ry - 14, '#000', .6); L(rx - 9, ry, rx + 9, ry, '#000', 1);
@@ -330,6 +337,7 @@ function drillPreview() {
 function drawWall() {
   if (!paneOn('wall')) return;
   const box = $('#wallPrev'); if (!M.survey) { box.innerHTML = '<div class="hint">The plan does not build right now.</div>'; return; }
+  wallOffInfo();
   if (WALL.view === 'pages') { drillPreview(); return; }
   box.innerHTML = wallSvg().replace('width="792" height="612"', 'style="width:100%;height:auto;border:1px solid var(--line)"');
   if (WALL.edit) wallEditDecorate();
@@ -344,6 +352,54 @@ function syncWallInputs() {
 }
 document.addEventListener('input', e => { const el = e.target.closest('[data-w]'); if (!el || el.type === 'checkbox' || el.tagName === 'SELECT') return; state.wall[el.dataset.w] = el.value; autosave(); drawWall(); });
 document.addEventListener('change', e => { const el = e.target.closest('[data-w]'); if (!el) return; state.wall[el.dataset.w] = el.type === 'checkbox' ? el.checked : el.value; autosave(); drawWall(); });
+/* ---- offset wells on the wall plot plan view: state.wall.offOn, and offPick = null (every offset) or a list of well names ---- */
+const wallOffAll = () => (M.offs || []).filter(x => x.rows && x.rows.length > 1);
+function wallOffChosen() {
+  const w = state.wall; if (!w.offOn) return [];
+  const all = wallOffAll(); return Array.isArray(w.offPick) ? all.filter(x => w.offPick.includes(x.name)) : all;
+}
+function wallOffInfo() {
+  const el = $('#wallOffInfo'); if (!el) return;
+  const w = state.wall, n = wallOffAll().length, k = Array.isArray(w.offPick) ? wallOffAll().filter(x => w.offPick.includes(x.name)).length : n;
+  el.textContent = !n ? 'no offset wells in this project' : !w.offOn ? '' : k === n ? `all ${n}` : `${k} of ${n}`;
+  $('#bWallOffPick').disabled = !n;
+}
+const OFF_KIND = { pad: 'Pad well', ref: 'Reference well', manual: 'Outside offset', state: 'State record' };
+function wallOffDialog(fromSwitch) {                // fromSwitch: opened by ticking Show offset wells, so Cancel unticks it
+  const all = wallOffAll(), w = state.wall;
+  if (!all.length) { dlg('This project has no offset wells to show. Add pad wells, reference wells or outside offsets first (Offsets & clearance).', [{ label: 'OK', value: 1, primary: true }]); return; }
+  const on = new Set(Array.isArray(w.offPick) ? w.offPick : all.map(x => x.name));
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = `<div role="dialog" aria-label="Offset wells on the wall plot" style="background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:440px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <h3 style="margin:0">Offset wells on the plan view</h3>
+    <label class="chk" style="font-weight:600"><input type="checkbox" id="woAll"><span>All offset wells (${all.length})</span></label>
+    <div id="woList" style="overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;padding-left:4px;border-top:1px solid var(--line);padding-top:6px">${all.map((x, i) =>
+      `<label class="chk"><input type="checkbox" data-wo="${i}"${on.has(x.name) ? ' checked' : ''}><span><span style="display:inline-block;width:14px;height:3px;background:${x.color};vertical-align:middle;margin-right:6px"></span>${esc(x.name)} <span class="mut" style="font-size:12px">${OFF_KIND[x.kind] || ''}</span></span></label>`).join('')}</div>
+    <div class="hint" style="margin:0">Pick All to include wells added to the project later as well.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button id="woCancel">Cancel</button><button class="primary" id="woOk">Done</button></div></div>`;
+  const q = s => ov.querySelector(s), boxes = [...ov.querySelectorAll('[data-wo]')];
+  const sync = () => { const k = boxes.filter(b => b.checked).length; q('#woAll').checked = k === boxes.length; q('#woAll').indeterminate = k > 0 && k < boxes.length; };
+  q('#woAll').onchange = e => { boxes.forEach(b => { b.checked = e.target.checked; }); sync(); };
+  boxes.forEach(b => { b.onchange = sync; }); sync();
+  const close = ok => {
+    if (ok) {
+      const pick = boxes.filter(b => b.checked).map(b => all[+b.dataset.wo].name);
+      w.offPick = pick.length === all.length ? null : pick;
+      w.offOn = pick.length > 0;
+    } else if (fromSwitch) w.offOn = false;
+    ov.remove(); document.removeEventListener('keydown', onKey, true);
+    syncWallInputs(); wallOffInfo(); autosave(); drawWall();
+  };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); } };
+  document.addEventListener('keydown', onKey, true);
+  q('#woCancel').onclick = () => close(false); q('#woOk').onclick = () => close(true);
+  ov.onclick = e => { if (e.target === ov) close(false); };
+  document.body.appendChild(ov); q('#woOk').focus();
+}
+$('#bWallOffPick').onclick = () => wallOffDialog(false);
+/* ticking the switch opens the picker (the shared data-w handler has already set offOn); unticking just hides them */
+$('#wallOffOn').addEventListener('change', e => { if (e.target.checked) wallOffDialog(true); else wallOffInfo(); });
 function printPages(svgs, pageCss) {
   const el = $('#wallPrint'); el.innerHTML = svgs.join('');
   const st = document.createElement('style'); st.id = 'wallPageStyle'; st.textContent = '@page{size:' + pageCss + ';margin:0}'; document.head.appendChild(st);
