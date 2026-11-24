@@ -48,8 +48,8 @@ function wallSvg() {
   /* ---- formation tops (left) ---- */
   const tops = WP.formationMds(WP.resolveTops(s.tops), sv, surf).filter(t => t.md !== null);
   o += blk('tops'); let yL = 152; T(88, yL, 'FORMATION TOP DETAILS', 8.3, { anchor: 'middle' }); yL += 19;
-  T(49, yL, 'TVDPath', 8.3, { anchor: 'end' }); T(86, yL, 'MDPath', 8.3, { anchor: 'end' }); T(138, yL, 'Formation', 8.3, { anchor: 'middle' }); yL += 9;
-  tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(138, yL, t.name, 8.3, { anchor: 'middle' }); yL += 9.2; }); o += '</g>';
+  T(49, yL, 'TVDPath', 8.3, { anchor: 'end' }); T(86, yL, 'MDPath', 8.3, { anchor: 'end' }); T(98, yL, 'Formation', 8.3); yL += 9;
+  tops.forEach(t => { T(49, yL, t.tvd.toFixed(1), 8.3, { anchor: 'end' }); T(86, yL, t.md.toFixed(1), 8.3, { anchor: 'end' }); T(98, yL, t.name, 8.3); yL += 9.2; }); o += '</g>';
 
   /* ---- header block ---- */
   const cx = 335;
