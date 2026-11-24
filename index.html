@@ -408,7 +408,7 @@ td.bad{color:var(--warn);font-weight:700}
 <section class="panel" id="panel-library" data-pw="560" hidden>
   <div class="phead"><h2>Plan library</h2><span class="grow"></span><button class="small ghost phelp" title="Show or hide the explanations in this panel" aria-label="Help for Plan library">?</button><button class="small ghost pclose" title="Close (Esc)" aria-label="Close Plan library">✕</button></div>
   <div class="pbody">
-  <div class="card hint help" style="margin-top:0">The library is a folder of plan files on your computer (for example your <b>wellplans</b> folder, or a Dropbox / OneDrive folder). Every .wellplan.json in it and its subfolders is listed. Click a well to open it: its wells join the project, as with Open…. While a folder is connected, <b>Save</b> writes the well straight into it (back to the file it came from, or a new file named after the well) instead of downloading. Search by name, API, county, T/R/S or formation; several words must all match. County, formation and T/R/S are set on the Well panel; left blank they come from the API number, the tops and the PLSS sections, and are stored in the file when you save. Click a column heading to sort.</div>
+  <div class="card hint help" style="margin-top:0">The library is a folder of plan files on your computer (for example your <b>wellplans</b> folder; a Dropbox / OneDrive folder keeps two computers in step, otherwise use the packages below). Every .wellplan.json in it and its subfolders is listed. Click a well to open it: its wells join the project, as with Open…. While a folder is connected, <b>Save</b> writes the well straight into it (back to the file it came from, or a new file named after the well) instead of downloading. Search by name, API, county, T/R/S or formation; several words must all match. County, formation and T/R/S are set on the Well panel; left blank they come from the API number, the tops and the PLSS sections, and are stored in the file when you save. Click a column heading to sort.</div>
   <div class="card">
     <div class="hint" id="libState" style="margin:0"></div>
     <div id="libBar" hidden class="libbar">
@@ -418,6 +418,13 @@ td.bad{color:var(--warn);font-weight:700}
       <button class="small ghost" id="bLibChoose" title="Use a different folder">Folder…</button>
     </div>
     <div id="libList" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Work and home computers</h3>
+    <div class="hint help">For two computers that cannot share a synced folder. <b>Export package…</b> puts the plans you tick (by default, the ones saved here since the last export) and this computer's settings into one compressed file: email it to yourself. On the other computer, <b>Import package…</b> compares each plan with the copy already there by the time it was last saved: newer ones replace the old copy, new ones are added, older ones are kept unless you choose otherwise, and you can keep both. Each file carries its plan, versions, targets, tops, actual surveys, logs, offsets and pad. Settings that travel: clearance limits and survey tool, setback, wall plot logo and the display switches. The state wells file and the offline section tiles stay on each computer. Saving a well whose file was changed by an import asks first, so an old copy left open never overwrites newer work.</div>
+    <label class="f" style="max-width:260px">This computer's name<input id="syncName" placeholder="e.g. Work or Home" title="Stamped into each file you save, so the other computer can show where a version came from"></label>
+    <div class="toolbar" style="margin-top:6px"><button class="small primary" id="bSyncOut">Export package…</button><button class="small" id="bSyncIn">Import package…</button><input type="file" id="syncFile" accept=".gz,.json,application/gzip,application/json" hidden></div>
+    <div class="hint" id="syncInfo" style="margin-top:6px"></div>
   </div>
   </div>
 </section>
@@ -900,18 +907,19 @@ td.bad{color:var(--warn);font-weight:700}
 
 <div id="wallPrint"></div>
 <!-- ?v=dev is replaced with a hash of the code by tools/publish_public.sh, so browsers never mix cached old and new files -->
-<script src="core.js?v=55f29cc343"></script>
+<script src="core.js?v=6744c14348"></script>
 <script src="assets/wall_logo.js"></script>
-<script src="app_main.js?v=55f29cc343"></script>
-<script src="app_uncertainty.js?v=55f29cc343"></script>
-<script src="app_3d.js?v=55f29cc343"></script>
-<script src="app_charts.js?v=55f29cc343"></script>
-<script src="app_logs.js?v=55f29cc343"></script>
-<script src="app_wall.js?v=55f29cc343"></script>
-<script src="app_versions.js?v=55f29cc343"></script>
-<script src="app_td.js?v=55f29cc343"></script>
-<script src="app_project.js?v=55f29cc343"></script>
-<script src="app_layout.js?v=55f29cc343"></script>
-<script src="app_library.js?v=55f29cc343"></script>
+<script src="app_main.js?v=6744c14348"></script>
+<script src="app_uncertainty.js?v=6744c14348"></script>
+<script src="app_3d.js?v=6744c14348"></script>
+<script src="app_charts.js?v=6744c14348"></script>
+<script src="app_logs.js?v=6744c14348"></script>
+<script src="app_wall.js?v=6744c14348"></script>
+<script src="app_versions.js?v=6744c14348"></script>
+<script src="app_td.js?v=6744c14348"></script>
+<script src="app_project.js?v=6744c14348"></script>
+<script src="app_layout.js?v=6744c14348"></script>
+<script src="app_library.js?v=6744c14348"></script>
+<script src="app_sync.js?v=6744c14348"></script>
 </body>
 </html>

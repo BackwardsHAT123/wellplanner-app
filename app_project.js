@@ -169,12 +169,13 @@ function dlg(msg, buttons) {                 // buttons: [{label, value, primary
     document.body.appendChild(ov); const f = ov.querySelector('.primary') || ov.querySelector('button'); if (f) f.focus();
   });
 }
-/* saves one well as its own file (with the pad and reference wells it needs), never the whole pad project */
+/* saves one well as its own file (with the pad and reference wells it needs), never the whole pad project.
+ * savedAt / savedOn (this computer's name) let a package from the other computer tell which copy is newer (app_sync.js). */
 /* With a plan library folder connected it writes into that folder (app_library.js), otherwise it downloads the file.
  * The file also carries the library search values in use (lib: county, formation, T/R/S). */
 async function saveWell(w) {
   syncVer(w);
-  const one = { v: 2, pad: project.pad, wells: [Object.assign({}, withLogs(w), { lib: libFields(w) })], active: 0, refs: project.refs.map(withLogs) };
+  const one = { v: 2, savedAt: new Date().toISOString(), savedOn: syncName(), pad: project.pad, wells: [Object.assign({}, withLogs(w), { lib: libFields(w) })], active: 0, refs: project.refs.map(withLogs) };
   const text = WP.compactJson(one), sig = wSig(w);             // what is written, taken before any wait
   let done = false;
   try { done = await libSave(w, text); } catch (e) { await dlg('Could not write to the plans folder (' + e.message + '). The plan is downloaded instead.', [{ label: 'OK', value: 1, primary: true }]); }

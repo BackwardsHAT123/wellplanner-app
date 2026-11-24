@@ -96,9 +96,9 @@ async function libScan() {
       const path = prefix + name; seen.add(path);
       try {
         const f = await h.getFile(); let c = LIB.cache.get(path);
-        if (!c || c.mod !== f.lastModified) { c = { mod: f.lastModified, wells: libReadWells(JSON.parse(await f.text())) }; LIB.cache.set(path, c); }
+        if (!c || c.mod !== f.lastModified) { const p = JSON.parse(await f.text()); c = { mod: f.lastModified, saved: Date.parse(p && p.savedAt) || f.lastModified, on: (p && p.savedOn) || '', wells: libReadWells(p) }; LIB.cache.set(path, c); }
         if (!c.wells) continue;                                  // a JSON file that is not a well plan
-        c.wells.forEach(w => rows.push(Object.assign({ path, handle: h, saved: f.lastModified, inFile: c.wells.length }, w)));
+        c.wells.forEach(w => rows.push(Object.assign({ path, handle: h, saved: c.saved, on: c.on, mod: f.lastModified, inFile: c.wells.length }, w)));
       } catch (e) { bad.push(path); }
     }
   }
@@ -157,9 +157,9 @@ $('#libField').onchange = e => { LIB.field = e.target.value; renderLib(); };
 /* open a library file the same way Open… does (its wells join the project), and remember which file each well came from */
 async function libOpen(path) {
   const r = LIB.rows.find(x => x.path === path); if (!r) return;
-  let p; try { p = migrateProject(JSON.parse(await (await r.handle.getFile()).text())); if (!p) throw new Error('not a well plan'); }
+  let p, mod; try { const f = await r.handle.getFile(); mod = f.lastModified; p = migrateProject(JSON.parse(await f.text())); if (!p) throw new Error('not a well plan'); }
   catch (err) { await dlg('Could not open ' + path + ': ' + err.message, [{ label: 'OK', value: 1, primary: true }]); return; }
-  await openProjects([{ name: path, p, src: { handle: r.handle, path } }]);
+  await openProjects([{ name: path, p, src: { handle: r.handle, path, mod } }]);
   renderLib();
 }
 
@@ -168,13 +168,24 @@ async function libOpen(path) {
 async function libSave(w, text) {
   if (!LIB.dir || !(await libPerm(true))) return false;
   LIB.ok = true;
-  let src = FILEOF.get(w);
+  let src = FILEOF.get(w), asNew = false;
   if (src) { try { await src.handle.getFile(); } catch (e) { src = null; } }   // file moved or deleted since: save as new
+  if (src && src.mod) {
+    const f = await src.handle.getFile();
+    if (f.lastModified !== src.mod) {                        // changed in the folder since it was opened or last saved here
+      let info = ''; try { const p = JSON.parse(await f.text()); info = p.savedAt ? ` (saved ${new Date(p.savedAt).toLocaleString()}${p.savedOn ? ' on ' + p.savedOn : ''})` : ''; } catch (e) {}
+      const c = await dlg(`${src.path} in the plans folder has changed since you opened it here${info}, for example by importing a package from your other computer.\n\nReplace replaces that version with the one on screen. Save as new file keeps both. Cancel, then open the well again from the library, to work on the folder version.`,
+        [{ label: 'Cancel', value: 'cancel' }, { label: 'Save as new file', value: 'new' }, { label: 'Replace', value: 'replace', primary: true }]);
+      if (c === 'cancel') return true;
+      if (c === 'new') { src = null; asNew = true; }
+    }
+  }
   if (!src) {
     const base = (w.name || 'well').replace(/[^\w.-]+/g, '_');
     let name = base + '.wellplan.json', n = 1;
     const exists = async nm => { try { await LIB.dir.getFileHandle(nm); return true; } catch (e) { return false; } };
-    if (await exists(name)) {
+    if (asNew) { while (await exists(name)) { n++; name = `${base}_${n}.wellplan.json`; } }
+    else if (await exists(name)) {
       const c = await dlg(`${name} is already in the plans folder and was not opened from it in this session.\nReplace it with "${w.name}", or save this well as a new file?`, [{ label: 'Cancel', value: 'cancel' }, { label: 'Save as new file', value: 'new' }, { label: 'Replace', value: 'replace', primary: true }]);
       if (c === 'cancel') return true;
       if (c === 'new') { do { n++; name = `${base}_${n}.wellplan.json`; } while (await exists(name)); }
@@ -182,6 +193,7 @@ async function libSave(w, text) {
     src = { handle: await LIB.dir.getFileHandle(name, { create: true }), path: name };
   }
   const wr = await src.handle.createWritable(); await wr.write(text); await wr.close();
+  src = Object.assign({}, src, { mod: (await src.handle.getFile()).lastModified });
   FILEOF.set(w, src);
   libToast('Saved to ' + LIB.dir.name + '/' + src.path);
   libScan();
