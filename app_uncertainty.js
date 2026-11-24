@@ -322,15 +322,15 @@ $('#refHead').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.pre
 function renderRef() {
   const el = $('#refList'); if (!el) return;
   const others = project.wells.map((w, i) => ({ w, i })).filter(x => x.w !== state);
-  { const on = others.filter(x => x.w.asOffset !== false).length + (project.refs || []).filter(r => r.asOffset !== false).length, n = others.length + (project.refs || []).length;
+  { const on = others.filter(x => x.w.asOffset !== false).length + (project.refs || []).filter(r => r.asOffset !== false && !refIsOpen(r)).length, n = others.length + (project.refs || []).length;
     $('#refCount').textContent = n ? `${on} of ${n} in use` : 'none'; }
   let h = '';
   if (others.length) h += '<div class="hint" style="margin:0 0 4px">This project</div>' + others.map(x =>
     `<label class="chk refrow"><input type="checkbox" data-asoff="w${x.i}" ${x.w.asOffset === false ? '' : 'checked'}><span><b>${esc(x.w.name || 'Unnamed')}</b>${x.w.slot ? ' · slot ' + slotId(x.w.slot.c, x.w.slot.r) : ''}</span></label>`).join('');
   const refs = project.refs || [];
   h += '<div class="hint" style="margin:6px 0 4px">Reference copies' + (refs.length ? '' : ': none yet') + '</div>' + refs.map((r, i) => {
-    const ok = !!refModel(r), why = r.crs === state.crs ? 'could not build this well' : 'coordinate system differs and one of them is a local grid';
-    return `<div class="refrow"><label class="chk"><input type="checkbox" data-asoff="r${i}" ${r.asOffset === false ? '' : 'checked'}><span><b>${esc(r.name || 'Unnamed')}</b> <span style="color:var(--muted)">from ${esc(r.refSrc || 'a saved plan')}${r.refAdded ? ', added ' + esc(r.refAdded) : ''}</span>${ok ? '' : ` <span style="color:var(--warn)">not shown: ${why}</span>`}</span></label><button class="small" data-refdel="${i}" title="Remove this reference copy">Remove</button></div>`;
+    const open = refIsOpen(r), ok = open || !!refModel(r), why = r.crs === state.crs ? 'could not build this well' : 'coordinate system differs and one of them is a local grid';
+    return `<div class="refrow"><label class="chk"><input type="checkbox" data-asoff="r${i}" ${r.asOffset === false || open ? '' : 'checked'}${open ? ' disabled' : ''}><span><b>${esc(r.name || 'Unnamed')}</b> <span style="color:var(--muted)">from ${esc(r.refSrc || 'a saved plan')}${r.refAdded ? ', added ' + esc(r.refAdded) : ''}</span>${open ? ' <span style="color:var(--muted)">not used: this well is open in the project, so its current plan is checked instead</span>' : ok ? '' : ` <span style="color:var(--warn)">not shown: ${why}</span>`}</span></label><button class="small" data-refdel="${i}" title="Remove this reference copy">Remove</button></div>`;
   }).join('');
   el.innerHTML = h;
   const pk = $('#refPick');

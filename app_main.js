@@ -480,6 +480,11 @@ function buildModel(w) {
 const PAD_SHL = 500;
 const onThisPad = o => o.kind === 'pad' && !!o.w && ((onPad(state) && onPad(o.w)) ||
   Math.hypot(o.w.surface.n - state.surface.n, o.w.surface.e - state.surface.e) <= PAD_SHL);
+/* a reference copy whose well is also open in this project (same name): checking it would compare a well with itself */
+function refIsOpen(r) {
+  const n = String(r.name || '').trim().toLowerCase();
+  return !!n && project.wells.some(w => String(w.name || '').trim().toLowerCase() === n);
+}
 function buildOffs() {
   const list = [];
   project.wells.forEach((w, i) => {
@@ -488,7 +493,7 @@ function buildOffs() {
     list.push({ name: w.name || 'Unnamed', rows: m.survey, kind: 'pad', w, color: PAD_COLORS[i % PAD_COLORS.length], kopMd: m.kopMd });
   });
   (project.refs || []).forEach((r, i) => {
-    if (r.asOffset === false) return;
+    if (r.asOffset === false || refIsOpen(r)) return;          // the live project well replaces its old frozen copy
     const m = refModel(r); if (!m) return;
     list.push({ name: (r.name || 'Reference') + ' (ref)', rows: m.rows, kind: 'ref', color: PAD_COLORS[(i + 3) % PAD_COLORS.length], kopMd: m.kopMd });
   });
